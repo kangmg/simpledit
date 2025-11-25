@@ -1262,7 +1262,12 @@ export class Editor {
         // Load current molecule data
         const currentFormat = formatSelect.value;
         if (currentFormat === 'xyz') {
-            input.value = this.molecule.toXYZ();
+            // Only show XYZ if there are atoms, otherwise show empty
+            if (this.molecule.atoms.length > 0) {
+                input.value = this.molecule.toXYZ();
+            } else {
+                input.value = '';
+            }
         }
 
         modal.style.display = 'block';
@@ -1276,7 +1281,12 @@ export class Editor {
         formatSelect.onchange = () => {
             const format = formatSelect.value;
             if (format === 'xyz') {
-                input.value = this.molecule.toXYZ();
+                // Only show XYZ if there are atoms, otherwise show empty
+                if (this.molecule.atoms.length > 0) {
+                    input.value = this.molecule.toXYZ();
+                } else {
+                    input.value = '';
+                }
             }
             // Future formats will be added here
         };
