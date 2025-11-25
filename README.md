@@ -6,9 +6,9 @@
 
 ---
 
-<font size=8>simpl</font><font size=8 color=skyblue>edit</font></font>
+# $${\Large \text{simpl}}{\Large \color{blue}\text{edit}}$$
 
-This project is a lightweight JavaScript-based molecular editor. It was created because only a few JS-based molecular editors are currently available. The current version is a pre-alpha prototype with a very minimal user interface.
+This project is a simple JavaScript-based molecular editor. It was created because only a few JS-based molecular editors are currently available. The current version is a pre-alpha prototype with a very minimal user interface.
 
 Avogadro2 and the [rowan](https://labs.rowansci.com/editor) are excellent alternatives. However, this project was initiated as a foundation for future work and experimentation.
 
