@@ -1,5 +1,6 @@
 
 export const ELEMENTS = {
+    'X': { atomicNumber: 0, jmol: 0x000000, cpk: 0x000000, radius: 0.76 }, // Dummy atom (same radius as C)
     'H': { atomicNumber: 1, jmol: 0xFFFFFF, cpk: 0xFFFFFF, radius: 0.31 },
     'He': { atomicNumber: 2, jmol: 0xD9FFFF, cpk: 0xFFC0CB, radius: 0.28 },
     'Li': { atomicNumber: 3, jmol: 0xCC80FF, cpk: 0xB22222, radius: 1.28 },

@@ -11,12 +11,12 @@ export class Editor {
         this.molecule = new Molecule();
         this.interaction = new Interaction(this.renderer, this.canvas);
 
-        this.mode = 'select';
+        this.mode = 'edit';
         this.selectedElement = 'C';
         this.colorScheme = 'jmol'; // Default to Jmol colors
         this.manipulationMode = 'translate'; // For move mode: translate or rotate
         this.selectionMode = 'rectangle'; // For select mode: rectangle or lasso
-        this.showLabels = false; // Toggle for atom labels
+        this.labelMode = 'none'; // Label modes: 'none', 'symbol', 'number', 'both'
         // this.selectedBondOrder = 1; // Removed
 
         // Track selection order for geometry adjustments
@@ -56,8 +56,7 @@ export class Editor {
         document.getElementById('btn-undo').onclick = () => this.undo();
         document.getElementById('btn-redo').onclick = () => this.redo();
 
-        document.getElementById('btn-add-atom').onclick = () => this.setMode('add-atom');
-        document.getElementById('btn-bond').onclick = () => this.setMode('bond');
+        document.getElementById('btn-edit').onclick = () => this.setMode('edit');
         document.getElementById('btn-select').onclick = () => this.setMode('select');
         document.getElementById('btn-move').onclick = () => this.setMode('move');
 
@@ -80,10 +79,19 @@ export class Editor {
             this.renderer.setProjection(e.target.value);
         };
 
-        // Toggle Labels
+        // Toggle Labels - cycle through modes
         document.getElementById('btn-toggle-labels').onclick = () => {
-            this.showLabels = !this.showLabels;
-            document.getElementById('btn-toggle-labels').innerText = this.showLabels ? 'Hide Labels' : 'Show Labels';
+            const modes = ['none', 'symbol', 'number', 'both'];
+            const currentIndex = modes.indexOf(this.labelMode);
+            this.labelMode = modes[(currentIndex + 1) % modes.length];
+            
+            const buttonText = {
+                'none': 'Show Labels',
+                'symbol': 'Labels: Symbol',
+                'number': 'Labels: Number',
+                'both': 'Labels: Both'
+            };
+            document.getElementById('btn-toggle-labels').innerText = buttonText[this.labelMode];
             this.updateAllLabels();
         };
 
@@ -188,6 +196,21 @@ export class Editor {
                     this.selectionMode = 'lasso';
                     this.updateSelectionStatus();
                 }
+            } else if (e.key.toLowerCase() === 's') {
+                // Toggle to symbol mode
+                this.labelMode = 'symbol';
+                document.getElementById('btn-toggle-labels').innerText = 'Labels: Symbol';
+                this.updateAllLabels();
+            } else if (e.key.toLowerCase() === 'n') {
+                // Toggle to number mode
+                this.labelMode = 'number';
+                document.getElementById('btn-toggle-labels').innerText = 'Labels: Number';
+                this.updateAllLabels();
+            } else if (e.key.toLowerCase() === 'a') {
+                // Toggle to both mode
+                this.labelMode = 'both';
+                document.getElementById('btn-toggle-labels').innerText = 'Labels: Both';
+                this.updateAllLabels();
             } else if (e.key.toLowerCase() === 'o') {
                 this.setMode('move');
                 this.manipulationMode = 'orbit';
@@ -207,8 +230,7 @@ export class Editor {
         this.mode = mode;
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         const btnMap = {
-            'add-atom': 'btn-add-atom',
-            'bond': 'btn-bond',
+            'edit': 'btn-edit',
             'select': 'btn-select',
             'move': 'btn-move'
         };
@@ -302,16 +324,31 @@ export class Editor {
             this.renderer.controls.enabled = true;
         }
 
-        if (this.mode === 'add-atom') {
-            // Create a plane perpendicular to the camera, passing through the origin (or a specific depth)
-            // This ensures we can always draw, regardless of camera rotation.
+        if (this.mode === 'edit') {
+            // In edit mode, clicking empty space adds an atom
+            // Create a plane perpendicular to the camera at an appropriate depth
             const normal = new THREE.Vector3();
             const camera = this.renderer.activeCamera || this.renderer.camera;
             camera.getWorldDirection(normal);
 
-            // Plane normal should be parallel to camera direction.
-            // We want the plane to pass through (0,0,0).
-            const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, new THREE.Vector3(0, 0, 0));
+            // Determine the plane position based on existing atoms or camera distance
+            let planePoint = new THREE.Vector3(0, 0, 0);
+            
+            if (this.molecule.atoms.length > 0) {
+                // Calculate centroid of existing atoms
+                const centroid = new THREE.Vector3();
+                this.molecule.atoms.forEach(atom => {
+                    centroid.add(atom.position);
+                });
+                centroid.divideScalar(this.molecule.atoms.length);
+                planePoint = centroid;
+            } else {
+                // No atoms yet - place at a reasonable distance from camera
+                const distance = camera.position.length() * 0.5; // Halfway to camera
+                planePoint = camera.position.clone().add(normal.clone().multiplyScalar(-distance));
+            }
+
+            const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, planePoint);
 
             const target = new THREE.Vector3();
             const intersection = raycaster.ray.intersectPlane(plane, target);
@@ -319,6 +356,7 @@ export class Editor {
             console.log('Atom Placement:', {
                 intersection: intersection,
                 target: target,
+                planePoint: planePoint,
                 x: target.x,
                 y: target.y,
                 z: target.z
@@ -705,7 +743,8 @@ export class Editor {
         // By default, allow controls (rotation)
         this.renderer.controls.enabled = true;
 
-        if (this.mode === 'bond') {
+        if (this.mode === 'edit') {
+            // In edit mode, dragging from an atom creates a bond
             const intersects = raycaster.intersectObjects(this.renderer.scene.children);
             const atomMesh = intersects.find(i => i.object.userData.type === 'atom');
 
@@ -769,7 +808,7 @@ export class Editor {
     }
 
     handleDrag(event, raycaster) {
-        if (this.mode === 'bond' && this.ghostBond) {
+        if (this.mode === 'edit' && this.ghostBond) {
             // Update ghost bond end
             const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
             const target = new THREE.Vector3();
@@ -871,11 +910,18 @@ export class Editor {
                 const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
                 const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).normalize();
 
-                // Scale factor (approximate based on distance)
-                const dist = camera.position.distanceTo(this.centroid);
-                // FOV scaling: tan(fov/2) * 2 * dist / height
-                const vFov = camera.fov * Math.PI / 180;
-                const scale = (2 * Math.tan(vFov / 2) * dist) / window.innerHeight;
+                // Scale factor (different for perspective vs orthographic)
+                let scale;
+                if (camera.isPerspectiveCamera) {
+                    // Perspective: FOV scaling
+                    const dist = camera.position.distanceTo(this.centroid);
+                    const vFov = camera.fov * Math.PI / 180;
+                    scale = (2 * Math.tan(vFov / 2) * dist) / window.innerHeight;
+                } else {
+                    // Orthographic: use zoom and frustum size
+                    const frustumHeight = (camera.top - camera.bottom) / camera.zoom;
+                    scale = frustumHeight / window.innerHeight;
+                }
 
                 const delta = right.multiplyScalar(dx * scale).add(up.multiplyScalar(-dy * scale));
 
@@ -896,7 +942,7 @@ export class Editor {
     handleDragEnd(event, raycaster) {
         this.renderer.controls.enabled = true; // Always re-enable controls on drag end
 
-        if (this.mode === 'bond' && this.ghostBond) {
+        if (this.mode === 'edit' && this.ghostBond) {
             this.renderer.scene.remove(this.ghostBond);
             this.ghostBond = null;
 
@@ -904,6 +950,7 @@ export class Editor {
             const atomMesh = intersects.find(i => i.object.userData.type === 'atom' && i.object.userData.atom !== this.dragStartAtom);
 
             if (atomMesh) {
+                // Dragged to an existing atom
                 const endAtom = atomMesh.object.userData.atom;
 
                 // Check if bond already exists
@@ -915,6 +962,23 @@ export class Editor {
                 } else {
                     // Add new bond
                     this.addBondToScene(this.dragStartAtom, endAtom);
+                }
+            } else {
+                // Dragged to empty space - create new atom and bond
+                // Calculate position on a plane perpendicular to camera, passing through start atom
+                const camera = this.renderer.activeCamera || this.renderer.camera;
+                const normal = new THREE.Vector3();
+                camera.getWorldDirection(normal);
+                
+                const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, this.dragStartAtom.position);
+                const target = new THREE.Vector3();
+                const intersection = raycaster.ray.intersectPlane(plane, target);
+                
+                if (intersection) {
+                    // Create new atom at the target position
+                    const newAtom = this.addAtomToScene(this.selectedElement, target);
+                    // Create bond between start atom and new atom
+                    this.addBondToScene(this.dragStartAtom, newAtom);
                 }
             }
             this.dragStartAtom = null;
@@ -1084,7 +1148,7 @@ export class Editor {
 
     createGhostBond(startPos) {
         const geometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
-        const material = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.5 });
+        const material = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.6 });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.copy(startPos);
         this.renderer.scene.add(mesh);
@@ -1272,6 +1336,14 @@ export class Editor {
     }
 
     rebuildScene() {
+        // Clear existing labels
+        this.molecule.atoms.forEach(atom => {
+            if (atom.label) {
+                document.body.removeChild(atom.label);
+                atom.label = null;
+            }
+        });
+
         // Clear existing meshes
         // Note: In a real app, we should track meshes better to dispose geometries/materials
         for (let i = this.renderer.scene.children.length - 1; i >= 0; i--) {
@@ -1348,6 +1420,7 @@ export class Editor {
         // We have ELEMENTS map. We need to know row/col for grid.
         // Simplified layout:
         const layout = [
+            ['X', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], // Dummy atom
             ['H', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'He'],
             ['Li', 'Be', '', '', '', '', '', '', '', '', '', '', 'B', 'C', 'N', 'O', 'F', 'Ne'],
             ['Na', 'Mg', '', '', '', '', '', '', '', '', '', '', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar'],
@@ -1451,37 +1524,58 @@ export class Editor {
     }
 
     createAtomLabel(atom) {
-        const idx = this.molecule.atoms.indexOf(atom);
         const label = document.createElement('div');
         label.className = 'atom-label';
         label.style.position = 'absolute';
-        label.style.color = 'white';
-        label.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        label.style.padding = '2px 5px';
-        label.style.borderRadius = '3px';
-        label.style.fontSize = '12px';
-        label.style.fontFamily = 'monospace';
+        label.style.color = '#ff0000'; // Red color
+        label.style.fontSize = '16px';
+        label.style.fontWeight = 'normal'; // Thinner font
+        label.style.fontFamily = 'Arial, sans-serif';
         label.style.pointerEvents = 'none';
-        label.style.display = this.showLabels ? 'block' : 'none';
-        label.innerText = `${atom.element}(${idx})`;
+        label.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8)'; // Outline for visibility
+        label.style.display = 'none';
         document.body.appendChild(label);
         atom.label = label;
+        this.updateAtomLabelText(atom);
+    }
+
+    updateAtomLabelText(atom) {
+        if (!atom.label) return;
+        
+        const idx = this.molecule.atoms.indexOf(atom);
+        let text = '';
+        
+        switch (this.labelMode) {
+            case 'symbol':
+                text = atom.element;
+                break;
+            case 'number':
+                text = idx.toString();
+                break;
+            case 'both':
+                text = `${atom.element}(${idx})`;
+                break;
+            default:
+                text = '';
+        }
+        
+        atom.label.innerText = text;
     }
 
     updateAllLabels() {
         this.molecule.atoms.forEach(atom => {
-            if (atom.label) {
-                atom.label.style.display = this.showLabels ? 'block' : 'none';
-                // Update index in case atoms were added/removed
-                const idx = this.molecule.atoms.indexOf(atom);
-                atom.label.innerText = `${atom.element}(${idx})`;
-            } else if (this.showLabels) {
-                // Create label if it doesn't exist
+            if (!atom.label) {
                 this.createAtomLabel(atom);
             }
+            
+            // Update text based on mode
+            this.updateAtomLabelText(atom);
+            
+            // Show/hide based on mode
+            atom.label.style.display = this.labelMode !== 'none' ? 'block' : 'none';
         });
         
-        if (this.showLabels) {
+        if (this.labelMode !== 'none') {
             this.updateLabelPositions();
         }
     }
@@ -1492,13 +1586,65 @@ export class Editor {
         this.molecule.atoms.forEach(atom => {
             if (atom.label && atom.mesh) {
                 const pos = atom.mesh.position.clone();
+                const worldPos = atom.mesh.position.clone();
                 pos.project(camera);
                 
-                const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+                // Check if atom is behind camera
+                const cameraDir = new THREE.Vector3();
+                camera.getWorldDirection(cameraDir);
+                const toAtom = worldPos.clone().sub(camera.position);
+                const dotProduct = toAtom.dot(cameraDir);
                 
-                atom.label.style.left = `${x + 10}px`;
-                atom.label.style.top = `${y - 10}px`;
+                // Hide if behind camera or too far in z
+                if (dotProduct < 0 || pos.z > 1) {
+                    atom.label.style.display = 'none';
+                    return;
+                }
+                
+                // Check if occluded by other atoms or bonds
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(
+                    new THREE.Vector2(pos.x, pos.y),
+                    camera
+                );
+                
+                const intersects = raycaster.intersectObjects(this.renderer.scene.children, false);
+                let isOccluded = false;
+                
+                for (const intersect of intersects) {
+                    if (intersect.object.userData.type === 'atom') {
+                        const intersectedAtom = intersect.object.userData.atom;
+                        if (intersectedAtom !== atom) {
+                            // Another atom is in front
+                            isOccluded = true;
+                            break;
+                        } else {
+                            // This is the atom itself, stop checking
+                            break;
+                        }
+                    } else if (intersect.object.userData.type === 'bond') {
+                        // A bond is in front of this label
+                        // Check if the bond is closer than the atom
+                        const atomDistance = camera.position.distanceTo(worldPos);
+                        if (intersect.distance < atomDistance) {
+                            isOccluded = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (isOccluded) {
+                    atom.label.style.display = 'none';
+                } else {
+                    atom.label.style.display = this.labelMode !== 'none' ? 'block' : 'none';
+                    const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+                    
+                    // Center the label on the atom
+                    atom.label.style.left = `${x}px`;
+                    atom.label.style.top = `${y}px`;
+                    atom.label.style.transform = 'translate(-50%, -50%)';
+                }
             }
         });
     }
@@ -1533,7 +1679,7 @@ export class Editor {
         this.renderer.render();
         
         // Update label positions if visible
-        if (this.showLabels) {
+        if (this.labelMode !== 'none') {
             this.updateLabelPositions();
         }
     }
