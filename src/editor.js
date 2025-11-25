@@ -25,6 +25,11 @@ export class Editor {
         // Undo/Redo History
         this.history = [];
         this.historyIndex = -1;
+
+        // Flags to track if we're currently adjusting geometry (for undo/redo)
+        this.lengthAdjusting = false;
+        this.angleAdjusting = false;
+        this.dihedralAdjusting = false;
         this.maxHistory = 50;
 
         this.ghostBond = null;
@@ -139,22 +144,43 @@ export class Editor {
         // Geometry
         // Geometry Sliders
         document.getElementById('input-length').oninput = () => {
+            // Save state before first change
+            if (!this.lengthAdjusting) {
+                this.saveState();
+                this.lengthAdjusting = true;
+            }
             this.updateSliderLabel('val-length', document.getElementById('input-length').value);
             this.setBondLength();
         };
-        document.getElementById('input-length').onchange = () => this.saveState(); // Save on release
+        document.getElementById('input-length').onchange = () => {
+            this.lengthAdjusting = false; // Reset flag when slider is released
+        };
 
         document.getElementById('input-angle').oninput = () => {
+            // Save state before first change
+            if (!this.angleAdjusting) {
+                this.saveState();
+                this.angleAdjusting = true;
+            }
             this.updateSliderLabel('val-angle', document.getElementById('input-angle').value);
             this.setBondAngle();
         };
-        document.getElementById('input-angle').onchange = () => this.saveState();
+        document.getElementById('input-angle').onchange = () => {
+            this.angleAdjusting = false; // Reset flag when slider is released
+        };
 
         document.getElementById('input-dihedral').oninput = () => {
+            // Save state before first change
+            if (!this.dihedralAdjusting) {
+                this.saveState();
+                this.dihedralAdjusting = true;
+            }
             this.updateSliderLabel('val-dihedral', document.getElementById('input-dihedral').value);
             this.setDihedralAngle();
         };
-        document.getElementById('input-dihedral').onchange = () => this.saveState();
+        document.getElementById('input-dihedral').onchange = () => {
+            this.dihedralAdjusting = false; // Reset flag when slider is released
+        };
 
         // Keyboard Shortcuts
         window.addEventListener('keydown', (e) => {
