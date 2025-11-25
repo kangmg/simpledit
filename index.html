@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Molecular Editor</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <div id="app">
+    <canvas id="editor-canvas"></canvas>
+    <div id="ui-overlay">
+      <div class="toolbar">
+        <button id="btn-undo" class="tool-btn" title="Undo (Ctrl+Z)">Undo</button>
+        <button id="btn-redo" class="tool-btn" title="Redo (Ctrl+Y)">Redo</button>
+        <div style="width: 1px; background: #555; margin: 0 5px;"></div>
+        <button id="btn-add-atom" class="tool-btn active" title="Add Atom (Click empty space)">Add Atom</button>
+        <button id="btn-bond" class="tool-btn" title="Bond (Drag between atoms)">Bond</button>
+        <button id="btn-select" class="tool-btn" title="Select (Lasso/Rect)">Select</button>
+        <button id="btn-move" class="tool-btn" title="Move/Rotate Fragment">Move/Rotate</button>
+        <div style="width: 1px; background: #555; margin: 0 5px;"></div>
+        <select id="camera-mode"
+          style="background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+          <option value="orbit">Orbit Camera</option>
+          <option value="trackball">Trackball Camera</option>
+        </select>
+        <div style="width: 1px; background: #555; margin: 0 5px;"></div>
+        <select id="color-scheme"
+          style="background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+          <option value="jmol">Jmol Colors</option>
+          <option value="cpk">CPK Colors</option>
+        </select>
+        <div style="width: 1px; background: #555; margin: 0 5px;"></div>
+        <select id="projection-mode"
+          style="background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+          <option value="perspective">Perspective</option>
+          <option value="orthographic">Orthographic</option>
+        </select>
+      </div>
+      <div class="properties-panel">
+        <h3>Properties</h3>
+        <div id="selection-info">No selection</div>
+        <div>
+          <label>Element</label>
+          <button id="btn-element-select"
+            style="width: 100%; background: #444; color: white; border: 1px solid #555; padding: 8px; margin-top: 5px; cursor: pointer;">
+            C
+          </button>
+        </div>
+        <!-- Bond Order Removed -->
+        <div class="control-group">
+          <button id="btn-copy">Copy XYZ</button>
+          <button id="btn-paste">Paste XYZ</button>
+        </div>
+        <div class="control-group">
+          <label>Bond Threshold: x<span id="val-bond-threshold">1.6</span></label>
+          <input type="range" id="bond-threshold" min="0.8" max="2.0" step="0.1" value="1.6" style="width: 100%;">
+        </div>
+        <div class="control-group">
+          <button id="btn-auto-bond" style="width: 100%; margin-top: 5px;">Auto Bond</button>
+        </div>
+        <div id="geometry-controls"
+          style="display: none; border-top: 1px solid #555; padding-top: 10px; margin-top: 10px;">
+          <h4>Geometry</h4>
+          <div id="length-control" style="display: none;">
+            <label>Bond Length (Å): <span id="val-length"></span></label>
+            <input type="range" id="input-length" min="0.5" max="5.0" step="0.01" style="width: 100%;">
+          </div>
+          <div id="angle-control" style="display: none;">
+            <label>Bond Angle (°): <span id="val-angle"></span></label>
+            <input type="range" id="input-angle" min="0" max="180" step="1" style="width: 100%;">
+          </div>
+          <div id="dihedral-control" style="display: none;">
+            <label>Dihedral Angle (°): <span id="val-dihedral"></span></label>
+            <input type="range" id="input-dihedral" min="-180" max="180" step="1" style="width: 100%;">
+          </div>
+        </div>
+      </div>
+      <div id="measurements"></div>
+
+      <!-- XYZ Paste Modal -->
+      <div id="modal-backdrop"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; pointer-events: auto;">
+      </div>
+      <div id="xyz-modal"
+        style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #282828; padding: 20px; border: 1px solid #555; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto;">
+        <h3 style="margin-top: 0;">Paste XYZ Data</h3>
+        <textarea id="xyz-input" rows="10" cols="50"
+          style="background: #1e1e1e; color: white; border: 1px solid #444; padding: 10px; font-family: monospace;"></textarea>
+        <div style="margin-top: 10px; text-align: right;">
+          <button id="btn-xyz-cancel" style="width: auto; background: #555;">Cancel</button>
+          <button id="btn-xyz-import" style="width: auto; background: #4a90e2;">Import</button>
+        </div>
+      </div>
+
+      <!-- Periodic Table Modal -->
+      <div id="pt-modal" class="modal"
+        style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #282828; padding: 20px; border: 1px solid #555; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto; width: 90%; max-width: 600px; max-height: 60vh; overflow-y: auto;">
+        <span class="close-pt"
+          style="position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #aaa;">&times;</span>
+        <h3 style="margin-top: 0;">Select Element</h3>
+        <div id="periodic-table"
+          style="display: grid; grid-template-columns: repeat(18, 1fr); gap: 2px; margin-top: 10px;">
+          <!-- Generated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
