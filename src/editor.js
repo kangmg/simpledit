@@ -16,6 +16,7 @@ export class Editor {
         this.colorScheme = 'jmol'; // Default to Jmol colors
         this.manipulationMode = 'translate'; // For move mode: translate or rotate
         this.selectionMode = 'rectangle'; // For select mode: rectangle or lasso
+        this.showLabels = false; // Toggle for atom labels
         // this.selectedBondOrder = 1; // Removed
 
         // Track selection order for geometry adjustments
@@ -77,6 +78,13 @@ export class Editor {
         // Projection Mode
         document.getElementById('projection-mode').onchange = (e) => {
             this.renderer.setProjection(e.target.value);
+        };
+
+        // Toggle Labels
+        document.getElementById('btn-toggle-labels').onclick = () => {
+            this.showLabels = !this.showLabels;
+            document.getElementById('btn-toggle-labels').innerText = this.showLabels ? 'Hide Labels' : 'Show Labels';
+            this.updateAllLabels();
         };
 
         // Properties
@@ -419,24 +427,44 @@ export class Editor {
         const lengthControl = document.getElementById('length-control');
         const angleControl = document.getElementById('angle-control');
         const dihedralControl = document.getElementById('dihedral-control');
+        const measurementInfo = document.getElementById('measurement-info');
 
         geoControls.style.display = count >= 2 ? 'block' : 'none';
         lengthControl.style.display = count === 2 ? 'block' : 'none';
         angleControl.style.display = count === 3 ? 'block' : 'none';
         dihedralControl.style.display = count === 4 ? 'block' : 'none';
 
+        // Update measurement info display
         if (count === 2) {
-            const dist = this.selectionOrder[0].position.distanceTo(this.selectionOrder[1].position);
+            const a1 = this.selectionOrder[0];
+            const a2 = this.selectionOrder[1];
+            const dist = a1.position.distanceTo(a2.position);
             const val = dist.toFixed(3);
             document.getElementById('input-length').value = val;
             this.updateSliderLabel('val-length', val);
+            
+            // Display in top-left corner
+            const idx1 = this.molecule.atoms.indexOf(a1);
+            const idx2 = this.molecule.atoms.indexOf(a2);
+            measurementInfo.innerHTML = `${a1.element}(${idx1}) - ${a2.element}(${idx2}): ${dist.toFixed(2)} Å`;
+            measurementInfo.style.display = 'block';
         } else if (count === 3) {
-            const v1 = this.selectionOrder[0].position.clone().sub(this.selectionOrder[1].position);
-            const v2 = this.selectionOrder[2].position.clone().sub(this.selectionOrder[1].position);
+            const a1 = this.selectionOrder[0];
+            const a2 = this.selectionOrder[1];
+            const a3 = this.selectionOrder[2];
+            const v1 = a1.position.clone().sub(a2.position);
+            const v2 = a3.position.clone().sub(a2.position);
             const angle = v1.angleTo(v2) * (180 / Math.PI);
             const val = angle.toFixed(1);
             document.getElementById('input-angle').value = val;
             this.updateSliderLabel('val-angle', val);
+            
+            // Display in top-left corner
+            const idx1 = this.molecule.atoms.indexOf(a1);
+            const idx2 = this.molecule.atoms.indexOf(a2);
+            const idx3 = this.molecule.atoms.indexOf(a3);
+            measurementInfo.innerHTML = `${a1.element}(${idx1}) - ${a2.element}(${idx2}) - ${a3.element}(${idx3}): ${angle.toFixed(1)}°`;
+            measurementInfo.style.display = 'block';
         } else if (count === 4) {
             // Calculate current dihedral
             const a1 = this.selectionOrder[0];
@@ -460,6 +488,16 @@ export class Editor {
             const val = angleDeg.toFixed(1);
             document.getElementById('input-dihedral').value = val;
             this.updateSliderLabel('val-dihedral', val);
+            
+            // Display in top-left corner
+            const idx1 = this.molecule.atoms.indexOf(a1);
+            const idx2 = this.molecule.atoms.indexOf(a2);
+            const idx3 = this.molecule.atoms.indexOf(a3);
+            const idx4 = this.molecule.atoms.indexOf(a4);
+            measurementInfo.innerHTML = `${a1.element}(${idx1}) - ${a2.element}(${idx2}) - ${a3.element}(${idx3}) - ${a4.element}(${idx4}): ${angleDeg.toFixed(1)}°`;
+            measurementInfo.style.display = 'block';
+        } else {
+            measurementInfo.style.display = 'none';
         }
     }
 
@@ -1295,8 +1333,9 @@ export class Editor {
         layout.forEach(row => {
             row.forEach(symbol => {
                 const cell = document.createElement('div');
-                cell.style.width = '100%';
-                cell.style.aspectRatio = '1';
+                cell.style.width = '32px';
+                cell.style.height = '32px';
+                cell.style.flexShrink = '0';
 
                 if (symbol && ELEMENTS[symbol]) {
                     const data = ELEMENTS[symbol];
@@ -1306,7 +1345,8 @@ export class Editor {
                     cell.style.flexDirection = 'column';
                     cell.style.alignItems = 'center';
                     cell.style.justifyContent = 'center';
-                    cell.style.fontSize = '12px';
+                    cell.style.fontSize = '11px';
+                    cell.style.fontWeight = 'bold';
 
                     // Background color based on current scheme
                     const color = this.getElementColor(symbol);
@@ -1331,6 +1371,9 @@ export class Editor {
                         document.getElementById('btn-element-select').innerText = symbol;
                         document.getElementById('pt-modal').style.display = 'none';
                     };
+                } else {
+                    // Empty cell - make it invisible but maintain grid structure
+                    cell.style.visibility = 'hidden';
                 }
 
                 container.appendChild(cell);
@@ -1365,6 +1408,62 @@ export class Editor {
         atom.outlineMesh = outlineMesh;
         this.renderer.scene.add(outlineMesh); // Add outline first (rendered behind)
         this.renderer.scene.add(mesh);
+        
+        // Create label (initially hidden)
+        this.createAtomLabel(atom);
+    }
+
+    createAtomLabel(atom) {
+        const idx = this.molecule.atoms.indexOf(atom);
+        const label = document.createElement('div');
+        label.className = 'atom-label';
+        label.style.position = 'absolute';
+        label.style.color = 'white';
+        label.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        label.style.padding = '2px 5px';
+        label.style.borderRadius = '3px';
+        label.style.fontSize = '12px';
+        label.style.fontFamily = 'monospace';
+        label.style.pointerEvents = 'none';
+        label.style.display = this.showLabels ? 'block' : 'none';
+        label.innerText = `${atom.element}(${idx})`;
+        document.body.appendChild(label);
+        atom.label = label;
+    }
+
+    updateAllLabels() {
+        this.molecule.atoms.forEach(atom => {
+            if (atom.label) {
+                atom.label.style.display = this.showLabels ? 'block' : 'none';
+                // Update index in case atoms were added/removed
+                const idx = this.molecule.atoms.indexOf(atom);
+                atom.label.innerText = `${atom.element}(${idx})`;
+            } else if (this.showLabels) {
+                // Create label if it doesn't exist
+                this.createAtomLabel(atom);
+            }
+        });
+        
+        if (this.showLabels) {
+            this.updateLabelPositions();
+        }
+    }
+
+    updateLabelPositions() {
+        const camera = this.renderer.activeCamera || this.renderer.camera;
+        
+        this.molecule.atoms.forEach(atom => {
+            if (atom.label && atom.mesh) {
+                const pos = atom.mesh.position.clone();
+                pos.project(camera);
+                
+                const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+                
+                atom.label.style.left = `${x + 10}px`;
+                atom.label.style.top = `${y - 10}px`;
+            }
+        });
     }
 
     createBondMesh(bond) {
@@ -1395,69 +1494,15 @@ export class Editor {
     animate() {
         requestAnimationFrame(this.animate);
         this.renderer.render();
-        this.updateMeasurements();
-    }
-
-    updateMeasurements() {
-        const container = document.getElementById('measurements');
-        container.innerHTML = ''; // Clear previous labels
-
-        const selectedAtoms = this.molecule.atoms.filter(a => a.selected);
-        const count = selectedAtoms.length;
-
-        if (count === 2) {
-            const a1 = selectedAtoms[0];
-            const a2 = selectedAtoms[1];
-            const dist = a1.position.distanceTo(a2.position);
-
-            const mid = new THREE.Vector3().addVectors(a1.position, a2.position).multiplyScalar(0.5);
-            this.createLabel(container, mid, `${dist.toFixed(3)} Å`);
-        } else if (count === 3) {
-            const a1 = selectedAtoms[0];
-            const a2 = selectedAtoms[1];
-            const a3 = selectedAtoms[2];
-
-            const v1 = a1.position.clone().sub(a2.position);
-            const v2 = a3.position.clone().sub(a2.position);
-            const angle = v1.angleTo(v2) * (180 / Math.PI);
-
-            this.createLabel(container, a2.position, `${angle.toFixed(1)}°`);
-        } else if (count === 4) {
-            // Dihedral
-            // ... (calculation logic similar to setDihedralAngle but just reading)
-            const a1 = selectedAtoms[0];
-            const a2 = selectedAtoms[1];
-            const a3 = selectedAtoms[2];
-            const a4 = selectedAtoms[3];
-
-            const axis = a3.position.clone().sub(a2.position).normalize();
-            const v1 = a1.position.clone().sub(a2.position);
-            const v2 = a4.position.clone().sub(a3.position);
-
-            const p1 = v1.clone().sub(axis.clone().multiplyScalar(v1.dot(axis)));
-            const p2 = v2.clone().sub(axis.clone().multiplyScalar(v2.dot(axis)));
-
-            const angle = p1.angleTo(p2) * (180 / Math.PI);
-
-            const mid = new THREE.Vector3().addVectors(a2.position, a3.position).multiplyScalar(0.5);
-            this.createLabel(container, mid, `${angle.toFixed(1)}°`);
+        
+        // Update label positions if visible
+        if (this.showLabels) {
+            this.updateLabelPositions();
         }
     }
 
-    createLabel(container, position, text) {
-        const div = document.createElement('div');
-        div.className = 'measurement-label';
-        div.innerText = text;
-
-        const pos = position.clone();
-        pos.project(this.renderer.camera);
-
-        const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
-
-        div.style.left = `${x}px`;
-        div.style.top = `${y}px`;
-
-        container.appendChild(div);
+    updateMeasurements() {
+        // Measurements are now displayed in the top-left corner via updateSelectionInfo
+        // This function is kept for compatibility but does nothing
     }
 }
