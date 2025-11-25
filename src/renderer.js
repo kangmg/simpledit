@@ -24,7 +24,7 @@ export class Renderer {
     );
     this.orthoCamera.position.z = 10;
 
-    this.activeCamera = this.camera; // Start with Perspective
+    this.activeCamera = this.orthoCamera; // Start with Orthographic
 
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -37,7 +37,7 @@ export class Renderer {
     this.orbitControls.screenSpacePanning = true;
     this.orbitControls.minDistance = 2;
     this.orbitControls.maxDistance = 50;
-    this.orbitControls.enabled = true;
+    this.orbitControls.enabled = false;
 
     this.trackballControls = new TrackballControls(this.activeCamera, this.renderer.domElement);
     this.trackballControls.rotateSpeed = 2.0;
@@ -47,9 +47,9 @@ export class Renderer {
     this.trackballControls.noPan = false;
     this.trackballControls.staticMoving = true;
     this.trackballControls.dynamicDampingFactor = 0.3;
-    this.trackballControls.enabled = false;
+    this.trackballControls.enabled = true;
 
-    this.controls = this.orbitControls; // Active controls reference
+    this.controls = this.trackballControls; // Active controls reference
 
     // Lights - full ambient light to minimize shadows
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);

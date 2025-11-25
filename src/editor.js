@@ -11,11 +11,11 @@ export class Editor {
         this.molecule = new Molecule();
         this.interaction = new Interaction(this.renderer, this.canvas);
 
-        this.mode = 'edit';
+        this.mode = 'select';
         this.selectedElement = 'C';
         this.colorScheme = 'jmol'; // Default to Jmol colors
         this.manipulationMode = 'translate'; // For move mode: translate or rotate
-        this.selectionMode = 'rectangle'; // For select mode: rectangle or lasso
+        this.selectionMode = 'lasso'; // For select mode: rectangle or lasso
         this.labelMode = 'none'; // Label modes: 'none', 'symbol', 'number', 'both'
         // this.selectedBondOrder = 1; // Removed
 

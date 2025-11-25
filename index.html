@@ -16,14 +16,14 @@
         <button id="btn-undo" class="tool-btn" title="Undo (Ctrl+Z)">Undo</button>
         <button id="btn-redo" class="tool-btn" title="Redo (Ctrl+Y)">Redo</button>
         <div style="width: 1px; background: #555; margin: 0 5px;"></div>
-        <button id="btn-edit" class="tool-btn active" title="Edit: Add atoms (click) / Create bonds (drag)">Edit</button>
-        <button id="btn-select" class="tool-btn" title="Select (Lasso/Rect)">Select</button>
+        <button id="btn-edit" class="tool-btn" title="Edit: Add atoms (click) / Create bonds (drag)">Edit</button>
+        <button id="btn-select" class="tool-btn active" title="Select (Lasso/Rect)">Select: Lasso</button>
         <button id="btn-move" class="tool-btn" title="Move/Rotate Fragment">Move/Rotate</button>
         <div style="width: 1px; background: #555; margin: 0 5px;"></div>
         <select id="camera-mode"
           style="background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
           <option value="orbit">Orbit Camera</option>
-          <option value="trackball">Trackball Camera</option>
+          <option value="trackball" selected>Trackball Camera</option>
         </select>
         <div style="width: 1px; background: #555; margin: 0 5px;"></div>
         <select id="color-scheme"
@@ -35,7 +35,7 @@
         <select id="projection-mode"
           style="background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
           <option value="perspective">Perspective</option>
-          <option value="orthographic">Orthographic</option>
+          <option value="orthographic" selected>Orthographic</option>
         </select>
         <div style="width: 1px; background: #555; margin: 0 5px;"></div>
         <button id="btn-toggle-labels" class="tool-btn" title="Toggle Atom Labels">Show Labels</button>
@@ -57,8 +57,8 @@
           <button id="btn-coord-editor" style="width: 100%;">Atomic Coordinate Editor</button>
         </div>
         <div class="control-group">
-          <label>Bond Threshold: x<span id="val-bond-threshold">1.6</span></label>
-          <input type="range" id="bond-threshold" min="0.8" max="2.0" step="0.1" value="1.6" style="width: 100%;">
+          <label>Bond Threshold: x<span id="val-bond-threshold">1.2</span></label>
+          <input type="range" id="bond-threshold" min="0.8" max="2.0" step="0.1" value="1.2" style="width: 100%;">
         </div>
         <div class="control-group">
           <button id="btn-auto-bond" style="width: 100%; margin-top: 5px;">Auto Bond</button>
