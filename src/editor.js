@@ -100,7 +100,7 @@ export class Editor {
         closePt.onclick = () => ptModal.style.display = 'none';
         window.onclick = (event) => {
             if (event.target === ptModal) ptModal.style.display = 'none';
-            if (event.target === document.getElementById('xyz-modal')) document.getElementById('xyz-modal').style.display = 'none';
+            if (event.target === document.getElementById('coord-modal')) this.closeCoordinateEditor();
         };
 
         // Bond Threshold
@@ -125,9 +125,8 @@ export class Editor {
             // So we just need to clear bonds and rebuild.
         };
 
-        // Copy/Paste
-        document.getElementById('btn-copy').onclick = () => this.copyXYZ();
-        document.getElementById('btn-paste').onclick = () => this.pasteXYZ();
+        // Atomic Coordinate Editor
+        document.getElementById('btn-coord-editor').onclick = () => this.openCoordinateEditor();
 
         // Geometry
         // Geometry Sliders
@@ -152,7 +151,7 @@ export class Editor {
         // Keyboard Shortcuts
         window.addEventListener('keydown', (e) => {
             // Ignore shortcuts if modal is open or typing in input
-            if (document.getElementById('xyz-modal').style.display === 'block') return;
+            if (document.getElementById('coord-modal').style.display === 'block') return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -165,7 +164,7 @@ export class Editor {
             }
 
             // Only handle these keys if not in modal
-            if (document.getElementById('xyz-modal').style.display === 'block') return;
+            if (document.getElementById('coord-modal').style.display === 'block') return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
             if (e.key.toLowerCase() === 't') {
@@ -1187,51 +1186,89 @@ export class Editor {
     // Old getElementColor removed
     // getElementColor(element) { ... }
 
-    copyXYZ() {
-        const xyz = this.molecule.toXYZ();
-        navigator.clipboard.writeText(xyz).then(() => {
-            console.log('XYZ copied to clipboard');
-        }).catch(err => {
-            console.error('Failed to copy XYZ:', err);
-        });
-    }
-
-    pasteXYZ() {
-        // Show modal instead of direct clipboard read
-        const modal = document.getElementById('xyz-modal');
+    openCoordinateEditor() {
+        const modal = document.getElementById('coord-modal');
         const backdrop = document.getElementById('modal-backdrop');
-        const input = document.getElementById('xyz-input');
-        const btnImport = document.getElementById('btn-xyz-import');
-        const btnCancel = document.getElementById('btn-xyz-cancel');
+        const input = document.getElementById('coord-input');
+        const formatSelect = document.getElementById('coord-format');
+        const btnCopy = document.getElementById('btn-coord-copy');
+        const btnImport = document.getElementById('btn-coord-import');
+        const btnCancel = document.getElementById('btn-coord-cancel');
+
+        // Load current molecule data
+        const currentFormat = formatSelect.value;
+        if (currentFormat === 'xyz') {
+            input.value = this.molecule.toXYZ();
+        }
 
         modal.style.display = 'block';
         backdrop.style.display = 'block';
-        input.value = '';
         input.focus();
 
         // Disable editor interactions
         this.renderer.controls.enabled = false;
 
-        // Temporary event handlers
-        const close = () => {
-            modal.style.display = 'none';
-            backdrop.style.display = 'none';
-            this.renderer.controls.enabled = true;
-            btnImport.onclick = null;
-            btnCancel.onclick = null;
+        // Format change handler
+        formatSelect.onchange = () => {
+            const format = formatSelect.value;
+            if (format === 'xyz') {
+                input.value = this.molecule.toXYZ();
+            }
+            // Future formats will be added here
         };
 
-        btnCancel.onclick = close;
+        // Copy to clipboard
+        btnCopy.onclick = () => {
+            const text = input.value;
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('Coordinates copied to clipboard');
+                // Visual feedback
+                const originalText = btnCopy.innerText;
+                btnCopy.innerText = 'Copied!';
+                setTimeout(() => {
+                    btnCopy.innerText = originalText;
+                }, 1000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        };
 
+        // Cancel
+        btnCancel.onclick = () => {
+            this.closeCoordinateEditor();
+        };
+
+        // Import
         btnImport.onclick = () => {
             const text = input.value;
+            const format = formatSelect.value;
+            
             if (text) {
                 this.saveState(); // Save before importing
-                this.molecule.fromXYZ(text);
-                this.rebuildScene();
+                
+                if (format === 'xyz') {
+                    this.molecule.fromXYZ(text);
+                    this.rebuildScene();
+                }
+                // Future formats will be added here
             }
-            close();
+            this.closeCoordinateEditor();
         };
+    }
+
+    closeCoordinateEditor() {
+        const modal = document.getElementById('coord-modal');
+        const backdrop = document.getElementById('modal-backdrop');
+        
+        modal.style.display = 'none';
+        backdrop.style.display = 'none';
+        this.renderer.controls.enabled = true;
+        
+        // Clean up event handlers
+        document.getElementById('coord-format').onchange = null;
+        document.getElementById('btn-coord-copy').onclick = null;
+        document.getElementById('btn-coord-import').onclick = null;
+        document.getElementById('btn-coord-cancel').onclick = null;
     }
 
     rebuildScene() {
