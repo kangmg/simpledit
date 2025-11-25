@@ -11,7 +11,7 @@ export class Editor {
         this.molecule = new Molecule();
         this.interaction = new Interaction(this.renderer, this.canvas);
 
-        this.mode = 'select';
+        this.mode = 'edit';
         this.selectedElement = 'C';
         this.colorScheme = 'jmol'; // Default to Jmol colors
         this.manipulationMode = 'translate'; // For move mode: translate or rotate
@@ -84,7 +84,7 @@ export class Editor {
             const modes = ['none', 'symbol', 'number', 'both'];
             const currentIndex = modes.indexOf(this.labelMode);
             this.labelMode = modes[(currentIndex + 1) % modes.length];
-            
+
             const buttonText = {
                 'none': 'Show Labels',
                 'symbol': 'Labels: Symbol',
@@ -333,7 +333,7 @@ export class Editor {
 
             // Determine the plane position based on existing atoms or camera distance
             let planePoint = new THREE.Vector3(0, 0, 0);
-            
+
             if (this.molecule.atoms.length > 0) {
                 // Calculate centroid of existing atoms
                 const centroid = new THREE.Vector3();
@@ -430,7 +430,7 @@ export class Editor {
                 material.opacity = 1.0;
             }
         }
-        
+
         // Update bond visuals if both atoms are selected
         this.updateBondVisuals();
     }
@@ -440,7 +440,7 @@ export class Editor {
             if (bond.mesh) {
                 const bothSelected = bond.atom1.selected && bond.atom2.selected;
                 const material = bond.mesh.material;
-                
+
                 if (bothSelected) {
                     material.color.setHex(0xffff00); // Yellow highlight
                     material.emissive.setHex(0x222200);
@@ -479,7 +479,7 @@ export class Editor {
             const val = dist.toFixed(3);
             document.getElementById('input-length').value = val;
             this.updateSliderLabel('val-length', val);
-            
+
             // Display in top-left corner
             const idx1 = this.molecule.atoms.indexOf(a1);
             const idx2 = this.molecule.atoms.indexOf(a2);
@@ -495,7 +495,7 @@ export class Editor {
             const val = angle.toFixed(1);
             document.getElementById('input-angle').value = val;
             this.updateSliderLabel('val-angle', val);
-            
+
             // Display in top-left corner
             const idx1 = this.molecule.atoms.indexOf(a1);
             const idx2 = this.molecule.atoms.indexOf(a2);
@@ -525,7 +525,7 @@ export class Editor {
             const val = angleDeg.toFixed(1);
             document.getElementById('input-dihedral').value = val;
             this.updateSliderLabel('val-dihedral', val);
-            
+
             // Display in top-left corner
             const idx1 = this.molecule.atoms.indexOf(a1);
             const idx2 = this.molecule.atoms.indexOf(a2);
@@ -969,11 +969,11 @@ export class Editor {
                 const camera = this.renderer.activeCamera || this.renderer.camera;
                 const normal = new THREE.Vector3();
                 camera.getWorldDirection(normal);
-                
+
                 const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, this.dragStartAtom.position);
                 const target = new THREE.Vector3();
                 const intersection = raycaster.ray.intersectPlane(plane, target);
-                
+
                 if (intersection) {
                     // Create new atom at the target position
                     const newAtom = this.addAtomToScene(this.selectedElement, target);
@@ -1019,7 +1019,7 @@ export class Editor {
         div.id = 'selection-box';
         div.style.position = 'absolute';
         div.style.pointerEvents = 'none';
-        
+
         if (this.selectionMode === 'rectangle') {
             div.style.border = '2px dashed #ff8800';
             div.style.backgroundColor = 'rgba(255, 136, 0, 0.15)';
@@ -1031,7 +1031,7 @@ export class Editor {
             div.style.top = '0';
             div.style.left = '0';
         }
-        
+
         document.body.appendChild(div);
         this.selectionBox = div;
     }
@@ -1053,7 +1053,7 @@ export class Editor {
         } else if (this.selectionMode === 'lasso') {
             // Add current point to lasso path
             this.lassoPath.push({ x, y });
-            
+
             // Update SVG path
             const path = this.selectionBox.querySelector('#lasso-path');
             if (path && this.lassoPath.length > 0) {
@@ -1316,15 +1316,21 @@ export class Editor {
         btnImport.onclick = () => {
             const text = input.value;
             const format = formatSelect.value;
-            
+
             if (text) {
-                this.saveState(); // Save before importing
-                
-                if (format === 'xyz') {
-                    this.molecule.fromXYZ(text);
-                    this.rebuildScene();
+                try {
+                    this.saveState(); // Save before importing
+
+                    if (format === 'xyz') {
+                        this.clearVisuals(); // Clear visuals BEFORE clearing data
+                        this.molecule.fromXYZ(text);
+                        this.rebuildScene();
+                    }
+                    // Future formats will be added here
+                } catch (error) {
+                    console.error('Error importing coordinates:', error);
+                    alert('Error importing coordinates. See console for details.');
                 }
-                // Future formats will be added here
             }
             this.closeCoordinateEditor();
         };
@@ -1333,11 +1339,11 @@ export class Editor {
     closeCoordinateEditor() {
         const modal = document.getElementById('coord-modal');
         const backdrop = document.getElementById('modal-backdrop');
-        
+
         modal.style.display = 'none';
         backdrop.style.display = 'none';
         this.renderer.controls.enabled = true;
-        
+
         // Clean up event handlers
         document.getElementById('coord-format').onchange = null;
         document.getElementById('btn-coord-copy').onclick = null;
@@ -1345,23 +1351,28 @@ export class Editor {
         document.getElementById('btn-coord-cancel').onclick = null;
     }
 
-    rebuildScene() {
+    clearVisuals() {
         // Clear existing labels
         this.molecule.atoms.forEach(atom => {
             if (atom.label) {
-                document.body.removeChild(atom.label);
+                if (atom.label.parentNode) {
+                    atom.label.parentNode.removeChild(atom.label);
+                }
                 atom.label = null;
             }
         });
 
         // Clear existing meshes
-        // Note: In a real app, we should track meshes better to dispose geometries/materials
         for (let i = this.renderer.scene.children.length - 1; i >= 0; i--) {
             const child = this.renderer.scene.children[i];
             if (child.type === 'Mesh' || child.type === 'LineSegments') {
                 this.renderer.scene.remove(child);
             }
         }
+    }
+
+    rebuildScene() {
+        this.clearVisuals();
 
         // Re-add atoms
         for (const atom of this.molecule.atoms) {
@@ -1528,7 +1539,7 @@ export class Editor {
         atom.outlineMesh = outlineMesh;
         this.renderer.scene.add(outlineMesh); // Add outline first (rendered behind)
         this.renderer.scene.add(mesh);
-        
+
         // Create label (initially hidden)
         this.createAtomLabel(atom);
     }
@@ -1551,10 +1562,10 @@ export class Editor {
 
     updateAtomLabelText(atom) {
         if (!atom.label) return;
-        
+
         const idx = this.molecule.atoms.indexOf(atom);
         let text = '';
-        
+
         switch (this.labelMode) {
             case 'symbol':
                 text = atom.element;
@@ -1568,7 +1579,7 @@ export class Editor {
             default:
                 text = '';
         }
-        
+
         atom.label.innerText = text;
     }
 
@@ -1577,14 +1588,14 @@ export class Editor {
             if (!atom.label) {
                 this.createAtomLabel(atom);
             }
-            
+
             // Update text based on mode
             this.updateAtomLabelText(atom);
-            
+
             // Show/hide based on mode
             atom.label.style.display = this.labelMode !== 'none' ? 'block' : 'none';
         });
-        
+
         if (this.labelMode !== 'none') {
             this.updateLabelPositions();
         }
@@ -1592,35 +1603,35 @@ export class Editor {
 
     updateLabelPositions() {
         const camera = this.renderer.activeCamera || this.renderer.camera;
-        
+
         this.molecule.atoms.forEach(atom => {
             if (atom.label && atom.mesh) {
                 const pos = atom.mesh.position.clone();
                 const worldPos = atom.mesh.position.clone();
                 pos.project(camera);
-                
+
                 // Check if atom is behind camera
                 const cameraDir = new THREE.Vector3();
                 camera.getWorldDirection(cameraDir);
                 const toAtom = worldPos.clone().sub(camera.position);
                 const dotProduct = toAtom.dot(cameraDir);
-                
+
                 // Hide if behind camera or too far in z
                 if (dotProduct < 0 || pos.z > 1) {
                     atom.label.style.display = 'none';
                     return;
                 }
-                
+
                 // Check if occluded by other atoms or bonds
                 const raycaster = new THREE.Raycaster();
                 raycaster.setFromCamera(
                     new THREE.Vector2(pos.x, pos.y),
                     camera
                 );
-                
+
                 const intersects = raycaster.intersectObjects(this.renderer.scene.children, false);
                 let isOccluded = false;
-                
+
                 for (const intersect of intersects) {
                     if (intersect.object.userData.type === 'atom') {
                         const intersectedAtom = intersect.object.userData.atom;
@@ -1642,14 +1653,14 @@ export class Editor {
                         }
                     }
                 }
-                
+
                 if (isOccluded) {
                     atom.label.style.display = 'none';
                 } else {
                     atom.label.style.display = this.labelMode !== 'none' ? 'block' : 'none';
                     const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
                     const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
-                    
+
                     // Center the label on the atom
                     atom.label.style.left = `${x}px`;
                     atom.label.style.top = `${y}px`;
@@ -1687,7 +1698,7 @@ export class Editor {
     animate() {
         requestAnimationFrame(this.animate);
         this.renderer.render();
-        
+
         // Update label positions if visible
         if (this.labelMode !== 'none') {
             this.updateLabelPositions();
