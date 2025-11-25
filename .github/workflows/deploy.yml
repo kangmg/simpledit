@@ -30,16 +30,14 @@ jobs:
           node-version: '18'
       - name: Install dependencies
         run: npm install
-        working-directory: simpledit
       - name: Build
         run: npm run build
-        working-directory: simpledit
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'simpledit/dist'
+          path: 'dist'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
