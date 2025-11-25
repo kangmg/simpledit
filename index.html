@@ -157,6 +157,20 @@
       <div id="periodic-table"
         style="display: grid; grid-template-columns: repeat(18, 36px); gap: 4px; margin-top: 10px;"></div>
     </div>
+
+    <!-- Console Panel -->
+    <div id="console-panel" class="console-panel">
+      <div class="console-header">
+        <div class="console-title">Console</div>
+        <button id="console-close" class="console-close">×</button>
+      </div>
+      <div id="console-output" class="console-output"></div>
+      <div class="console-input-container">
+        <span class="console-input-prompt">&gt;</span>
+        <input type="text" id="console-input" class="console-input" placeholder="Type 'help' for commands..."
+          autocomplete="off">
+      </div>
+    </div>
   </div>
   <script type="module" src="./src/main.js"></script>
 </body>

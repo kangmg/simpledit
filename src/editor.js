@@ -3,6 +3,7 @@ import { Renderer } from './renderer.js';
 import { Molecule } from './molecule.js';
 import { Interaction } from './interaction.js';
 import { ELEMENTS, DEFAULT_ELEMENT } from './constants.js';
+import { Console } from './console.js';
 
 export class Editor {
     constructor() {
@@ -44,6 +45,9 @@ export class Editor {
 
         this.bindEvents();
         this.setupInteraction();
+
+        // Initialize console
+        this.console = new Console(this);
 
         // Render loop
         this.animate = this.animate.bind(this);
@@ -237,6 +241,9 @@ export class Editor {
                 this.labelMode = 'both';
                 document.getElementById('btn-toggle-labels').innerText = 'Labels: Both';
                 this.updateAllLabels();
+            } else if (e.key.toLowerCase() === 'c') {
+                // Toggle console
+                this.console.toggle();
             } else if (e.key.toLowerCase() === 'o') {
                 this.setMode('move');
                 this.manipulationMode = 'orbit';
@@ -1303,6 +1310,11 @@ export class Editor {
 
         this.saveState(); // Save before deleting
         selected.forEach(atom => {
+            // Remove label from DOM if it exists
+            if (atom.label && atom.label.parentNode) {
+                atom.label.parentNode.removeChild(atom.label);
+                atom.label = null;
+            }
             this.molecule.removeAtom(atom);
             if (atom.mesh) this.renderer.scene.remove(atom.mesh);
         });

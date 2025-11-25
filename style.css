@@ -201,3 +201,135 @@ select:hover {
     border: 1px solid #333 !important;
     border-radius: 8px;
 }
+
+/* Console Panel */
+.console-panel {
+    position: fixed;
+    top: 20px;
+    right: -420px;
+    bottom: 20px;
+    width: 400px;
+    background: #000000;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: right 0.3s ease;
+    border: 1px solid #00ff00;
+}
+
+.console-panel.open {
+    right: 20px;
+}
+
+.console-header {
+    padding: 15px;
+    border-bottom: 1px solid #00ff00;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.console-title {
+    color: #00ff00;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.console-close {
+    background: transparent;
+    border: none;
+    color: #00ff00;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.console-close:hover {
+    opacity: 0.7;
+}
+
+.console-output {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 13px;
+    color: #00ff00;
+    scrollbar-width: thin;
+    scrollbar-color: #00ff00 #000000;
+}
+
+.console-output::-webkit-scrollbar {
+    width: 8px;
+}
+
+.console-output::-webkit-scrollbar-track {
+    background: #000000;
+}
+
+.console-output::-webkit-scrollbar-thumb {
+    background: #00ff00;
+    border-radius: 4px;
+}
+
+.console-line {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.console-prompt {
+    color: #00ff00;
+}
+
+.console-input-container {
+    padding: 15px;
+    border-top: 1px solid #00ff00;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.console-input-prompt {
+    color: #00ff00;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 13px;
+}
+
+.console-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #00ff00;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 13px;
+    outline: none;
+    caret-color: #00ff00;
+}
+
+.console-input::placeholder {
+    color: rgba(0, 255, 0, 0.3);
+}
+
+.console-output .error {
+    color: #ff0000;
+}
+
+.console-output .success {
+    color: #00ff00;
+}
+
+.console-output .warning {
+    color: #ffff00;
+}
+
+.console-output .info {
+    color: #00ffff;
+}

@@ -1,5 +1,7 @@
 # Usage Guide
 
+# Interactive
+
 ## Modes
 
 ### Edit Mode
@@ -46,3 +48,59 @@
 ## Projection
 - **Perspective**: Standard 3D view
 - **Orthographic**: Parallel projection view
+
+---
+
+# Console
+
+**Toggle**: **`c`** key
+
+## Basic Commands
+- **`help`** / **`h`**: Show all commands or specific command help
+- **`list`** / **`ls`**: List all atoms
+- **`list selected`**: List only selected atoms
+- **`add <element> <x> <y> <z>`** / **`a`**: Add atom at coordinates
+- **`delete <index...>`** / **`del`**: Delete atoms by index
+- **`select <index...>`** / **`sel`**: Select atoms by index
+
+## Information
+- **`info`** / **`i`**: Show selected atoms info
+- **`info <index>`**: Show specific atom details
+- **`info <i> <j>`**: Show distance between two atoms
+- **`info <i> <j> <k>`**: Show angle between three atoms
+- **`info <i> <j> <k> <l>`**: Show dihedral angle
+
+## Bonds
+- **`bond <i> <j>`** / **`b`**: Create bond between atoms
+- **`unbond <i> <j>`** / **`ub`**: Remove bond between atoms
+- **`adjustbond`** / **`ab`**: Auto-adjust all bonds
+- **`setthreshold <value>`** / **`st`**: Set bond threshold (default: 1.2)
+
+## Geometry Manipulation
+- **`setdist <i> <j> <value>`** / **`sd`**: Set bond length (Å)
+- **`setangle <i> <j> <k> <value>`** / **`sa`**: Set angle (degrees)
+- **`setdihedral <i> <j> <k> <l> <value>`** / **`sdi`**: Set dihedral angle (degrees)
+
+## Display Control
+- **`label -s`**: Show atom symbols only (C, H, O)
+- **`label -n`**: Show atom numbers only (0, 1, 2)
+- **`label -a`**: Show both (C(0), H(1))
+- **`label off`**: Hide labels
+- **`camera orbit`**: Orbit camera mode
+- **`camera trackball`**: Trackball camera mode
+- **`projection perspective`** / **`persp`**: Perspective projection
+- **`projection orthographic`** / **`ortho`**: Orthographic projection
+
+## Fragment Management
+- **`fragment <index>`** / **`frag`**: Select entire fragment containing atom
+- **`fragments`** / **`frags`**: List all fragments with atom counts
+
+## Utility
+- **`clear`**: Clear all atoms
+
+## History Navigation
+- **Up/Down arrows**: Navigate command history
+
+
+
+
