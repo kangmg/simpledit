@@ -228,7 +228,7 @@ export class Editor {
 
     setMode(mode) {
         this.mode = mode;
-        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tool-btn, .icon-btn').forEach(btn => btn.classList.remove('active'));
         const btnMap = {
             'edit': 'btn-edit',
             'select': 'btn-select',
@@ -252,39 +252,81 @@ export class Editor {
 
     updateManipulationStatus() {
         const btn = document.getElementById('btn-move');
-        if (this.manipulationMode === 'translate') {
-            btn.innerText = 'Move: Translate';
-            btn.style.backgroundColor = '#4a90e2';
-        } else if (this.manipulationMode === 'rotate') {
-            btn.innerText = 'Move: Trackball Rotate';
-            btn.style.backgroundColor = '#e24a90';
-        } else if (this.manipulationMode === 'orbit') {
-            btn.innerText = 'Move: Orbit Rotate';
-            btn.style.backgroundColor = '#90e24a';
+        const sub = btn.querySelector('.btn-sublabel');
+
+        if (sub) {
+            sub.style.display = 'block';
+            if (this.manipulationMode === 'translate') {
+                sub.innerText = 'Translate';
+                sub.style.color = '#4a90e2';
+            } else if (this.manipulationMode === 'rotate') {
+                sub.innerText = 'Trackball Rotate';
+                sub.style.color = '#e24a90';
+            } else if (this.manipulationMode === 'orbit') {
+                sub.innerText = 'Orbit Rotate';
+                sub.style.color = '#90e24a';
+            }
+        } else {
+            // Fallback for old design
+            if (this.manipulationMode === 'translate') {
+                btn.innerText = 'Move: Translate';
+                btn.style.backgroundColor = '#4a90e2';
+            } else if (this.manipulationMode === 'rotate') {
+                btn.innerText = 'Move: Trackball Rotate';
+                btn.style.backgroundColor = '#e24a90';
+            } else if (this.manipulationMode === 'orbit') {
+                btn.innerText = 'Move: Orbit Rotate';
+                btn.style.backgroundColor = '#90e24a';
+            }
         }
     }
 
     clearManipulationStatus() {
         const btn = document.getElementById('btn-move');
-        btn.innerText = 'Move/Rotate';
-        btn.style.backgroundColor = '';
+        const sub = btn.querySelector('.btn-sublabel');
+
+        if (sub) {
+            sub.style.display = 'none';
+        } else {
+            btn.innerText = 'Move/Rotate';
+            btn.style.backgroundColor = '';
+        }
     }
 
     updateSelectionStatus() {
         const btn = document.getElementById('btn-select');
-        if (this.selectionMode === 'rectangle') {
-            btn.innerText = 'Select: Rectangle';
-            btn.style.backgroundColor = '#4a90e2';
-        } else if (this.selectionMode === 'lasso') {
-            btn.innerText = 'Select: Lasso';
-            btn.style.backgroundColor = '#e2904a';
+        const sub = btn.querySelector('.btn-sublabel');
+
+        if (sub) {
+            sub.style.display = 'block';
+            if (this.selectionMode === 'rectangle') {
+                sub.innerText = 'Rectangle';
+                sub.style.color = '#4a90e2';
+            } else if (this.selectionMode === 'lasso') {
+                sub.innerText = 'Lasso';
+                sub.style.color = '#e2904a';
+            }
+        } else {
+            if (this.selectionMode === 'rectangle') {
+                btn.innerText = 'Select: Rectangle';
+                btn.style.backgroundColor = '#4a90e2';
+            } else if (this.selectionMode === 'lasso') {
+                btn.innerText = 'Select: Lasso';
+                btn.style.backgroundColor = '#e2904a';
+            }
         }
     }
 
     clearSelectionStatus() {
         const btn = document.getElementById('btn-select');
-        btn.innerText = 'Select (Lasso/Rect)';
-        btn.style.backgroundColor = '';
+        const sub = btn.querySelector('.btn-sublabel');
+
+        if (sub) {
+            sub.style.display = 'none';
+        } else {
+            btn.innerText = 'Select (Lasso/Rect)';
+            btn.style.backgroundColor = '';
+        }
     }
 
 
@@ -1499,7 +1541,13 @@ export class Editor {
 
                     cell.onclick = () => {
                         this.selectedElement = symbol;
-                        document.getElementById('btn-element-select').innerText = symbol;
+                        const symbolSpan = document.getElementById('current-element-symbol');
+                        if (symbolSpan) {
+                            symbolSpan.innerText = symbol;
+                        } else {
+                            // Fallback
+                            document.getElementById('btn-element-select').innerText = symbol;
+                        }
                         document.getElementById('pt-modal').style.display = 'none';
                     };
                 } else {
