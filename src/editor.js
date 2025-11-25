@@ -15,6 +15,7 @@ export class Editor {
         this.selectedElement = 'C';
         this.colorScheme = 'jmol'; // Default to Jmol colors
         this.manipulationMode = 'translate'; // For move mode: translate or rotate
+        this.selectionMode = 'rectangle'; // For select mode: rectangle or lasso
         // this.selectedBondOrder = 1; // Removed
 
         // Track selection order for geometry adjustments
@@ -30,6 +31,7 @@ export class Editor {
 
         this.selectionBox = null;
         this.selectionStart = null;
+        this.lassoPath = []; // For lasso selection
 
         this.isManipulating = false;
         this.initialPositions = null;
@@ -163,9 +165,22 @@ export class Editor {
                 this.manipulationMode = 'translate';
                 this.updateManipulationStatus();
             } else if (e.key.toLowerCase() === 'r') {
-                this.setMode('move');
-                this.manipulationMode = 'rotate';
-                this.updateManipulationStatus();
+                if (this.mode === 'select') {
+                    // In select mode, 'r' switches to rectangle selection
+                    this.selectionMode = 'rectangle';
+                    this.updateSelectionStatus();
+                } else {
+                    // In other modes, 'r' switches to move rotate mode
+                    this.setMode('move');
+                    this.manipulationMode = 'rotate';
+                    this.updateManipulationStatus();
+                }
+            } else if (e.key.toLowerCase() === 'l') {
+                if (this.mode === 'select') {
+                    // In select mode, 'l' switches to lasso selection
+                    this.selectionMode = 'lasso';
+                    this.updateSelectionStatus();
+                }
             } else if (e.key.toLowerCase() === 'o') {
                 this.setMode('move');
                 this.manipulationMode = 'orbit';
@@ -198,6 +213,12 @@ export class Editor {
         } else {
             this.clearManipulationStatus();
         }
+
+        if (mode === 'select') {
+            this.updateSelectionStatus();
+        } else {
+            this.clearSelectionStatus();
+        }
     }
 
     updateManipulationStatus() {
@@ -217,6 +238,23 @@ export class Editor {
     clearManipulationStatus() {
         const btn = document.getElementById('btn-move');
         btn.innerText = 'Move/Rotate';
+        btn.style.backgroundColor = '';
+    }
+
+    updateSelectionStatus() {
+        const btn = document.getElementById('btn-select');
+        if (this.selectionMode === 'rectangle') {
+            btn.innerText = 'Select: Rectangle';
+            btn.style.backgroundColor = '#4a90e2';
+        } else if (this.selectionMode === 'lasso') {
+            btn.innerText = 'Select: Lasso';
+            btn.style.backgroundColor = '#e2904a';
+        }
+    }
+
+    clearSelectionStatus() {
+        const btn = document.getElementById('btn-select');
+        btn.innerText = 'Select (Lasso/Rect)';
         btn.style.backgroundColor = '';
     }
 
@@ -329,6 +367,7 @@ export class Editor {
         });
         this.selectionOrder = [];
         this.updateSelectionInfo();
+        this.updateBondVisuals(); // Update bond colors when clearing selection
     }
 
     updateAtomVisuals(atom) {
@@ -346,6 +385,26 @@ export class Editor {
                 material.opacity = 1.0;
             }
         }
+        
+        // Update bond visuals if both atoms are selected
+        this.updateBondVisuals();
+    }
+
+    updateBondVisuals() {
+        this.molecule.bonds.forEach(bond => {
+            if (bond.mesh) {
+                const bothSelected = bond.atom1.selected && bond.atom2.selected;
+                const material = bond.mesh.material;
+                
+                if (bothSelected) {
+                    material.color.setHex(0xffff00); // Yellow highlight
+                    material.emissive.setHex(0x222200);
+                } else {
+                    material.color.setHex(0x000000); // Black (default)
+                    material.emissive.setHex(0x000000);
+                }
+            }
+        });
     }
 
     updateSliderLabel(id, value) {
@@ -625,10 +684,11 @@ export class Editor {
             const atomMesh = intersects.find(i => i.object.userData.type === 'atom');
 
             if (!atomMesh) {
-                // Lasso
+                // Start selection (rectangle or lasso)
                 this.selectionStart = new THREE.Vector2(event.clientX, event.clientY);
+                this.lassoPath = [{ x: event.clientX, y: event.clientY }]; // Initialize lasso path
                 this.createSelectionBox();
-                this.renderer.controls.enabled = false; // Disable rotation while lassoing
+                this.renderer.controls.enabled = false; // Disable rotation while selecting
             }
         } else if (this.mode === 'move') {
             const selectedAtoms = this.molecule.atoms.filter(a => a.selected);
@@ -732,7 +792,7 @@ export class Editor {
                     });
                 }
             } else if (this.manipulationMode === 'orbit') {
-                // Orbit Rotation - rotate around camera view direction
+                // Orbit Rotation - rotate around camera view direction (follows mouse continuously)
                 const dx = event.clientX - this.manipulationStartMouse.x;
                 const dy = event.clientY - this.manipulationStartMouse.y;
 
@@ -757,6 +817,13 @@ export class Editor {
                         if (atom.outlineMesh) atom.outlineMesh.position.copy(atom.position);
                     }
                 });
+
+                // Update initial positions to current positions for continuous rotation
+                selectedAtoms.forEach(atom => {
+                    this.initialPositions.set(atom, atom.position.clone());
+                });
+                // Update start mouse position for next frame
+                this.manipulationStartMouse.set(event.clientX, event.clientY);
             } else {
                 // Camera-Aligned Translation
                 const dx = event.clientX - this.manipulationStartMouse.x;
@@ -818,6 +885,7 @@ export class Editor {
             this.performBoxSelection(event.clientX, event.clientY, event.shiftKey || event.ctrlKey || event.metaKey);
             this.removeSelectionBox();
             this.selectionStart = null;
+            this.lassoPath = []; // Clear lasso path
         } else if (this.mode === 'move') {
             this.isManipulating = false;
             this.initialPositions = null;
@@ -849,26 +917,52 @@ export class Editor {
         const div = document.createElement('div');
         div.id = 'selection-box';
         div.style.position = 'absolute';
-        div.style.border = '1px dashed #fff';
-        div.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
         div.style.pointerEvents = 'none';
+        
+        if (this.selectionMode === 'rectangle') {
+            div.style.border = '2px dashed #ff8800';
+            div.style.backgroundColor = 'rgba(255, 136, 0, 0.15)';
+        } else if (this.selectionMode === 'lasso') {
+            // For lasso, we'll draw using SVG
+            div.innerHTML = '<svg style="width: 100%; height: 100%; position: absolute; top: 0; left: 0;"><path id="lasso-path" stroke="#ff8800" stroke-width="2" stroke-dasharray="5,5" fill="rgba(255, 136, 0, 0.15)" /></svg>';
+            div.style.width = '100%';
+            div.style.height = '100%';
+            div.style.top = '0';
+            div.style.left = '0';
+        }
+        
         document.body.appendChild(div);
         this.selectionBox = div;
     }
 
     updateSelectionBox(x, y) {
-        const startX = this.selectionStart.x;
-        const startY = this.selectionStart.y;
+        if (this.selectionMode === 'rectangle') {
+            const startX = this.selectionStart.x;
+            const startY = this.selectionStart.y;
 
-        const minX = Math.min(startX, x);
-        const maxX = Math.max(startX, x);
-        const minY = Math.min(startY, y);
-        const maxY = Math.max(startY, y);
+            const minX = Math.min(startX, x);
+            const maxX = Math.max(startX, x);
+            const minY = Math.min(startY, y);
+            const maxY = Math.max(startY, y);
 
-        this.selectionBox.style.left = minX + 'px';
-        this.selectionBox.style.top = minY + 'px';
-        this.selectionBox.style.width = (maxX - minX) + 'px';
-        this.selectionBox.style.height = (maxY - minY) + 'px';
+            this.selectionBox.style.left = minX + 'px';
+            this.selectionBox.style.top = minY + 'px';
+            this.selectionBox.style.width = (maxX - minX) + 'px';
+            this.selectionBox.style.height = (maxY - minY) + 'px';
+        } else if (this.selectionMode === 'lasso') {
+            // Add current point to lasso path
+            this.lassoPath.push({ x, y });
+            
+            // Update SVG path
+            const path = this.selectionBox.querySelector('#lasso-path');
+            if (path && this.lassoPath.length > 0) {
+                let pathData = `M ${this.lassoPath[0].x} ${this.lassoPath[0].y}`;
+                for (let i = 1; i < this.lassoPath.length; i++) {
+                    pathData += ` L ${this.lassoPath[i].x} ${this.lassoPath[i].y}`;
+                }
+                path.setAttribute('d', pathData);
+            }
+        }
     }
 
     removeSelectionBox() {
@@ -879,38 +973,76 @@ export class Editor {
     }
 
     performBoxSelection(endX, endY, add) {
-        // Convert screen coords to frustum check or project atoms to screen
-        const startX = this.selectionStart.x;
-        const startY = this.selectionStart.y;
-        const minX = Math.min(startX, endX);
-        const maxX = Math.max(startX, endX);
-        const minY = Math.min(startY, endY);
-        const maxY = Math.max(startY, endY);
-
         if (!add) this.clearSelection();
 
         const camera = this.renderer.activeCamera || this.renderer.camera;
 
-        this.molecule.atoms.forEach(atom => {
-            if (!atom.mesh) return;
+        if (this.selectionMode === 'rectangle') {
+            // Rectangle selection
+            const startX = this.selectionStart.x;
+            const startY = this.selectionStart.y;
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
 
-            // Project atom position to screen
-            const pos = atom.mesh.position.clone();
-            pos.project(camera);
+            this.molecule.atoms.forEach(atom => {
+                if (!atom.mesh) return;
 
-            const screenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
-            const screenY = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+                // Project atom position to screen
+                const pos = atom.mesh.position.clone();
+                pos.project(camera);
 
-            if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
-                atom.selected = true;
-                // Add to selection order if not already there
-                if (!this.selectionOrder.includes(atom)) {
-                    this.selectionOrder.push(atom);
+                const screenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                const screenY = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+
+                if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+                    atom.selected = true;
+                    if (!this.selectionOrder.includes(atom)) {
+                        this.selectionOrder.push(atom);
+                    }
+                    this.updateAtomVisuals(atom);
                 }
-                this.updateAtomVisuals(atom);
-            }
-        });
+            });
+        } else if (this.selectionMode === 'lasso') {
+            // Lasso selection - check if point is inside polygon
+            if (this.lassoPath.length < 3) return; // Need at least 3 points for a polygon
+
+            this.molecule.atoms.forEach(atom => {
+                if (!atom.mesh) return;
+
+                // Project atom position to screen
+                const pos = atom.mesh.position.clone();
+                pos.project(camera);
+
+                const screenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                const screenY = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+
+                if (this.isPointInPolygon(screenX, screenY, this.lassoPath)) {
+                    atom.selected = true;
+                    if (!this.selectionOrder.includes(atom)) {
+                        this.selectionOrder.push(atom);
+                    }
+                    this.updateAtomVisuals(atom);
+                }
+            });
+        }
+
         this.updateSelectionInfo();
+    }
+
+    // Point-in-polygon test using ray casting algorithm
+    isPointInPolygon(x, y, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].x, yi = polygon[i].y;
+            const xj = polygon[j].x, yj = polygon[j].y;
+
+            const intersect = ((yi > y) !== (yj > y))
+                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
     }
 
     createGhostBond(startPos) {
