@@ -94,9 +94,9 @@ export class CommandRegistry {
                     this.editor.saveState();
 
                     if (format === 'xyz') {
-                        this.editor.molecule.fromXYZ(heredocData);
+                        this.editor.molecule.fromXYZ(heredocData, false);
                         this.editor.rebuildScene();
-                        return { success: 'Molecule loaded from XYZ data' };
+                        return { success: 'Atoms added from XYZ data' };
                     } else if (format === 'smi' || format === 'smiles') {
                         return { warning: 'SMILES format parsing not yet implemented' };
                     } else if (format === 'mol2') {
@@ -117,9 +117,9 @@ export class CommandRegistry {
                         this.editor.saveState();
 
                         if (format === 'xyz') {
-                            this.editor.molecule.fromXYZ(data);
+                            this.editor.molecule.fromXYZ(data, false);
                             this.editor.rebuildScene();
-                            this.editor.console.print('Molecule loaded from XYZ data.', 'success');
+                            this.editor.console.print('Atoms added from XYZ data.', 'success');
                         } else {
                             this.editor.console.print(`${format.toUpperCase()} format parsing not yet implemented.`, 'warning');
                         }
@@ -511,6 +511,8 @@ export class CommandRegistry {
             }
 
             this.editor.renderer.setCameraMode(mode);
+            // Update UI select
+            document.getElementById('camera-mode').value = mode;
             return { success: `Camera mode: ${mode}` };
         });
 
@@ -521,9 +523,13 @@ export class CommandRegistry {
             const type = args[0].toLowerCase();
             if (type === 'perspective' || type === 'persp') {
                 this.editor.renderer.setProjection('perspective');
+                // Update UI select
+                document.getElementById('projection-mode').value = 'perspective';
                 return { success: 'Projection: Perspective' };
             } else if (type === 'orthographic' || type === 'ortho') {
                 this.editor.renderer.setProjection('orthographic');
+                // Update UI select
+                document.getElementById('projection-mode').value = 'orthographic';
                 return { success: 'Projection: Orthographic' };
             } else {
                 return { error: 'Invalid type. Use perspective or orthographic' };
@@ -605,7 +611,9 @@ export class CommandRegistry {
                 return { error: 'Threshold must be a positive number' };
             }
 
+            // Update UI slider and value display
             document.getElementById('bond-threshold').value = value;
+            document.getElementById('val-bond-threshold').textContent = value.toFixed(1);
             return { success: `Bond threshold set to ${value.toFixed(2)}` };
         });
 

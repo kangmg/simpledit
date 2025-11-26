@@ -90,8 +90,10 @@ export class Molecule {
         this.nextAtomId = 1;
     }
 
-    fromXYZ(xyzString) {
-        this.clear();
+    fromXYZ(xyzString, shouldClear = true) {
+        if (shouldClear) {
+            this.clear();
+        }
         const lines = xyzString.trim().split('\n');
         if (lines.length < 3) return; // Invalid XYZ
 

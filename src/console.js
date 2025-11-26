@@ -99,7 +99,7 @@ export class Console {
         this.endInputMode();
     }
 
-    handleCommand() {
+    async handleCommand() {
         const rawInput = this.input.value.trim();
         if (!rawInput) {
             this.input.value = ''; // Clear newlines if any
@@ -107,26 +107,35 @@ export class Console {
             return;
         }
 
+        // Clear input immediately so output is visible
+        this.input.value = '';
+        this.input.style.height = 'auto';
+
         // Add to history
         this.commandHistory.push(rawInput);
         this.historyIndex = this.commandHistory.length;
 
-        // Display command block
-        this.print(`> ${rawInput}`, 'prompt');
-
         // Parse and process heredoc syntax
         const processedCommands = this.parseHeredoc(rawInput);
 
-        // Execute each command
-        processedCommands.forEach(({ command: commandString, heredocData }) => {
+        // Execute each command sequentially, showing each with its result
+        for (const { command: commandString, heredocData } of processedCommands) {
+            // Display this command's prompt
+            this.print(`> ${commandString}`, 'prompt');
+
+            // If heredoc data exists, show it
+            if (heredocData) {
+                this.print(heredocData, 'input-data');
+            }
+
             // Parse and execute
             const parsed = this.parser.parse(commandString);
-            if (!parsed) return;
+            if (!parsed) continue;
 
             const command = this.commandRegistry.get(parsed.command);
             if (!command) {
                 this.print(`Command '${parsed.command}' not found.`, 'error');
-                return;
+                continue;
             }
 
             try {
@@ -135,7 +144,9 @@ export class Console {
                     parsed.args.push('__heredoc__', heredocData);
                 }
 
-                const result = command.execute(parsed.args);
+                // Await the command execution to support async commands like 'time'
+                const result = await command.execute(parsed.args);
+
                 if (result) {
                     if (result.success) this.print(result.success, 'success');
                     if (result.error) this.print(result.error, 'error');
@@ -146,10 +157,7 @@ export class Console {
                 this.print(`Error executing '${commandString}': ${error.message}`, 'error');
                 console.error(error);
             }
-        });
-
-        this.input.value = '';
-        this.input.style.height = 'auto';
+        }
     }
 
     parseHeredoc(input) {
