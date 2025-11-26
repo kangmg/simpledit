@@ -1,0 +1,29 @@
+# Multi-line Input Test
+# Tests: heredoc syntax, XYZ format
+
+# Test heredoc syntax
+add xyz <<EOF
+3
+Water molecule
+O  0.000  0.000  0.000
+H  0.757  0.586  0.000
+H -0.757  0.586  0.000
+EOF
+time 2
+
+list
+time 2
+
+# Add more with heredoc
+add xyz <<DATA
+5
+Methane
+C  0.000  0.000  0.000
+H  0.630  0.630  0.630
+H -0.630 -0.630  0.630
+H -0.630  0.630 -0.630
+H  0.630 -0.630 -0.630
+DATA
+time 2
+
+list

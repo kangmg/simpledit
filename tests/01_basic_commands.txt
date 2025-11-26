@@ -1,0 +1,13 @@
+# Basic Commands Test
+# Tests: help, list, clear
+
+help
+time 1
+
+list
+time 1
+
+cls
+time 1
+
+help list

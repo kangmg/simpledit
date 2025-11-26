@@ -170,7 +170,6 @@ info
 # ====================
 
 # Create first molecule with some atoms
-cls
 new "Water"
 add xyz <<EOF
 3

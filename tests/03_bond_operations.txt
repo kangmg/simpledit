@@ -1,0 +1,35 @@
+# Bond Operations Test
+# Tests: bond, unbond, adjustbond, setthreshold
+
+# Create molecule
+add C 0 0 0
+add C 1.5 0 0
+add C 3.0 0 0
+add C 4.5 0 0
+time 2
+
+list
+time 1
+
+# Create bonds
+bond 0 1
+time 1
+
+bond 1 2
+time 1
+
+bond 2 3
+time 2
+
+# Remove bond
+unbond 1 2
+time 2
+
+# Adjust bonds with threshold
+setthreshold 2.0
+time 1
+
+adjustbond
+time 2
+
+list

@@ -1,0 +1,37 @@
+# Display & Labels Test
+# Tests: label modes, camera, projection
+
+# Create test molecule
+add C 0 0 0
+add O 1.2 0 0
+add H -0.5 0.5 0
+time 2
+
+# Test label modes
+label -s
+time 2
+
+label -n
+time 2
+
+label -a
+time 2
+
+label off
+time 2
+
+# Test camera modes
+camera orbit
+time 2
+
+camera trackball
+time 2
+
+# Test projection modes
+projection perspective
+time 2
+
+projection orthographic
+time 2
+
+projection perspective

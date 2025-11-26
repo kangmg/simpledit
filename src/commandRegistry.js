@@ -158,9 +158,9 @@ export class CommandRegistry {
         });
 
         // Delete command
-        this.register('delete', ['del'], 'delete <index...> OR delete : - Delete atoms (: for all)', (args) => {
+        this.register('delete', ['del'], 'delete <index...> OR delete : OR delete 0:3 - Delete atoms', (args) => {
             if (args.length === 0) {
-                return { error: 'Usage: delete <index...> OR delete :' };
+                return { error: 'Usage: delete <index...> OR delete : OR delete 0:3' };
             }
 
             // Check for ':' (all atoms)
@@ -175,7 +175,27 @@ export class CommandRegistry {
                 return { success: `Deleted all ${count} atoms` };
             }
 
-            const indices = args.map(a => parseInt(a)).filter(i => !isNaN(i));
+            // Parse indices with range support
+            const indices = [];
+            for (const arg of args) {
+                // Check for range syntax
+                if (arg.includes(':')) {
+                    const [start, end] = arg.split(':').map(Number);
+                    if (isNaN(start) || isNaN(end)) {
+                        return { error: `Invalid range: ${arg}` };
+                    }
+                    for (let i = start; i <= end; i++) {
+                        indices.push(i);
+                    }
+                } else {
+                    const idx = parseInt(arg);
+                    if (isNaN(idx)) {
+                        return { error: `Invalid index: ${arg}` };
+                    }
+                    indices.push(idx);
+                }
+            }
+
             if (indices.length === 0) {
                 return { error: 'Invalid indices' };
             }
@@ -202,9 +222,9 @@ export class CommandRegistry {
         });
 
         // Select command
-        this.register('select', ['sel'], 'select <index...> OR select : - Select atoms (: for all)', (args) => {
+        this.register('select', ['sel'], 'select <index...> OR select : OR select 0:3 - Select atoms', (args) => {
             if (args.length === 0) {
-                return { error: 'Usage: select <index...> OR select :' };
+                return { error: 'Usage: select <index...> OR select : OR select 0:3' };
             }
 
             // Check for ':' (all atoms)
@@ -221,14 +241,31 @@ export class CommandRegistry {
                 return { success: `Selected all ${this.editor.molecule.atoms.length} atoms` };
             }
 
-            const indices = args.map(a => parseInt(a));
+            // Parse indices with range support
+            const indices = [];
+            for (const arg of args) {
+                // Check for range syntax (e.g., "0:3" or "1:5")
+                if (arg.includes(':')) {
+                    const [start, end] = arg.split(':').map(Number);
+                    if (isNaN(start) || isNaN(end)) {
+                        return { error: `Invalid range: ${arg}` };
+                    }
+                    for (let i = start; i <= end; i++) {
+                        indices.push(i);
+                    }
+                } else {
+                    const idx = parseInt(arg);
+                    if (isNaN(idx)) {
+                        return { error: `Invalid index: ${arg}` };
+                    }
+                    indices.push(idx);
+                }
+            }
+
             const toSelect = [];
 
-            // Validate all indices first
+            // Validate all indices
             for (const idx of indices) {
-                if (isNaN(idx)) {
-                    return { error: `Invalid index: ${idx}` };
-                }
                 const atom = this.editor.molecule.atoms[idx];
                 if (!atom) {
                     return { error: `Atom ${idx} does not exist` };
@@ -700,6 +737,23 @@ export class CommandRegistry {
             const result = this.editor.moleculeManager.mergeMolecule(index);
             if (result.error) return { error: result.error };
             return { success: result.success };
+        });
+
+        // Time/Sleep/Wait command for test delays
+        this.register('time', ['sleep', 'wait'], 'time <seconds> - Wait for specified seconds', (args) => {
+            if (args.length === 0) return { error: 'Usage: time <seconds>' };
+
+            const seconds = parseFloat(args[0]);
+            if (isNaN(seconds) || seconds <= 0) {
+                return { error: 'Seconds must be a positive number' };
+            }
+
+            // Return a promise that resolves after the delay
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve({ info: `Waited ${seconds} second(s)` });
+                }, seconds * 1000);
+            });
         });
     }
 }

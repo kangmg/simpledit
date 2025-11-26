@@ -1,0 +1,76 @@
+# Range Selection Test
+# Tests: range syntax for select and delete
+
+# Create test atoms
+add C 0 0 0
+add C 1 0 0
+add C 2 0 0
+add C 3 0 0
+add C 4 0 0
+add H 5 0 0
+add H 6 0 0
+add H 7 0 0
+add H 8 0 0
+add H 9 0 0
+time 2
+
+list
+time 2
+
+# Test range selection: select atoms 0 through 4
+select 0:4
+time 2
+
+info
+time 2
+
+# Test range selection: select atoms 5 through 9
+select 5:9
+time 2
+
+info
+time 2
+
+# Test mixed selection: individual + range
+select 0 2:4 7
+time 2
+
+info
+time 2
+
+# Test multiple ranges
+select 0:2 7:9
+time 2
+
+info
+time 2
+
+# Create more atoms for delete test
+del :
+time 1
+
+add C 0 0 0
+add C 1 0 0
+add C 2 0 0
+add C 3 0 0
+add C 4 0 0
+add C 5 0 0
+add C 6 0 0
+add C 7 0 0
+time 2
+
+list
+time 2
+
+# Delete range 2:4
+delete 2:4
+time 2
+
+list
+time 2
+
+# Delete mixed: individual + range
+delete 0 2:3
+time 2
+
+list

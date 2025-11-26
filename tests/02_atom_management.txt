@@ -1,0 +1,38 @@
+# Atom Management Test
+# Tests: add, delete, select
+
+# Add single atoms
+add C 0 0 0
+time 1
+
+add H 1.09 0 0
+time 1
+
+add H -0.36 1.03 0
+time 1
+
+list
+time 2
+
+# Select atoms
+select 0 1
+time 1
+
+info
+time 2
+
+# Delete atom
+delete 2
+time 1
+
+list
+time 1
+
+# Select all and delete
+select :
+time 1
+
+del :
+time 1
+
+list

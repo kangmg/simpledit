@@ -53,45 +53,50 @@
 
 # Console
 
+> Check out the [tutorial](tutorial.html) for detailed description of commands.
+
 **Toggle**: **`c`** key
 
 ## Basic Commands
 - **`help`** / **`h`**: Show all commands or specific command help
-- **`list`** / **`ls`**: List all atoms
-- **`list selected`**: List only selected atoms
-- **`add <element> [x] [y] [z]`** / **`a`**: Add atom at position (default 0,0,0)
-- **`add <format>`**: Enter multi-line input mode (Formats: `xyz`, `smi`, `mol2`)
+
+## Atom Management
+- **`add <element> [x] [y] [z]`** / **`a`**: Add atom at coordinates
+- **`add <format>`**: Format-based input (xyz, smi, mol2)
 - **`add <format> <<DELIMITER`**: Heredoc syntax for batch input (e.g., `add xyz <<EOF`)
-- **`delete <index...>`** / **`del`**: Delete atoms by index (use `:` for all)
-- **`select <index...>`** / **`sel`**: Select atoms by index (use `:` for all)
+- **`select <index...>`** / **`sel`**: Select atoms by index
+  - **`select :`**: Select all atoms
+  - **`select 0:3`**: Select range (atoms 0, 1, 2, 3)
+- **`delete <index...>`** / **`del`**: Delete atoms by index
+  - **`delete :`**: Delete all atoms
+  - **`delete 0:3`**: Delete range
+- **`list [selected]`** / **`ls`**: List atoms
+- **`info [idx...]`** / **`i`**: Show atom info/measurements
+  - **`info`**: Show selected atoms info
+  - **`info <index>`**: Show specific atom details
+  - **`info <i> <j>`**: Show distance between two atoms
+  - **`info <i> <j> <k>`**: Show angle between three atoms
+  - **`info <i> <j> <k> <l>`**: Show dihedral angle
 
-## Information
-- **`info`** / **`i`**: Show selected atoms info
-- **`info <index>`**: Show specific atom details
-- **`info <i> <j>`**: Show distance between two atoms
-- **`info <i> <j> <k>`**: Show angle between three atoms
-- **`info <i> <j> <k> <l>`**: Show dihedral angle
+## Bond Operations
+- **`bond <idx1> <idx2>`** / **`b`**: Create bond between atoms
+- **`unbond <idx1> <idx2>`** / **`ub`**: Remove bond
+- **`adjustbond`** / **`ab`**: Auto-adjust bonds based on distance
+- **`setthreshold <value>`** / **`st`**: Set bond distance threshold (default: 1.2 Å)
 
-## Bonds
-- **`bond <i> <j>`** / **`b`**: Create bond between atoms
-- **`unbond <i> <j>`** / **`ub`**: Remove bond between atoms
-- **`adjustbond`** / **`ab`**: Auto-adjust all bonds
-- **`setthreshold <value>`** / **`st`**: Set bond threshold (default: 1.2)
+## Geometry
+- **`setdist <idx1> <idx2> <value>`** / **`sd`**: Set bond length
+- **`setangle <idx1> <idx2> <idx3> <value>`** / **`sa`**: Set bond angle
+- **`setdihedral <idx1> <idx2> <idx3> <idx4> <value>`** / **`sdi`**: Set dihedral angle
 
-## Geometry Manipulation
-- **`setdist <i> <j> <value>`** / **`sd`**: Set bond length (Å)
-- **`setangle <i> <j> <k> <value>`** / **`sa`**: Set angle (degrees)
-- **`setdihedral <i> <j> <k> <l> <value>`** / **`sdi`**: Set dihedral angle (degrees)
-
-## Display Control
-- **`label -s`**: Show atom symbols only (C, H, O)
-- **`label -n`**: Show atom numbers only (0, 1, 2)
-- **`label -a`**: Show both (C(0), H(1))
-- **`label off`**: Hide labels
-- **`camera orbit`**: Orbit camera mode
-- **`camera trackball`**: Trackball camera mode
-- **`projection perspective`** / **`persp`**: Perspective projection
-- **`projection orthographic`** / **`ortho`**: Orthographic projection
+## Display
+- **`label -s|-n|-a|off`** / **`lbl`**: Control atom labels
+  - **`-s`**: Show element symbols
+  - **`-n`**: Show atom numbers
+  - **`-a`**: Show both
+  - **`off`**: Hide labels
+- **`camera orbit|trackball`** / **`cam`**: Change camera mode
+- **`projection perspective|orthographic`** / **`proj`**: Change projection
 
 ## Fragment Management
 - **`fragment <index>`** / **`frag`**: Select entire fragment containing atom
@@ -113,6 +118,7 @@
 - **`#`**: Comment prefix (lines starting with `#` are ignored)
 - **`\`**: Multi-line command
 - **`<<EOF`**,**`>>EOF`**: Heredoc syntax for batch input
+- **`time <seconds>`** / **`sleep`** / **`wait`**: Wait for specified seconds (for tests)
 
 ## History Navigation
 - **Up/Down arrows**: Navigate command history

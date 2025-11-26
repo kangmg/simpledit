@@ -1,0 +1,40 @@
+# Fragment Analysis Test
+# Tests: fragments, fragment
+
+# Create disconnected fragments
+add C 0 0 0
+add C 1.5 0 0
+bond 0 1
+time 1
+
+add C 5 0 0
+add C 6.5 0 0
+bond 2 3
+time 1
+
+add O 10 0 0
+time 2
+
+# Analyze fragments
+fragments
+time 2
+
+# Select first fragment
+fragment 0
+time 2
+
+info
+time 2
+
+# Select second fragment
+fragment 2
+time 2
+
+info
+time 2
+
+# Select single atom fragment
+fragment 4
+time 2
+
+info

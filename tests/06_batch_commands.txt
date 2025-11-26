@@ -1,0 +1,32 @@
+# Batch Commands Test
+# Tests: backslash separator, multi-line execution
+
+# Test backslash separator
+add C 0 0 0 \
+add C 1.5 0 0 \
+add C 3.0 0 0 \
+bond 0 1 \
+bond 1 2
+time 2
+
+list
+time 2
+
+# Test comments
+# This is a comment
+add H 0 1 0  # Another atom
+time 1
+
+list
+time 2
+
+# Clear and rebuild
+del :
+time 1
+
+add C 0 0 0
+add C 1.5 0 0
+bond 0 1
+time 2
+
+list

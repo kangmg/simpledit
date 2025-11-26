@@ -1,0 +1,93 @@
+# Copy/Paste/Merge Test
+# Tests: copy, paste, cut, merge
+
+# Setup: Remove default molecule if exists
+remove 0
+time 1
+
+# Create first molecule
+new "Source"
+time 1
+
+add C 0 0 0
+add C 1.5 0 0
+add C 3.0 0 0
+bond 0 1
+bond 1 2
+time 2
+
+list
+time 2
+
+# Copy atoms
+select 0 1
+time 1
+
+copy
+time 2
+
+# Create second molecule
+new "Target"
+time 1
+
+add H 0 0 0
+time 1
+
+list
+time 1
+
+# Paste
+paste
+time 2
+
+list
+time 2
+
+molecules
+time 2
+
+# Test cut
+sw 0
+time 1
+
+select 2
+time 1
+
+cut
+time 2
+
+list
+time 2
+
+# Paste to target
+sw 1
+time 1
+
+paste
+time 2
+
+list
+time 2
+
+# Test merge
+new "Merge Test"
+time 1
+
+add O 0 0 0
+add O 1 0 0
+time 1
+
+molecules
+time 2
+
+# Merge into Target
+sw 1
+time 1
+
+merge 2
+time 2
+
+molecules
+time 1
+
+list
