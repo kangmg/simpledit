@@ -233,9 +233,21 @@ export class Console {
         const line = document.createElement('div');
         line.className = `console-line ${type}`;
 
-        // Preserve line breaks and spaces
-        line.style.whiteSpace = 'pre-wrap';
-        line.textContent = message;
+        if (type === 'image') {
+            // Display image from data URL
+            const img = document.createElement('img');
+            img.src = message;
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.border = '1px solid #333';
+            img.style.borderRadius = '4px';
+            img.style.marginTop = '8px';
+            line.appendChild(img);
+        } else {
+            // Preserve line breaks and spaces for text
+            line.style.whiteSpace = 'pre-wrap';
+            line.textContent = message;
+        }
 
         this.output.appendChild(line);
 

@@ -123,4 +123,161 @@ export class Renderer {
     this.controls.update();
     this.renderer.render(this.scene, this.activeCamera);
   }
+
+  /**
+   * Capture molecule snapshot
+   * @param {THREE.Object3D[]} objects - Array of objects to capture (atoms, bonds, labels)
+   * @param {boolean} transparentBg - Whether to use transparent background
+   * @param {number} padding - Padding multiplier (default: 1.3)
+   * @returns {string} - Data URL of the captured image
+   */
+  captureSnapshot(objects, transparentBg = false, padding = 1.3) {
+    if (objects.length === 0) {
+      return null;
+    }
+
+    // Calculate bounding box of all objects
+    const box = new THREE.Box3();
+    objects.forEach(obj => {
+      if (obj.geometry) {
+        obj.geometry.computeBoundingBox();
+        const objBox = obj.geometry.boundingBox.clone();
+        objBox.applyMatrix4(obj.matrixWorld);
+        box.union(objBox);
+      }
+    });
+
+    // Get box dimensions
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+
+    // Calculate max dimension for framing
+    const maxDim = Math.max(size.x, size.y, size.z);
+    if (maxDim === 0) return null;
+
+    // Create offscreen canvas for high-resolution capture
+    const captureWidth = 1920;
+    const captureHeight = 1920;
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = captureWidth;
+    offscreenCanvas.height = captureHeight;
+
+    // Create temporary renderer
+    const tempRenderer = new THREE.WebGLRenderer({
+      canvas: offscreenCanvas,
+      antialias: true,
+      alpha: transparentBg,
+      preserveDrawingBuffer: true
+    });
+    tempRenderer.setSize(captureWidth, captureHeight);
+    tempRenderer.setPixelRatio(1);
+
+    // Set background
+    const originalBackground = this.scene.background;
+    if (transparentBg) {
+      this.scene.background = null;
+    } else {
+      this.scene.background = new THREE.Color(0xffffff);
+    }
+
+    // Create camera for snapshot
+    const aspect = captureWidth / captureHeight;
+    let snapshotCamera;
+
+    if (this.activeCamera.isOrthographicCamera) {
+      const frustumHeight = maxDim * padding;
+      const frustumWidth = frustumHeight * aspect;
+      snapshotCamera = new THREE.OrthographicCamera(
+        -frustumWidth / 2,
+        frustumWidth / 2,
+        frustumHeight / 2,
+        -frustumHeight / 2,
+        0.1,
+        1000
+      );
+    } else {
+      snapshotCamera = new THREE.PerspectiveCamera(50, aspect, 0.1, 1000);
+    }
+
+    // Position camera to frame molecule while preserving view direction
+    // Use quaternion to get exact direction
+    const direction = new THREE.Vector3(0, 0, 1);
+    direction.applyQuaternion(this.activeCamera.quaternion);
+
+    snapshotCamera.position.copy(center).add(direction.multiplyScalar(maxDim * padding * 2.5));
+    snapshotCamera.quaternion.copy(this.activeCamera.quaternion);
+    snapshotCamera.updateMatrixWorld();
+
+    // Handle Labels: Convert HTML labels to Sprites for capture
+    const tempSprites = [];
+    objects.forEach(obj => {
+      if (obj.userData && obj.userData.atom) {
+        const atom = obj.userData.atom;
+        if (atom.label && atom.label.style.display !== 'none' && atom.label.innerText) {
+          const sprite = this.createTextSprite(atom.label.innerText);
+          sprite.position.copy(obj.position);
+          // Center label on atom (no offset)
+          this.scene.add(sprite);
+          tempSprites.push(sprite);
+        }
+      }
+    });
+
+    // Render to offscreen canvas
+    tempRenderer.render(this.scene, snapshotCamera);
+
+    // Cleanup Sprites
+    tempSprites.forEach(sprite => {
+      this.scene.remove(sprite);
+      if (sprite.material.map) sprite.material.map.dispose();
+      sprite.material.dispose();
+    });
+
+    // Restore background
+    this.scene.background = originalBackground;
+
+    // Capture image
+    const dataURL = offscreenCanvas.toDataURL('image/png');
+
+    // Cleanup
+    tempRenderer.dispose();
+
+    return dataURL;
+  }
+
+  createTextSprite(text) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    const fontSize = 64; // High resolution for snapshot
+    const font = `Bold ${fontSize}px Arial`;
+    context.font = font;
+
+    const metrics = context.measureText(text);
+    const width = metrics.width;
+    const height = fontSize * 1.2;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Redraw after resizing
+    context.font = font;
+    context.fillStyle = '#ff0000'; // Red color to match editor
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+
+    // Draw text centered
+    context.fillText(text, width / 2, height / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+    const sprite = new THREE.Sprite(material);
+
+    // Scale sprite to match scene units
+    const scale = 0.005 * fontSize; // Reduced scale for better fit
+    sprite.scale.set(scale * (width / height), scale, 1);
+
+    return sprite;
+  }
 }

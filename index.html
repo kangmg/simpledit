@@ -15,113 +15,141 @@
 
 <body>
   <div id="app">
+    <!-- Top-right action buttons -->
+    <div class="top-right-actions">
+      <button id="btn-export-png" class="action-icon-btn" title="Export PNG">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M11 5C11 4.44772 11.4477 4 12 4C12.5523 4 13 4.44772 13 5V12.1578L16.2428 8.91501L17.657 10.3292L12.0001 15.9861L6.34326 10.3292L7.75748 8.91501L11 12.1575V5Z"
+            fill="currentColor" />
+          <path d="M4 14H6V18H18V14H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V14Z"
+            fill="currentColor" />
+        </svg>
+      </button>
+    </div>
+
     <!-- Floating Sidebar -->
     <div class="floating-sidebar">
-      <div class="sidebar-title">Simpledit</div>
-
-      <div class="tool-section">
-        <div class="section-label">Tools</div>
-        <button id="btn-edit" class="icon-btn active" title="Edit Mode">Edit</button>
-
-        <button id="btn-select" class="icon-btn" title="Select Mode">
-          <div style="display: flex; flex-direction: column; align-items: flex-start;">
-            <span>Select</span>
-            <span class="btn-sublabel" style="font-size: 11px; margin-top: 2px; display: none;">Lasso</span>
-          </div>
+      <div class="sidebar-header" style="display: flex; align-items: center; margin-bottom: 15px;">
+        <button id="btn-toggle-sidebar" class="icon-btn-ghost"
+          style="margin-right: 8px; padding: 4px; color: #888; background: none; border: none; cursor: pointer;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M18 1.5033V3.5033L13 3.5033V7.6749L14.8285 5.84644L16.2427 7.26066L12 11.5033L7.75739 7.26066L9.17161 5.84644L11 7.67483V3.5033L6 3.5033V1.5033L18 1.5033Z"
+              fill="currentColor" />
+            <path
+              d="M18 20.4967V22.4967H6V20.4967H11V16.3251L9.17154 18.1536L7.75732 16.7393L12 12.4967L16.2426 16.7393L14.8284 18.1536L13 16.3252V20.4967H18Z"
+              fill="currentColor" />
+          </svg>
         </button>
-
-        <button id="btn-move" class="icon-btn" title="Move Mode">
-          <div style="display: flex; flex-direction: column; align-items: flex-start;">
-            <span>Move & Rotate</span>
-            <span class="btn-sublabel" style="font-size: 11px; margin-top: 2px; display: none;">Translate</span>
-          </div>
-        </button>
-
-        <div style="display: flex; gap: 5px; margin-top: 5px;">
-          <button id="btn-undo" class="action-btn" style="flex: 1;">Undo</button>
-          <button id="btn-redo" class="action-btn" style="flex: 1;">Redo</button>
-        </div>
+        <div class="sidebar-title" style="margin-bottom: 0;">Simpl<span style="color: #1E90FF;">edit</span></div>
       </div>
+      <div id="sidebar-content">
 
-      <div class="tool-section">
-        <div class="section-label">View</div>
-        <div class="control-row">
-          <select id="camera-mode">
-            <option value="orbit">Orbit Camera</option>
-            <option value="trackball" selected>Trackball Camera</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <select id="projection-mode">
-            <option value="perspective">Perspective</option>
-            <option value="orthographic" selected>Orthographic</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <select id="color-scheme">
-            <option value="jmol">Jmol Colors</option>
-            <option value="cpk">CPK Colors</option>
-          </select>
-        </div>
-        <button id="btn-toggle-labels" class="action-btn">Show Labels</button>
-      </div>
+        <div class="tool-section">
+          <div class="section-label">Tools</div>
+          <button id="btn-edit" class="icon-btn active" title="Edit Mode">Edit</button>
 
-      <div class="tool-section">
-        <div class="section-label">Properties</div>
-        <div id="selection-info" style="margin-bottom: 8px; font-size: 12px; color: #888;">No selection</div>
-
-        <div class="control-row">
-          <button id="btn-element-select" class="action-btn"
-            style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <span style="color: #888;">Element</span>
-            <span id="current-element-symbol" style="font-weight: bold; color: white;">C</span>
+          <button id="btn-select" class="icon-btn" title="Select Mode">
+            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+              <span>Select</span>
+              <span class="btn-sublabel" style="font-size: 11px; margin-top: 2px; display: none;">Lasso</span>
+            </div>
           </button>
+
+          <button id="btn-move" class="icon-btn" title="Move Mode">
+            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+              <span>Move & Rotate</span>
+              <span class="btn-sublabel" style="font-size: 11px; margin-top: 2px; display: none;">Translate</span>
+            </div>
+          </button>
+
+          <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button id="btn-undo" class="action-btn" style="flex: 1;">Undo</button>
+            <button id="btn-redo" class="action-btn" style="flex: 1;">Redo</button>
+          </div>
         </div>
 
-        <!-- Molecule List -->
-        <div class="control-row" style="margin-top: 15px;">
-          <div class="section-label">Molecules</div>
-          <div id="molecule-list" class="molecule-list"></div>
-          <div style="margin-top: 5px; display: flex; gap: 5px;">
-            <button id="btn-new-molecule" class="action-btn" style="flex: 1;">+ New</button>
-            <button id="btn-delete-molecule" class="action-btn" style="flex: 1; background: #ff4444;">Del</button>
+        <div class="tool-section">
+          <div class="section-label">View</div>
+          <div class="control-row">
+            <select id="camera-mode">
+              <option value="orbit">Orbit Camera</option>
+              <option value="trackball" selected>Trackball Camera</option>
+            </select>
           </div>
+          <div class="control-row">
+            <select id="projection-mode">
+              <option value="perspective">Perspective</option>
+              <option value="orthographic" selected>Orthographic</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <select id="color-scheme">
+              <option value="jmol">Jmol Colors</option>
+              <option value="cpk">CPK Colors</option>
+            </select>
+          </div>
+          <button id="btn-toggle-labels" class="action-btn">Show Labels</button>
         </div>
 
-        <div class="control-row">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-size: 12px; color: #888;">Bond Threshold</span>
-            <span id="val-bond-threshold" style="font-size: 12px; color: white;">1.2</span>
-          </div>
-          <input type="range" id="bond-threshold" min="0.8" max="2.0" step="0.1" value="1.2">
-        </div>
-        <button id="btn-auto-bond" class="action-btn">Adjust Bond</button>
-        <button id="btn-coord-editor" class="action-btn" style="margin-top: 10px;">Atomic Coordinate
-          Editor</button>
-      </div>
+        <div class="tool-section">
+          <div class="section-label">Properties</div>
+          <div id="selection-info" style="margin-bottom: 8px; font-size: 12px; color: #888;">No selection</div>
 
-      <div id="geometry-controls" class="tool-section" style="display: none;">
-        <div class="section-label">Geometry</div>
-        <div id="length-control" style="display: none; margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-size: 12px; color: #888;">Length (Å)</span>
-            <span id="val-length" style="font-size: 12px; color: white;"></span>
+          <div class="control-row">
+            <button id="btn-element-select" class="action-btn"
+              style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span style="color: #888;">Element</span>
+              <span id="current-element-symbol" style="font-weight: bold; color: white;">C</span>
+            </button>
           </div>
-          <input type="range" id="input-length" min="0.5" max="5.0" step="0.01">
+
+          <!-- Molecule List -->
+          <div class="control-row" style="margin-top: 15px;">
+            <div class="section-label">Molecules</div>
+            <div id="molecule-list" class="molecule-list"></div>
+            <div style="margin-top: 5px; display: flex; gap: 5px;">
+              <button id="btn-new-molecule" class="action-btn" style="flex: 1;">+ New</button>
+              <button id="btn-delete-molecule" class="action-btn" style="flex: 1; background: #ff4444;">Del</button>
+            </div>
+          </div>
+
+          <div class="control-row">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 12px; color: #888;">Bond Threshold</span>
+              <span id="val-bond-threshold" style="font-size: 12px; color: white;">1.2</span>
+            </div>
+            <input type="range" id="bond-threshold" min="0.8" max="2.0" step="0.1" value="1.2">
+          </div>
+          <button id="btn-auto-bond" class="action-btn">Adjust Bond</button>
+          <button id="btn-coord-editor" class="action-btn" style="margin-top: 10px;">Atomic Coordinate
+            Editor</button>
         </div>
-        <div id="angle-control" style="display: none; margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-size: 12px; color: #888;">Angle (°)</span>
-            <span id="val-angle" style="font-size: 12px; color: white;"></span>
+
+        <div id="geometry-controls" class="tool-section" style="display: none;">
+          <div class="section-label">Geometry</div>
+          <div id="length-control" style="display: none; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 12px; color: #888;">Length (Å)</span>
+              <span id="val-length" style="font-size: 12px; color: white;"></span>
+            </div>
+            <input type="range" id="input-length" min="0.5" max="5.0" step="0.01">
           </div>
-          <input type="range" id="input-angle" min="0" max="180" step="1">
-        </div>
-        <div id="dihedral-control" style="display: none; margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-size: 12px; color: #888;">Dihedral (°)</span>
-            <span id="val-dihedral" style="font-size: 12px; color: white;"></span>
+          <div id="angle-control" style="display: none; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 12px; color: #888;">Angle (°)</span>
+              <span id="val-angle" style="font-size: 12px; color: white;"></span>
+            </div>
+            <input type="range" id="input-angle" min="0" max="180" step="1">
           </div>
-          <input type="range" id="input-dihedral" min="-180" max="180" step="1">
+          <div id="dihedral-control" style="display: none; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 12px; color: #888;">Dihedral (°)</span>
+              <span id="val-dihedral" style="font-size: 12px; color: white;"></span>
+            </div>
+            <input type="range" id="input-dihedral" min="-180" max="180" step="1">
+          </div>
         </div>
       </div>
     </div>

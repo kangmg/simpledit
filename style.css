@@ -48,15 +48,59 @@ body {
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #444 transparent;
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.floating-sidebar.collapsed {
+    width: 240px;
+    height: auto;
+    bottom: auto;
+    background: transparent;
+    box-shadow: none;
+}
+
+.floating-sidebar.collapsed #sidebar-content {
+    display: none;
+}
+
+.floating-sidebar.collapsed .sidebar-title {
+    color: black;
+    margin-bottom: 0;
+}
+
+.floating-sidebar.collapsed .icon-btn-ghost {
+    color: black;
+}
+
+.floating-sidebar.collapsed .icon-btn-ghost:hover {
+    color: #333 !important;
+    background: rgba(0, 0, 0, 0.1) !important;
+}
+
+.icon-btn-ghost {
+    background: transparent;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s, background 0.2s;
+}
+
+.icon-btn-ghost:hover {
+    color: #e0e0e0 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .sidebar-title {
-    font-size: 1.2em;
-    font-weight: 700;
-    color: white;
+    font-size: 18px;
+    font-weight: 600;
     margin-bottom: 20px;
-    text-align: center;
-    letter-spacing: 1px;
+    color: var(--text-color);
+    letter-spacing: 0.5px;
 }
 
 .tool-section {
@@ -224,6 +268,46 @@ select:hover {
     background: #121212 !important;
     border: 1px solid #333 !important;
     border-radius: 8px;
+}
+
+/* Top-right action buttons */
+.top-right-actions {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 100;
+}
+
+.action-icon-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(30, 30, 30, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #e0e0e0;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
+}
+
+.action-icon-btn:hover {
+    background: rgba(40, 40, 40, 0.95);
+    border-color: rgba(187, 134, 252, 0.5);
+    transform: translateY(-2px);
+}
+
+.action-icon-btn:active {
+    transform: translateY(0);
+}
+
+.action-icon-btn svg {
+    width: 24px;
+    height: 24px;
 }
 
 /* Console Panel */

@@ -763,5 +763,65 @@ export class CommandRegistry {
                 }, seconds * 1000);
             });
         });
+
+        // Capture command
+        this.register('capture', ['cap'], 'capture [bg|nobg] - Capture molecule snapshot', (args) => {
+            const molecule = this.editor.molecule;
+            if (molecule.atoms.length === 0) {
+                return { error: 'No atoms to capture' };
+            }
+
+            // Parse background option
+            let transparentBg = false;
+            if (args.length > 0) {
+                const bgOption = args[0].toLowerCase();
+                if (bgOption === 'nobg') {
+                    transparentBg = true;
+                } else if (bgOption !== 'bg') {
+                    return { error: 'Usage: capture [bg|nobg]' };
+                }
+            }
+
+            // Collect all objects to capture (atoms, bonds, labels)
+            const objects = [];
+
+            // Add atom meshes
+            this.editor.renderer.scene.traverse(obj => {
+                if (obj.userData && obj.userData.type === 'atom') {
+                    objects.push(obj);
+                }
+            });
+
+            // Add bond meshes
+            this.editor.renderer.scene.traverse(obj => {
+                if (obj.userData && obj.userData.type === 'bond') {
+                    objects.push(obj);
+                }
+            });
+
+            // Add labels
+            this.editor.renderer.scene.traverse(obj => {
+                if (obj.userData && obj.userData.type === 'label') {
+                    objects.push(obj);
+                }
+            });
+
+            if (objects.length === 0) {
+                return { error: 'No visible objects to capture' };
+            }
+
+            // Capture snapshot
+            const dataURL = this.editor.renderer.captureSnapshot(objects, transparentBg);
+
+            if (!dataURL) {
+                return { error: 'Failed to capture snapshot' };
+            }
+
+            // Display in console
+            this.editor.console.print(dataURL, 'image');
+
+            const bgText = transparentBg ? 'transparent' : 'white';
+            return { success: `Snapshot captured (background: ${bgText})` };
+        });
     }
 }

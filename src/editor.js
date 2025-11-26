@@ -108,6 +108,54 @@ export class Editor {
             this.updateAllLabels();
         };
 
+        // Export PNG button
+        document.getElementById('btn-export-png').onclick = () => {
+            const molecule = this.molecule;
+            if (molecule.atoms.length === 0) {
+                alert('No atoms to export');
+                return;
+            }
+
+            // Collect all objects (atoms, bonds, labels)
+            const objects = [];
+            this.renderer.scene.traverse(obj => {
+                if (obj.userData && (obj.userData.type === 'atom' || obj.userData.type === 'bond' || obj.userData.type === 'label')) {
+                    objects.push(obj);
+                }
+            });
+
+            // Capture snapshot (with white background by default)
+            const dataURL = this.renderer.captureSnapshot(objects, false);
+
+            if (!dataURL) {
+                alert('Failed to capture snapshot');
+                return;
+            }
+
+            // Download as PNG
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const molName = this.moleculeManager.getActive().name.replace(/\s/g, '_');
+            link.download = `${molName}_${timestamp}.png`;
+            link.href = dataURL;
+            link.click();
+        };
+
+        // Sidebar Toggle
+        const sidebar = document.querySelector('.floating-sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+
+        const iconCollapse = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 1.5033V3.5033L13 3.5033V7.6749L14.8285 5.84644L16.2427 7.26066L12 11.5033L7.75739 7.26066L9.17161 5.84644L11 7.67483V3.5033L6 3.5033V1.5033L18 1.5033Z" fill="currentColor" /><path d="M18 20.4967V22.4967H6V20.4967H11V16.3251L9.17154 18.1536L7.75732 16.7393L12 12.4967L16.2426 16.7393L14.8284 18.1536L13 16.3252V20.4967H18Z" fill="currentColor" /></svg>`;
+        const iconExpand = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 1V3L7 3V1L17 1Z" fill="currentColor" /><path d="M16.2427 8.44772L14.8285 9.86194L13 8.03347L13 15.9665L14.8285 14.138L16.2427 15.5522L12 19.7949L7.75742 15.5522L9.17163 14.138L11 15.9664L11 8.03357L9.17163 9.86194L7.75742 8.44772L12 4.20508L16.2427 8.44772Z" fill="currentColor" /><path d="M17 23V21H7V23H17Z" fill="currentColor" /></svg>`;
+
+        if (toggleBtn) {
+            toggleBtn.onclick = () => {
+                sidebar.classList.toggle('collapsed');
+                toggleBtn.innerHTML = sidebar.classList.contains('collapsed') ? iconExpand : iconCollapse;
+                toggleBtn.style.transform = 'none';
+            };
+        }
+
         // Properties
         // document.getElementById('atom-element').onchange = (e) => this.selectedElement = e.target.value; // Replaced by button
         const btnElement = document.getElementById('btn-element-select');
@@ -783,11 +831,12 @@ export class Editor {
         const a3 = this.selectionOrder[2]; // c (axis end)
         const a4 = this.selectionOrder[3]; // d (moving side)
 
-        // Find the bond between c and d
-        const bond34 = this.molecule.getBond(a3, a4);
+        // Find the bond between b and c (axis)
+        const bond23 = this.molecule.getBond(a2, a3);
 
-        // Get all atoms connected to d (excluding the c-d bond)  
-        const fragmentToRotate = this.getConnectedAtoms(a4, bond34);
+        // Get all atoms connected to c (excluding the b-c bond)
+        // This ensures that ALL atoms attached to c (including d and others) rotate together
+        const fragmentToRotate = this.getConnectedAtoms(a3, bond23);
 
         const axis = a3.position.clone().sub(a2.position).normalize();
         const v1 = a1.position.clone().sub(a2.position);
@@ -1455,15 +1504,20 @@ export class Editor {
     }
 
     clearVisuals() {
-        // Clear existing labels
-        this.molecule.atoms.forEach(atom => {
-            if (atom.label) {
-                if (atom.label.parentNode) {
-                    atom.label.parentNode.removeChild(atom.label);
-                }
-                atom.label = null;
+        // Clear ALL existing labels from DOM to prevent ghosting
+        const labels = document.querySelectorAll('.atom-label');
+        labels.forEach(label => {
+            if (label.parentNode) {
+                label.parentNode.removeChild(label);
             }
         });
+
+        // Clear references in atoms
+        if (this.molecule && this.molecule.atoms) {
+            this.molecule.atoms.forEach(atom => {
+                atom.label = null;
+            });
+        }
 
         // Clear existing meshes
         for (let i = this.renderer.scene.children.length - 1; i >= 0; i--) {
