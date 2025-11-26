@@ -2,36 +2,47 @@
 # Tests: label modes, camera, projection
 
 # Create test molecule
-add C 0 0 0
-add O 1.2 0 0
-add H -0.5 0.5 0
-time 2
+add xyz <<EOF
+8
+
+F        1.34840       -0.55490        0.14980
+F       -1.34850       -0.55480       -0.14980
+C        0.69620        0.55490       -0.29020
+C       -0.69610        0.55490        0.29020
+H        0.66790        0.50740       -1.38190
+H        1.26370        1.43390        0.02570
+H       -1.26350        1.43400       -0.02550
+H       -0.66780        0.50730        1.38190
+EOF
+time 1
 
 # Test label modes
 label -s
-time 2
+time 1
 
 label -n
-time 2
+time 1
 
 label -a
-time 2
+time 1
 
 label off
-time 2
+time 1
 
 # Test camera modes
 camera orbit
-time 2
+time 1
 
 camera trackball
-time 2
+time 1
 
 # Test projection modes
 projection perspective
-time 2
+time 1
 
 projection orthographic
-time 2
+time 1
 
 projection perspective
+
+del :

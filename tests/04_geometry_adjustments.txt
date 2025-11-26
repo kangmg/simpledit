@@ -2,7 +2,7 @@
 # Tests: setdist, setangle, setdihedral
 cls 
 
-bt 1.3
+st 1.3
 # adjustbond
 
 # Create test molecule
@@ -69,8 +69,9 @@ time 0.1
 setangle 2 0 1 165
 time 0.1
 setangle 2 0 1 180
-time 0.1
+time 3
 
+del :
 
 
 

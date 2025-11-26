@@ -580,16 +580,22 @@ sleep 1.5         # Wait 1.5 seconds</pre>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Basic Commands Test
-help
-time 1
+# Tests: help, list, clear
+cls 
 
-list
+help
 time 1
 
 cls
 time 1
 
-help list</pre>
+help list 
+time 1
+
+list
+time 1
+
+help cls</pre>
                     </div>
                 </div>
             </div>
@@ -608,8 +614,12 @@ help list</pre>
                     </p>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Atom Management Test
-add C 0 0 0
+                        <pre># Atom Basic Management Test
+# Tests: add, delete, select
+cls
+
+# Add single atoms
+add O 0 0 0
 time 1
 
 add H 1.09 0 0
@@ -618,28 +628,19 @@ time 1
 add H -0.36 1.03 0
 time 1
 
-list
-time 2
-
+# Select atoms
 select 0 1
 time 1
 
-info
-time 2
-
+# Delete atom
 delete 2
 time 1
 
-list
-time 1
-
+# Select all and delete
 select :
 time 1
 
-del :
-time 1
-
-list</pre>
+del :</pre>
                     </div>
                 </div>
             </div>
@@ -660,15 +661,20 @@ list</pre>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Bond Operations Test
+# Tests: bond, unbond, adjustbond, setthreshold
+cls 
+
+# Create molecule
 add C 0 0 0
 add C 1.5 0 0
 add C 3.0 0 0
 add C 4.5 0 0
-time 2
-
-list
 time 1
 
+# list of fragments
+frags
+
+# Create bonds
 bond 0 1
 time 1
 
@@ -676,18 +682,24 @@ bond 1 2
 time 1
 
 bond 2 3
-time 2
+time 1
 
+frags
+
+# Remove bond
 unbond 1 2
-time 2
+time 1
 
+frags
+
+# Adjust bonds with threshold
 setthreshold 2.0
 time 1
 
 adjustbond
-time 2
+time 1
 
-list</pre>
+del :</pre>
                     </div>
                 </div>
             </div>
@@ -711,51 +723,77 @@ list</pre>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Geometry Adjustments Test
-add C 0 0 0
-add O 1.2 0 0
-add H -0.5 0.5 0
-add H -0.5 -0.5 0
-time 2
+# Tests: setdist, setangle, setdihedral
+cls 
 
-bond 0 1
-bond 0 2
-bond 0 3
+st 1.3
+# adjustbond
+
+# Create test molecule
+add xyz &lt;&lt;DFE
+8
+
+F        1.34840       -0.55490        0.14980
+F       -1.34850       -0.55480       -0.14980
+C        0.69620        0.55490       -0.29020
+C       -0.69610        0.55490        0.29020
+H        0.66790        0.50740       -1.38190
+H        1.26370        1.43390        0.02570
+H       -1.26350        1.43400       -0.02550
+H       -0.66780        0.50730        1.38190
+DFE
+time 1  
+
+
+# just for hightlight
+# Test dihedral adjustment
+select 1 3 2 0
+info 1 3 2 0
 time 1
 
-select 0 1
+# adjust dihedral angle
+setdihedral 1 3 2 0 180
+info 1 3 2 0
 time 1
 
-info
-time 2
-
-setdist 0 1 1.5
-time 2
-
-info
-time 2
-
-select 0 1 2
+# Test bond length adjustment
+select 3 2
+info  3 2
 time 1
 
-info
-time 2
-
-setangle 0 1 2 120
-time 2
-
-info
-time 2
-
-select 0 1 2 3
+setdist 3 2 3.0
+info  3 2
 time 1
 
-info
-time 2
+del :
+time 1
 
-setdihedral 0 1 2 3 180
-time 2
+add xyz &lt;&lt;WTR
+3
 
-info</pre>
+O 0.000000 0.000000  0.000000
+H 0.758602 0.000000  0.504284
+H 0.260455 0.000000 -0.872893
+WTR
+ab
+time 1
+
+
+# Test angle adjustment
+select 2 0 1
+info 2 0 1
+time 1
+
+setangle 2 0 1 120
+time 0.1
+setangle 2 0 1 135
+time 0.1
+setangle 2 0 1 150
+time 0.1
+setangle 2 0 1 165
+time 0.1
+setangle 2 0 1 180
+time 0.1</pre>
                     </div>
                 </div>
             </div>
@@ -775,6 +813,10 @@ info</pre>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Multi-line Input Test
+# Tests: heredoc syntax, XYZ format
+cls 
+
+# Test heredoc syntax
 add xyz &lt;&lt;EOF
 3
 Water molecule
@@ -782,11 +824,14 @@ O  0.000  0.000  0.000
 H  0.757  0.586  0.000
 H -0.757  0.586  0.000
 EOF
-time 2
+time 1
 
 list
-time 2
+time 1
 
+del : 
+
+# Add more with heredoc
 add xyz &lt;&lt;DATA
 5
 Methane
@@ -796,7 +841,7 @@ H -0.630 -0.630  0.630
 H -0.630  0.630 -0.630
 H  0.630 -0.630 -0.630
 DATA
-time 2
+time 1
 
 list</pre>
                     </div>
@@ -818,32 +863,30 @@ list</pre>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Batch Commands Test
-add C 0 0 0 \
-add C 1.5 0 0 \
-add C 3.0 0 0 \
-bond 0 1 \
-bond 1 2
-time 2
+# Tests: backslash separator, multi-line execution
+cls 
+
+# Test backslash separator
+add C 0 0 0 \ time 0.5 \ add C 1.5 0 0 \ time 0.5 # multi-line command
+add C 3.0 0 0 \ time 0.5 \ bond 0 1 \ time 0.5 \ bond 1 2 
+time 1
 
 list
-time 2
+time 1
 
-# This is a comment
+# Test comments
 add H 0 1 0  # Another atom
 time 1
 
-list
-time 2
-
+# Clear and rebuild
 del :
 time 1
 
-add C 0 0 0
-add C 1.5 0 0
+add C 0 0 0 \ add C 1.5 0 0
 bond 0 1
-time 2
+time 3
 
-list</pre>
+del :</pre>
                     </div>
                 </div>
             </div>
@@ -853,20 +896,22 @@ list</pre>
             <div class="test-section">
                 <div class="test-header">
                     <div class="test-title">07_molecule_management.txt</div>
-                    <div class="test-description">Work with multiple molecular structures simultaneously.</div>
+                    <div class="test-description">Manage multiple molecules, switching contexts, and independent
+                        history.</div>
                 </div>
                 <div class="test-body">
-                    <p><strong>Purpose:</strong> Understand multi-molecule workflows and independent state management.
-                    </p>
+                    <p><strong>Purpose:</strong> Learn to work with multiple molecular structures simultaneously.</p>
                     <p><strong>Tests:</strong> <code>new</code>, <code>switch</code>, <code>rename</code>,
-                        <code>remove</code>, <code>molecules</code>
+                        <code>remove</code>
                     </p>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Molecule Management Test
-new "Water"
-time 1
+# Tests: new, switch, rename, remove, molecules
+cls 
 
+# Create first molecule
+new "Water"
 add xyz &lt;&lt;EOF
 3
 Water
@@ -874,14 +919,12 @@ O  0.000  0.000  0.000
 H  0.757  0.586  0.000
 H -0.757  0.586  0.000
 EOF
-time 2
 
 molecules
-time 2
-
-new "Methane"
 time 1
 
+# Create second molecule
+new "Methane"
 add xyz &lt;&lt;EOF
 5
 Methane
@@ -891,30 +934,32 @@ H -0.630 -0.630  0.630
 H -0.630  0.630 -0.630
 H  0.630 -0.630 -0.630
 EOF
-time 2
 
 molecules
-time 2
+time 1
 
+# Switch between molecules
 sw 0
-time 2
+time 1
 
-list
-time 2
+molecules
+time 1
 
 sw 1
-time 2
+time 1
+molecules
 
-list
-time 2
-
+# Rename molecule
 rename "CH4 Molecule"
 time 1
 
 molecules
-time 2
+time 1
 
+# Create and remove molecule
 new "Temp"
+add H 0 0 0
+add H 0 0 0.7
 time 1
 
 molecules
@@ -923,7 +968,13 @@ time 1
 remove 2
 time 1
 
-molecules</pre>
+remove "CH4 Molecule"
+remove "Temp"
+
+molecules
+
+time 3
+del :</pre>
                     </div>
                 </div>
             </div>
@@ -933,99 +984,132 @@ molecules</pre>
             <div class="test-section">
                 <div class="test-header">
                     <div class="test-title">08_copy_paste_merge.txt</div>
-                    <div class="test-description">Transfer atoms between molecules and combine multiple molecular
-                        structures.</div>
+                    <div class="test-description">Advanced operations for combining molecules: Copy, Paste, Merge, and
+                        Smart Offset.</div>
                 </div>
                 <div class="test-body">
-                    <p><strong>Purpose:</strong> Learn to transfer and combine molecular structures across different
-                        molecules.</p>
+                    <p><strong>Purpose:</strong> Demonstrate how to build complex structures from smaller components
+                        using clipboard and merge operations.</p>
+                    <p><strong>Scenario:</strong>
+                    <ol>
+                        <li>Create Borane (BH3) and Ammonia (NH3).</li>
+                        <li>Create copies and merge them into a new "Complex_merged" molecule.</li>
+                        <li>Cut Ammonia and Paste into Borane to create "Complex_pasted".</li>
+                        <li>Demonstrate <strong>Smart Offset</strong> by pasting "Complex_merged" into Methane with
+                            collision avoidance.</li>
+                    </ol>
+                    </p>
                     <p><strong>Tests:</strong> <code>copy</code>, <code>paste</code>, <code>cut</code>,
-                        <code>merge</code>
+                        <code>merge</code>, <code>-offset</code>
                     </p>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Copy/Paste/Merge Test
-remove 0
+# Tests: copy, paste, merge, smart offset
+cls 
+
+# 1. Create Borane (BH3)
+new Borane
+add xyz &lt;&lt;BOR
+4
+
+B        0.0000000       0.0000000      -1.2778648
+H        0.9419139       0.0000000      -1.6172590
+H       -0.4709570       0.8163013      -1.6172590
+H       -0.4709570      -0.8163013      -1.6172590
+BOR
+
+# 2. Create Ammonia (NH3)
+new Ammonia
+add xyz &lt;&lt;AMM
+4
+
+N        0.0000000       0.0000000       0.2878648
+H        0.9419139       0.0000000       0.6272589
+H       -0.4709570       0.8163013       0.6272589
+H       -0.4709570      -0.8163013       0.6272589
+AMM
+
+molecules
 time 1
 
-new "Source"
-time 1
-
-add C 0 0 0
-add C 1.5 0 0
-add C 3.0 0 0
-bond 0 1
-bond 1 2
-time 2
-
-list
-time 2
-
-select 0 1
-time 1
-
+# 3. Create Copies for Merge
+# Copy Borane
+sw Borane
+select :
 copy
-time 2
-
-new "Target"
-time 1
-
-add H 0 0 0
-time 1
-
-list
-time 1
-
+new Borane_Copy
 paste
-time 2
+time 0.5
+
+# Copy Ammonia
+sw Ammonia
+select :
+copy
+new Ammonia_Copy
+paste
+time 0.5
+
+# 4. Merge Copies
+new Complex_merged
+# Merge Borane_Copy
+merge Borane_Copy
+# Merge Ammonia_Copy
+merge Ammonia_Copy
+time 1
 
 list
-time 2
-
-molecules
-time 2
-
-sw 0
 time 1
 
-select 2
-time 1
-
+# 5. Cut & Paste Originals
+# Cut from Ammonia
+sw Ammonia
+select :
 cut
-time 2
+time 0.5
 
-list
-time 2
-
-sw 1
-time 1
-
+# Paste into Borane
+sw Borane
 paste
-time 2
+rename Complex_pasted
+time 1
 
 list
-time 2
-
-new "Merge Test"
 time 1
 
-add O 0 0 0
-add O 1 0 0
+# 6. Smart Offset Test
+# Create Methane
+new Methane
+add xyz &lt;&lt;MET
+5
+
+C        0.0000000       0.0000000       0.0000000
+H        0.6300000       0.6300000       0.6300000
+H       -0.6300000      -0.6300000       0.6300000
+H       -0.6300000       0.6300000      -0.6300000
+H        0.6300000      -0.6300000      -0.6300000
+MET
 time 1
 
+# Copy from Complex_merged
+sw Complex_merged
+select :
+copy
+
+# Paste into Methane with offset
+sw Methane
+paste -offset 3
+time 1
+
+list
+time 1
 molecules
-time 2
 
-sw 1
-time 1
-
-merge 2
-time 2
-
-molecules
-time 1
-
-list</pre>
+rm Ammonia
+rm Borane
+rm Methane
+rm Complex_merged
+rm Complex_pasted</pre>
                     </div>
                 </div>
             </div>
@@ -1035,44 +1119,62 @@ list</pre>
             <div class="test-section">
                 <div class="test-header">
                     <div class="test-title">09_display_labels.txt</div>
-                    <div class="test-description">Configure visual representation of molecular structures.</div>
+                    <div class="test-description">Customize visualization with labels, camera modes, and projections.
+                    </div>
                 </div>
                 <div class="test-body">
-                    <p><strong>Purpose:</strong> Customize visualization settings for optimal viewing.</p>
+                    <p><strong>Purpose:</strong> Explore visualization options.</p>
                     <p><strong>Tests:</strong> <code>label</code>, <code>camera</code>, <code>projection</code></p>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Display & Labels Test
-add C 0 0 0
-add O 1.2 0 0
-add H -0.5 0.5 0
-time 2
+# Tests: label modes, camera, projection
 
+# Create test molecule
+add xyz &lt;&lt;EOF
+8
+
+F        1.34840       -0.55490        0.14980
+F       -1.34850       -0.55480       -0.14980
+C        0.69620        0.55490       -0.29020
+C       -0.69610        0.55490        0.29020
+H        0.66790        0.50740       -1.38190
+H        1.26370        1.43390        0.02570
+H       -1.26350        1.43400       -0.02550
+H       -0.66780        0.50730        1.38190
+EOF
+time 1
+
+# Test label modes
 label -s
-time 2
+time 1
 
 label -n
-time 2
+time 1
 
 label -a
-time 2
+time 1
 
 label off
-time 2
+time 1
 
+# Test camera modes
 camera orbit
-time 2
+time 1
 
 camera trackball
-time 2
+time 1
 
+# Test projection modes
 projection perspective
-time 2
+time 1
 
 projection orthographic
-time 2
+time 1
 
-projection perspective</pre>
+projection perspective
+
+del :</pre>
                     </div>
                 </div>
             </div>
@@ -1082,43 +1184,54 @@ projection perspective</pre>
             <div class="test-section">
                 <div class="test-header">
                     <div class="test-title">10_fragment_analysis.txt</div>
-                    <div class="test-description">Identify and work with disconnected molecular fragments.</div>
+                    <div class="test-description">Analyze and select disconnected molecular fragments.</div>
                 </div>
                 <div class="test-body">
-                    <p><strong>Purpose:</strong> Analyze molecular connectivity and work with disconnected fragments.
-                    </p>
-                    <p><strong>Tests:</strong> <code>fragments</code>, <code>fragment</code></p>
+                    <p><strong>Purpose:</strong> Identify and manipulate separate parts of a molecular system.</p>
+                    <p><strong>Tests:</strong> <code>fragments</code>, <code>fragment</code>, <code>unbond</code></p>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Fragment Analysis Test
-add C 0 0 0
-add C 1.5 0 0
-bond 0 1
-time 1
+# Tests: fragments, fragment
+cls 
 
-add C 5 0 0
-add C 6.5 0 0
-bond 2 3
+# Create disconnected fragments
+add xyz &lt;&lt;EOF
+8
+
+F        1.34840       -0.55490        0.14980
+F       -1.34850       -0.55480       -0.14980
+C        0.69620        0.55490       -0.29020
+C       -0.69610        0.55490        0.29020
+H        0.66790        0.50740       -1.38190
+H        1.26370        1.43390        0.02570
+H       -1.26350        1.43400       -0.02550
+H       -0.66780        0.50730        1.38190
+EOF
 time 1
 
 add O 10 0 0
 time 2
 
+# Analyze fragments
 fragments
 time 2
 
+# Select first fragment
 fragment 0
 time 2
 
 info
 time 2
 
+# Select second fragment
 fragment 2
 time 2
 
 info
 time 2
 
+# Select single atom fragment
 fragment 4
 time 2
 
@@ -1132,60 +1245,77 @@ info</pre>
             <div class="test-section">
                 <div class="test-header">
                     <div class="test-title">11_range_selection.txt</div>
-                    <div class="test-description">Efficient atom selection and deletion using range syntax.</div>
+                    <div class="test-description">Efficiently select and manipulate groups of atoms using range syntax.
+                    </div>
                 </div>
                 <div class="test-body">
-                    <p><strong>Purpose:</strong> Learn to use range syntax for efficient multi-atom operations.</p>
-                    <p><strong>Tests:</strong> Range selection (<code>0:4</code>), mixed selection</p>
-                    <div class="info-box">
-                        <div class="info-title">Range Syntax</div>
-                        <p>Range syntax <code>start:end</code> is inclusive on both ends. For example, <code>0:3</code>
-                            selects atoms 0, 1, 2, and 3. This works with both <code>select</code> and
-                            <code>delete</code> commands.
-                        </p>
-                    </div>
+                    <p><strong>Purpose:</strong> Master the range selection syntax for handling large numbers of atoms.
+                    </p>
+                    <p><strong>Tests:</strong> <code>select start:end</code>, <code>delete start:end</code>, mixed
+                        selection</p>
                     <div class="code-block">
                         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         <pre># Range Selection Test
-add C 0 0 0
-add C 1 0 0
-add C 2 0 0
-add C 3 0 0
-add C 4 0 0
-add H 5 0 0
-add H 6 0 0
-add H 7 0 0
-add H 8 0 0
-add H 9 0 0
-time 2
+# Tests: range syntax for select and delete
+cls 
+
+# Create test molecule
+add xyz &lt;&lt;EOF
+30
+
+O   -1.3726747  -0.1552490   2.4000752
+H   -1.5225698   0.6430745   1.8936733
+H   -1.8927283  -0.0364901   3.1948536
+O    0.1006113   0.8761179  -2.6670173
+H    0.7362920   0.2268962  -2.3659307
+H    0.2618820   0.9516930  -3.6075024
+O   -1.8195048  -1.8868228   0.2782001
+H   -2.0644814  -1.2422095  -0.3856463
+H   -1.7711378  -1.3861331   1.0925726
+O   -1.7639423   2.0188032   0.7720364
+H   -0.9076391   2.2250180   0.3972668
+H   -2.2268131   2.8564890   0.7883164
+O    0.5868449   2.4518037  -0.4466459
+H    1.3420653   1.9964944  -0.0743993
+H    0.4521329   2.0364701  -1.2984573
+O    1.9140885  -0.8032225  -1.6098292
+H    2.2977630  -0.2531253  -0.9268805
+H    1.5313918  -1.5418165  -1.1362744
+O   -2.2512316   0.2688588  -1.3371564
+H   -2.1976819   0.9230125  -0.6404158
+H   -1.4950439   0.4502556  -1.8952849
+O    2.6083833   0.8285405   0.5195594
+H    3.4598644   0.9974440   0.9229001
+H    2.1638626   0.2437857   1.1333144
+O    1.2670215  -0.9296743   2.0460502
+H    0.3793360  -0.6546975   2.2754716
+H    1.1429372  -1.6500684   1.4280960
+O    0.7176653  -2.7097787  -0.0031831
+H    0.7227966  -3.6649391  -0.0654267
+H   -0.2100590  -2.4764337   0.0301288
+EOF
 
 list
-time 2
+time 1
 
-select 0:4
-time 2
-
+# Test range selection: select atoms 0 through 2
+select 0:2
 info
-time 2
+time 1
 
-select 5:9
-time 2
+# Test range selection: select atoms 9 through 14 
+select 9:14
+info 
+time 1
 
+# Test mixed selection: individual + range
+select 3 4 5 6:8 
 info
-time 2
+time 1
+cut # alternative for removing selected atoms
+time 1
 
-select 0 2:4 7
-time 2
-
-info
-time 2
-
-select 0:2 7:9
-time 2
-
-info
-time 2
-
+# Create more atoms for delete test
 del :
 time 1
 
@@ -1197,21 +1327,24 @@ add C 4 0 0
 add C 5 0 0
 add C 6 0 0
 add C 7 0 0
-time 2
+time 1
 
 list
-time 2
+time 1
 
+# Delete range 2:4
 delete 2:4
-time 2
+time 1
 
 list
-time 2
+time 1
 
+# Delete mixed: individual + range
 delete 0 2:3
-time 2
+time 1
 
-list</pre>
+list
+del :</pre>
                     </div>
                 </div>
             </div>
@@ -1223,11 +1356,9 @@ list</pre>
         function copyCode(btn) {
             const pre = btn.nextElementSibling;
             const code = pre.textContent;
-
             navigator.clipboard.writeText(code).then(() => {
-                btn.textContent = 'Copied';
+                btn.textContent = 'Copied!';
                 btn.classList.add('copied');
-
                 setTimeout(() => {
                     btn.textContent = 'Copy';
                     btn.classList.remove('copied');
@@ -1235,16 +1366,22 @@ list</pre>
             });
         }
 
-        // Smooth scroll for navigation
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const target = document.querySelector(link.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Highlight active section on scroll
+        const sections = document.querySelectorAll('h2[id]');
+        const navLinks = document.querySelectorAll('.nav-link');
 
-                    // Update active state
-                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').includes(current)) {
                     link.classList.add('active');
                 }
             });

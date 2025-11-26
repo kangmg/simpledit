@@ -710,8 +710,14 @@ export class CommandRegistry {
         });
 
         // Paste clipboard command
-        this.register('paste', ['pa'], 'paste - Paste clipboard atoms', (args) => {
-            const result = this.editor.moleculeManager.pasteClipboard();
+        this.register('paste', ['pa'], 'paste [-offset <dist>] - Paste clipboard atoms', (args) => {
+            let minDistance = 0;
+            const offsetIdx = args.indexOf('-offset');
+            if (offsetIdx !== -1 && offsetIdx < args.length - 1) {
+                const val = parseFloat(args[offsetIdx + 1]);
+                if (!isNaN(val)) minDistance = val;
+            }
+            const result = this.editor.moleculeManager.pasteClipboard(minDistance);
             if (result.error) return { error: result.error };
             return { success: result.success };
         });

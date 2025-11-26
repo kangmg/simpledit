@@ -1,10 +1,9 @@
 # Molecule Management Test
 # Tests: new, switch, rename, remove, molecules
+cls 
 
 # Create first molecule
 new "Water"
-time 1
-
 add xyz <<EOF
 3
 Water
@@ -12,15 +11,12 @@ O  0.000  0.000  0.000
 H  0.757  0.586  0.000
 H -0.757  0.586  0.000
 EOF
-time 2
 
 molecules
-time 2
+time 1
 
 # Create second molecule
 new "Methane"
-time 1
-
 add xyz <<EOF
 5
 Methane
@@ -30,33 +26,32 @@ H -0.630 -0.630  0.630
 H -0.630  0.630 -0.630
 H  0.630 -0.630 -0.630
 EOF
-time 2
 
 molecules
-time 2
+time 1
 
 # Switch between molecules
 sw 0
-time 2
+time 1
 
-list
-time 2
+molecules
+time 1
 
 sw 1
-time 2
-
-list
-time 2
+time 1
+molecules
 
 # Rename molecule
 rename "CH4 Molecule"
 time 1
 
 molecules
-time 2
+time 1
 
 # Create and remove molecule
 new "Temp"
+add H 0 0 0
+add H 0 0 0.7
 time 1
 
 molecules
@@ -65,4 +60,10 @@ time 1
 remove 2
 time 1
 
+remove "CH4 Molecule"
+remove "Temp"
+
 molecules
+
+time 3
+del :

@@ -43,7 +43,7 @@ To run any test:
 
 ### 08_copy_paste_merge.txt
 **Purpose**: Transfer and combine molecular structures  
-**Features**: `copy`, `paste`, `cut`, `merge` operations
+**Features**: `copy`, `paste`, `cut`, `merge` operations, **Smart Offset** (`-offset`)
 
 ### 09_display_labels.txt
 **Purpose**: Visual customization  
@@ -51,7 +51,7 @@ To run any test:
 
 ### 10_fragment_analysis.txt
 **Purpose**: Connectivity analysis  
-**Features**: `fragments`, `fragment` selection
+**Features**: `fragments`, `fragment` selection, `unbond`
 
 ### 11_range_selection.txt
 **Purpose**: Efficient atom selection and deletion  
@@ -63,3 +63,4 @@ To run any test:
 - Use `\` for line continuation
 - Each test is self-contained and can run independently
 - See `tutorial.html` for detailed description of each test
+- **Smart Offset**: `paste` and `merge` commands support an optional `-offset <dist>` argument to automatically shift incoming atoms to avoid collisions.

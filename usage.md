@@ -109,15 +109,18 @@
 - **`rename <name>`** / **`rn`**: Rename active molecule
 - **`remove [index|name]`** / **`rm`**: Remove molecule
 - **`copy`** / **`cp`**: Copy selected atoms to clipboard
-- **`paste`** / **`pa`**: Paste clipboard atoms
+- **`paste [-offset <dist>]`** / **`pa`**: Paste clipboard atoms. Optional `-offset` sets minimum distance.
 - **`cut`** / **`ct`**: Cut selected atoms
-- **`merge <index|name>`** / **`mg`**: Merge molecule into active
+- **`merge <index|name> [-offset <dist>]`** / **`mg`**: Merge molecule into active. Optional `-offset` sets minimum distance.
 
 ## Utility
 - **`clear`** / **`cls`**: Clear console output
+- **`capture [bg|nobg]`** / **`cap`**: Capture snapshot of current view.
+  - **`bg`** (default): Include background
+  - **`nobg`**: Transparent background
 - **`#`**: Comment prefix (lines starting with `#` are ignored)
 - **`\`**: Multi-line command
-- **`<<EOF`**,**`>>EOF`**: Heredoc syntax for batch input
+- **`<<EOF`**,**`EOF`**: Heredoc syntax for batch input
 - **`time <seconds>`** / **`sleep`** / **`wait`**: Wait for specified seconds (for tests)
 
 ## History Navigation

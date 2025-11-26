@@ -1,5 +1,6 @@
 # Multi-line Input Test
 # Tests: heredoc syntax, XYZ format
+cls 
 
 # Test heredoc syntax
 add xyz <<EOF
@@ -9,10 +10,12 @@ O  0.000  0.000  0.000
 H  0.757  0.586  0.000
 H -0.757  0.586  0.000
 EOF
-time 2
+time 1
 
 list
-time 2
+time 1
+
+del : 
 
 # Add more with heredoc
 add xyz <<DATA
@@ -24,6 +27,8 @@ H -0.630 -0.630  0.630
 H -0.630  0.630 -0.630
 H  0.630 -0.630 -0.630
 DATA
-time 2
+time 1
 
 list
+time 3
+del :

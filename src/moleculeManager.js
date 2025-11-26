@@ -71,7 +71,10 @@ export class MoleculeManager {
 
         // Adjust active index
         if (index === this.activeMoleculeIndex) {
-            // If removed active molecule, switch to the previous one (or 0)
+            // If removed active molecule, prevent saving state for it
+            this.activeMoleculeIndex = -1;
+
+            // Switch to the previous one (or 0)
             const newIndex = Math.max(0, index - 1);
             this.switchMolecule(newIndex);
         } else if (index < this.activeMoleculeIndex) {
@@ -205,7 +208,7 @@ export class MoleculeManager {
         return { success: `Copied ${selectedAtoms.length} atom(s) to clipboard` };
     }
 
-    pasteClipboard(offset = new THREE.Vector3(5, 0, 0)) {
+    pasteClipboard(minDistance = 0) {
         if (this.clipboard.atoms.length === 0) {
             return { error: 'Clipboard is empty' };
         }
@@ -214,6 +217,11 @@ export class MoleculeManager {
         if (!activeMol) return { error: 'No active molecule' };
 
         this.editor.saveState();
+
+        // Calculate smart offset
+        const currentAtoms = activeMol.molecule.atoms;
+        const incomingAtoms = this.clipboard.atoms; // Simple objects with position
+        const offset = this.calculateSmartOffset(incomingAtoms, currentAtoms, minDistance);
 
         // Create new atoms with offset
         const newAtoms = [];
@@ -238,7 +246,7 @@ export class MoleculeManager {
         return { success: `Pasted ${newAtoms.length} atom(s)` };
     }
 
-    mergeMolecule(sourceIndex) {
+    mergeMolecule(sourceIndex, minDistance = 0) {
         if (sourceIndex < 0 || sourceIndex >= this.molecules.length) {
             return { error: `Invalid molecule index: ${sourceIndex}` };
         }
@@ -255,7 +263,9 @@ export class MoleculeManager {
         this.editor.saveState();
 
         // Calculate offset to avoid overlap
-        const offset = new THREE.Vector3(5, 0, 0);
+        const currentAtoms = targetMol.molecule.atoms;
+        const incomingAtoms = sourceMol.molecule.atoms; // Atom objects
+        const offset = this.calculateSmartOffset(incomingAtoms, currentAtoms, minDistance);
 
         // Copy atoms from source to target
         const atomMap = new Map(); // Map source atoms to new atoms
@@ -312,5 +322,38 @@ export class MoleculeManager {
 
             container.appendChild(item);
         });
+    }
+
+    calculateSmartOffset(incomingAtoms, currentAtoms, minDistance) {
+        if (minDistance <= 0) return new THREE.Vector3(0, 0, 0);
+        if (currentAtoms.length === 0 || incomingAtoms.length === 0) return new THREE.Vector3(0, 0, 0);
+
+        let offsetZ = 0;
+        const step = 3.0; // Shift by 3 units at a time
+        const maxSteps = 50; // Prevent infinite loop
+
+        for (let i = 0; i < maxSteps; i++) {
+            let collision = false;
+            const currentOffset = new THREE.Vector3(0, 0, offsetZ);
+
+            for (const incAtom of incomingAtoms) {
+                const incPos = incAtom.position.clone().add(currentOffset);
+                for (const curAtom of currentAtoms) {
+                    if (incPos.distanceTo(curAtom.position) < minDistance) {
+                        collision = true;
+                        break;
+                    }
+                }
+                if (collision) break;
+            }
+
+            if (!collision) {
+                return currentOffset;
+            }
+
+            offsetZ += step;
+        }
+
+        return new THREE.Vector3(0, 0, offsetZ);
     }
 }
