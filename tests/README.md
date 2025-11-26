@@ -29,7 +29,7 @@ To run any test:
 **Purpose**: Precise molecular geometry control  
 **Features**: `setdist`, `setangle`, `setdihedral`
 
-### 05_multiline_input.txt
+### 05_heardoc_add.txt
 **Purpose**: Import complete molecular structures  
 **Features**: Heredoc syntax, XYZ format import
 
