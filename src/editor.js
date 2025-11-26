@@ -4,12 +4,16 @@ import { Molecule } from './molecule.js';
 import { Interaction } from './interaction.js';
 import { ELEMENTS, DEFAULT_ELEMENT } from './constants.js';
 import { Console } from './console.js';
+import { MoleculeManager } from './moleculeManager.js';
 
 export class Editor {
     constructor() {
         this.canvas = document.getElementById('editor-canvas');
         this.renderer = new Renderer(this.canvas);
-        this.molecule = new Molecule();
+
+        // Initialize MoleculeManager (this will create the first molecule and set this.molecule)
+        this.moleculeManager = new MoleculeManager(this);
+
         this.interaction = new Interaction(this.renderer, this.canvas);
 
         this.mode = 'edit';
@@ -243,6 +247,7 @@ export class Editor {
                 this.updateAllLabels();
             } else if (e.key.toLowerCase() === 'c') {
                 // Toggle console
+                e.preventDefault(); // Prevent 'c' from being typed into console input
                 this.console.toggle();
             } else if (e.key.toLowerCase() === 'o') {
                 this.setMode('move');
@@ -257,6 +262,24 @@ export class Editor {
                 this.clearSelection();
             }
         });
+
+        // Molecule Management UI
+        const btnNew = document.getElementById('btn-new-molecule');
+        if (btnNew) {
+            btnNew.onclick = () => {
+                this.moleculeManager.createMolecule();
+            };
+        }
+
+        const btnDelete = document.getElementById('btn-delete-molecule');
+        if (btnDelete) {
+            btnDelete.onclick = () => {
+                if (confirm('Are you sure you want to delete the current molecule?')) {
+                    const result = this.moleculeManager.removeMolecule(this.moleculeManager.activeMoleculeIndex);
+                    if (result.error) alert(result.error);
+                }
+            };
+        }
     }
 
     setMode(mode) {
@@ -1330,7 +1353,7 @@ export class Editor {
     // Old getElementColor removed
     // getElementColor(element) { ... }
 
-    openCoordinateEditor() {
+    openCoordinateEditor(initialFormat = 'xyz') {
         const modal = document.getElementById('coord-modal');
         const backdrop = document.getElementById('modal-backdrop');
         const input = document.getElementById('coord-input');
@@ -1339,16 +1362,25 @@ export class Editor {
         const btnImport = document.getElementById('btn-coord-import');
         const btnCancel = document.getElementById('btn-coord-cancel');
 
+        // Set initial format
+        formatSelect.value = initialFormat;
+
         // Load current molecule data
-        const currentFormat = formatSelect.value;
-        if (currentFormat === 'xyz') {
-            // Only show XYZ if there are atoms, otherwise show empty
-            if (this.molecule.atoms.length > 0) {
-                input.value = this.molecule.toXYZ();
+        const loadCurrentData = () => {
+            const currentFormat = formatSelect.value;
+            if (currentFormat === 'xyz') {
+                // Only show XYZ if there are atoms, otherwise show empty
+                if (this.molecule.atoms.length > 0) {
+                    input.value = this.molecule.toXYZ();
+                } else {
+                    input.value = '';
+                }
             } else {
-                input.value = '';
+                input.value = ''; // Clear for other formats for now
             }
-        }
+        };
+
+        loadCurrentData();
 
         modal.style.display = 'block';
         backdrop.style.display = 'block';
@@ -1359,16 +1391,7 @@ export class Editor {
 
         // Format change handler
         formatSelect.onchange = () => {
-            const format = formatSelect.value;
-            if (format === 'xyz') {
-                // Only show XYZ if there are atoms, otherwise show empty
-                if (this.molecule.atoms.length > 0) {
-                    input.value = this.molecule.toXYZ();
-                } else {
-                    input.value = '';
-                }
-            }
-            // Future formats will be added here
+            loadCurrentData();
         };
 
         // Copy to clipboard

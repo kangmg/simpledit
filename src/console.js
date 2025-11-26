@@ -12,7 +12,11 @@ export class Console {
         this.panel = document.getElementById('console-panel');
         this.output = document.getElementById('console-output');
         this.input = document.getElementById('console-input');
+        this.prompt = document.getElementById('console-prompt');
         this.closeBtn = document.getElementById('console-close');
+
+        this.inputMode = false;
+        this.inputCallback = null;
 
         this.bindEvents();
         this.print('Console initialized. Type "help" for commands.', 'info');
@@ -22,14 +26,34 @@ export class Console {
         // Input handling
         this.input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                this.handleCommand();
+                if (e.shiftKey) {
+                    // Allow new line
+                    return;
+                }
+                e.preventDefault();
+
+                if (this.inputMode) {
+                    this.handleInput();
+                } else {
+                    this.handleCommand();
+                }
             } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                this.navigateHistory(-1);
+                if (!this.inputMode) {
+                    e.preventDefault();
+                    this.navigateHistory(-1);
+                }
             } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                this.navigateHistory(1);
+                if (!this.inputMode) {
+                    e.preventDefault();
+                    this.navigateHistory(1);
+                }
             }
+        });
+
+        // Auto-resize textarea
+        this.input.addEventListener('input', () => {
+            this.input.style.height = 'auto';
+            this.input.style.height = this.input.scrollHeight + 'px';
         });
 
         // Close button
@@ -45,45 +69,140 @@ export class Console {
         }
     }
 
+    startInputMode(promptText, callback) {
+        this.inputMode = true;
+        this.inputCallback = callback;
+        this.prompt.innerText = promptText;
+        this.input.value = '';
+        this.input.focus();
+        this.print(`Enter data for ${promptText.replace('> ', '')}. Press Enter to submit, Shift+Enter for new line.`, 'info');
+    }
+
+    endInputMode() {
+        this.inputMode = false;
+        this.inputCallback = null;
+        this.prompt.innerText = '>';
+        this.input.value = '';
+        this.input.style.height = 'auto';
+    }
+
+    handleInput() {
+        const data = this.input.value; // Keep raw data including newlines
+        if (!data.trim()) return;
+
+        this.print(data, 'input-data'); // Echo input
+
+        if (this.inputCallback) {
+            this.inputCallback(data);
+        }
+
+        this.endInputMode();
+    }
+
     handleCommand() {
-        const commandString = this.input.value.trim();
-        if (!commandString) return;
+        const rawInput = this.input.value.trim();
+        if (!rawInput) {
+            this.input.value = ''; // Clear newlines if any
+            this.input.style.height = 'auto';
+            return;
+        }
 
         // Add to history
-        this.commandHistory.push(commandString);
+        this.commandHistory.push(rawInput);
         this.historyIndex = this.commandHistory.length;
 
-        // Display command
-        this.print(`> ${commandString}`, 'prompt');
+        // Display command block
+        this.print(`> ${rawInput}`, 'prompt');
 
-        // Parse and execute
-        const parsed = this.parser.parse(commandString);
-        if (!parsed) {
-            this.input.value = '';
-            return;
-        }
+        // Parse and process heredoc syntax
+        const processedCommands = this.parseHeredoc(rawInput);
 
-        const command = this.commandRegistry.get(parsed.command);
-        if (!command) {
-            this.print(`Command '${parsed.command}' not found. Type 'help' for available commands.`, 'error');
-            this.input.value = '';
-            return;
-        }
+        // Execute each command
+        processedCommands.forEach(({ command: commandString, heredocData }) => {
+            // Parse and execute
+            const parsed = this.parser.parse(commandString);
+            if (!parsed) return;
 
-        try {
-            const result = command.execute(parsed.args);
-            if (result) {
-                if (result.success) this.print(result.success, 'success');
-                if (result.error) this.print(result.error, 'error');
-                if (result.warning) this.print(result.warning, 'warning');
-                if (result.info) this.print(result.info, 'info');
+            const command = this.commandRegistry.get(parsed.command);
+            if (!command) {
+                this.print(`Command '${parsed.command}' not found.`, 'error');
+                return;
             }
-        } catch (error) {
-            this.print(`Error: ${error.message}`, 'error');
-            console.error(error);
-        }
+
+            try {
+                // If heredoc data exists, pass it via special __heredoc__ arg
+                if (heredocData) {
+                    parsed.args.push('__heredoc__', heredocData);
+                }
+
+                const result = command.execute(parsed.args);
+                if (result) {
+                    if (result.success) this.print(result.success, 'success');
+                    if (result.error) this.print(result.error, 'error');
+                    if (result.warning) this.print(result.warning, 'warning');
+                    if (result.info) this.print(result.info, 'info');
+                }
+            } catch (error) {
+                this.print(`Error executing '${commandString}': ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
 
         this.input.value = '';
+        this.input.style.height = 'auto';
+    }
+
+    parseHeredoc(input) {
+        // Replace backslashes with newlines first
+        const normalized = input.replace(/\s*\\\s*/g, '\n');
+        const lines = normalized.split('\n');
+
+        const result = [];
+        let i = 0;
+
+        while (i < lines.length) {
+            const line = lines[i].trim();
+
+            // Skip comments and empty lines
+            if (!line || line.startsWith('#')) {
+                i++;
+                continue;
+            }
+
+            // Check for heredoc syntax: command <<DELIMITER
+            const heredocMatch = line.match(/^(.+?)\s*<<\s*(\S+)$/);
+
+            if (heredocMatch) {
+                const [, commandPart, delimiter] = heredocMatch;
+                const heredocLines = [];
+                i++; // Move to next line
+
+                // Collect lines until delimiter
+                while (i < lines.length) {
+                    const currentLine = lines[i];
+                    if (currentLine.trim() === delimiter) {
+                        i++; // Skip delimiter line
+                        break;
+                    }
+                    heredocLines.push(currentLine);
+                    i++;
+                }
+
+                result.push({
+                    command: commandPart.trim(),
+                    heredocData: heredocLines.join('\n')
+                });
+            } else {
+                // Regular command
+                result.push({
+                    command: line,
+                    heredocData: null
+                });
+                i++;
+            }
+        }
+
+        return result;
     }
 
     navigateHistory(direction) {
@@ -106,12 +225,9 @@ export class Console {
         const line = document.createElement('div');
         line.className = `console-line ${type}`;
 
-        // Preserve line breaks
-        const lines = message.split('\\n');
-        lines.forEach((l, i) => {
-            if (i > 0) line.appendChild(document.createElement('br'));
-            line.appendChild(document.createTextNode(l));
-        });
+        // Preserve line breaks and spaces
+        line.style.whiteSpace = 'pre-wrap';
+        line.textContent = message;
 
         this.output.appendChild(line);
 

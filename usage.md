@@ -59,9 +59,11 @@
 - **`help`** / **`h`**: Show all commands or specific command help
 - **`list`** / **`ls`**: List all atoms
 - **`list selected`**: List only selected atoms
-- **`add <element> <x> <y> <z>`** / **`a`**: Add atom at coordinates
-- **`delete <index...>`** / **`del`**: Delete atoms by index
-- **`select <index...>`** / **`sel`**: Select atoms by index
+- **`add <element> [x] [y] [z]`** / **`a`**: Add atom at position (default 0,0,0)
+- **`add <format>`**: Enter multi-line input mode (Formats: `xyz`, `smi`, `mol2`)
+- **`add <format> <<DELIMITER`**: Heredoc syntax for batch input (e.g., `add xyz <<EOF`)
+- **`delete <index...>`** / **`del`**: Delete atoms by index (use `:` for all)
+- **`select <index...>`** / **`sel`**: Select atoms by index (use `:` for all)
 
 ## Information
 - **`info`** / **`i`**: Show selected atoms info
@@ -95,8 +97,22 @@
 - **`fragment <index>`** / **`frag`**: Select entire fragment containing atom
 - **`fragments`** / **`frags`**: List all fragments with atom counts
 
+## Molecule Management
+- **`molecules`** / **`mols`**: List all molecules
+- **`new [name]`**: Create new molecule
+- **`switch <index|name>`** / **`sw`**: Switch active molecule
+- **`rename <name>`** / **`rn`**: Rename active molecule
+- **`remove [index|name]`** / **`rm`**: Remove molecule
+- **`copy`** / **`cp`**: Copy selected atoms to clipboard
+- **`paste`** / **`pa`**: Paste clipboard atoms
+- **`cut`** / **`ct`**: Cut selected atoms
+- **`merge <index|name>`** / **`mg`**: Merge molecule into active
+
 ## Utility
-- **`clear`**: Clear all atoms
+- **`clear`** / **`cls`**: Clear console output
+- **`#`**: Comment prefix (lines starting with `#` are ignored)
+- **`\`**: Multi-line command
+- **`<<EOF`**,**`>>EOF`**: Heredoc syntax for batch input
 
 ## History Navigation
 - **Up/Down arrows**: Navigate command history

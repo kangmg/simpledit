@@ -148,15 +148,39 @@ select:hover {
     background: var(--panel-bg);
     border: none;
     color: var(--text-color);
-    padding: 8px;
+    padding: 8px 12px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 13px;
     transition: background 0.2s;
+    margin-bottom: 5px;
 }
 
 .action-btn:hover {
-    background: #333;
+    background: #3e3e42;
+}
+
+.element-btn {
+    background: var(--panel-bg);
+    border: 1px solid #333;
+    color: var(--text-color);
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.element-btn:hover {
+    background: #3e3e42;
+    border-color: #555;
+}
+
+.element-btn.active {
+    background: rgba(187, 134, 252, 0.15);
+    border: 1px solid rgba(187, 134, 252, 0.3);
+    color: var(--accent-color);
 }
 
 .primary-btn {
@@ -304,13 +328,20 @@ select:hover {
 }
 
 .console-input {
-    flex: 1;
     background: transparent;
     border: none;
-    color: #00ff00;
+    color: #e0e0e0;
     font-family: 'JetBrains Mono', 'Consolas', monospace;
     font-size: 13px;
+    flex: 1;
     outline: none;
+    resize: none;
+    /* Auto-resize via JS */
+    overflow: hidden;
+    min-height: 20px;
+    line-height: 1.5;
+    padding: 0;
+    margin: 0;
     caret-color: #00ff00;
 }
 
@@ -332,4 +363,64 @@ select:hover {
 
 .console-output .info {
     color: #00ffff;
+}
+
+/* Molecule List */
+.molecule-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.molecule-item {
+    padding: 6px 8px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.2s;
+    border-radius: 6px;
+    margin-bottom: 2px;
+}
+
+.molecule-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.molecule-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.molecule-item.active {
+    background: rgba(187, 134, 252, 0.15);
+    /* border: 1px solid rgba(187, 134, 252, 0.3); Removed border */
+    color: var(--accent-color);
+}
+
+.molecule-item.active .molecule-name::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.molecule-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: inherit;
+    /* Inherit color from parent (white or accent) */
+    display: flex;
+    align-items: center;
+}
+
+.molecule-info {
+    font-size: 11px;
+    color: #666;
 }

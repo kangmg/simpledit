@@ -78,6 +78,16 @@
           </button>
         </div>
 
+        <!-- Molecule List -->
+        <div class="control-row" style="margin-top: 15px;">
+          <div class="section-label">Molecules</div>
+          <div id="molecule-list" class="molecule-list"></div>
+          <div style="margin-top: 5px; display: flex; gap: 5px;">
+            <button id="btn-new-molecule" class="action-btn" style="flex: 1;">+ New</button>
+            <button id="btn-delete-molecule" class="action-btn" style="flex: 1; background: #ff4444;">Del</button>
+          </div>
+        </div>
+
         <div class="control-row">
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
             <span style="font-size: 12px; color: #888;">Bond Threshold</span>
@@ -132,8 +142,11 @@
       style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px; z-index: 1000; width: 600px; max-width: 90%;">
       <h3 style="margin-top: 0; color: white; margin-bottom: 20px;">Atomic Coordinate Editor</h3>
       <div style="margin-bottom: 15px;">
-        <select id="coord-format" style="width: auto;">
-          <option value="xyz">XYZ Format</option>
+        <label for="coord-format" style="color: #aaa; margin-right: 10px;">Format:</label>
+        <select id="coord-format" style="width: auto; background: #333; color: white; border: none; padding: 5px;">
+          <option value="xyz">XYZ</option>
+          <option value="smi">SMILES (Coming Soon)</option>
+          <option value="mol2">Mol2 (Coming Soon)</option>
         </select>
       </div>
       <textarea id="coord-input" rows="15"
@@ -156,6 +169,7 @@
       <h3 style="margin-top: 0; color: white; margin-bottom: 20px;">Select Element</h3>
       <div id="periodic-table"
         style="display: grid; grid-template-columns: repeat(18, 36px); gap: 4px; margin-top: 10px;"></div>
+
     </div>
 
     <!-- Console Panel -->
@@ -166,9 +180,8 @@
       </div>
       <div id="console-output" class="console-output"></div>
       <div class="console-input-container">
-        <span class="console-input-prompt">&gt;</span>
-        <input type="text" id="console-input" class="console-input" placeholder="Type 'help' for commands..."
-          autocomplete="off">
+        <span id="console-prompt" class="console-prompt">&gt;</span>
+        <textarea id="console-input" class="console-input" rows="1" spellcheck="false"></textarea>
       </div>
     </div>
   </div>

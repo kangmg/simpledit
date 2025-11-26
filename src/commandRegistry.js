@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ELEMENTS } from './constants.js';
 
 export class CommandRegistry {
     constructor(editor) {
@@ -40,10 +41,10 @@ export class CommandRegistry {
         this.register('help', ['h'], 'help [command] - Show commands', (args) => {
             if (args.length === 0) {
                 const commands = this.getAllCommands();
-                let output = 'Available commands:\\n';
+                let output = 'Available commands:\n';
                 commands.forEach(cmd => {
                     const aliases = cmd.aliases.length > 0 ? ` (${cmd.aliases.join(', ')})` : '';
-                    output += `  ${cmd.name}${aliases}: ${cmd.help}\\n`;
+                    output += `  ${cmd.name}${aliases}: ${cmd.help}\n`;
                 });
                 return { info: output };
             }
@@ -69,48 +70,118 @@ export class CommandRegistry {
             atoms.forEach((atom, i) => {
                 const idx = this.editor.molecule.atoms.indexOf(atom);
                 const pos = atom.position;
-                output += `${idx}: ${atom.element} (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})\\n`;
+                output += `${idx}: ${atom.element} (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})\n`;
             });
             return { info: output };
         });
 
-        // Add command
-        this.register('add', ['a'], 'add <element> <x> <y> <z> - Add atom', (args) => {
-            if (args.length !== 4) {
-                return { error: 'Usage: add <element> <x> <y> <z>' };
+        // Add atom command
+        this.register('add', ['a'], 'add <element> [x] [y] [z] OR add <format> (xyz, smi, mol2)', (args) => {
+            if (args.length === 0) {
+                return { error: 'Usage: add <element> [x] [y] [z] OR add <format>' };
             }
 
-            const [element, x, y, z] = args;
-            const xNum = parseFloat(x);
-            const yNum = parseFloat(y);
-            const zNum = parseFloat(z);
+            // Check for heredoc data (passed via special args)
+            const heredocIndex = args.indexOf('__heredoc__');
+            if (heredocIndex !== -1 && heredocIndex < args.length - 1) {
+                const heredocData = args[heredocIndex + 1];
+                // Remove heredoc args
+                args.splice(heredocIndex, 2);
 
-            if (isNaN(xNum) || isNaN(yNum) || isNaN(zNum)) {
-                return { error: 'Coordinates must be numbers' };
+                // Process based on first arg (format)
+                const format = args[0].toLowerCase();
+                try {
+                    this.editor.saveState();
+
+                    if (format === 'xyz') {
+                        this.editor.molecule.fromXYZ(heredocData);
+                        this.editor.rebuildScene();
+                        return { success: 'Molecule loaded from XYZ data' };
+                    } else if (format === 'smi' || format === 'smiles') {
+                        return { warning: 'SMILES format parsing not yet implemented' };
+                    } else if (format === 'mol2') {
+                        return { warning: 'Mol2 format parsing not yet implemented' };
+                    }
+                } catch (error) {
+                    return { error: `Error parsing data: ${error.message}` };
+                }
             }
 
-            this.editor.saveState(); // Undo/redo integration
+            // Check for format mode (interactive)
+            const firstArg = args[0].toLowerCase();
+            if (['xyz', 'smi', 'mol2', 'smiles'].includes(firstArg)) {
+                const format = firstArg === 'smiles' ? 'smi' : firstArg;
 
-            const pos = new THREE.Vector3(xNum, yNum, zNum);
-            const atom = this.editor.addAtomToScene(element.toUpperCase(), pos);
-            const idx = this.editor.molecule.atoms.indexOf(atom);
+                this.editor.console.startInputMode(`${format.toUpperCase()}> `, (data) => {
+                    try {
+                        this.editor.saveState();
 
-            return { success: `Added ${element.toUpperCase()} at index ${idx}` };
+                        if (format === 'xyz') {
+                            this.editor.molecule.fromXYZ(data);
+                            this.editor.rebuildScene();
+                            this.editor.console.print('Molecule loaded from XYZ data.', 'success');
+                        } else {
+                            this.editor.console.print(`${format.toUpperCase()} format parsing not yet implemented.`, 'warning');
+                        }
+                    } catch (error) {
+                        this.editor.console.print(`Error parsing ${format.toUpperCase()} data: ${error.message}`, 'error');
+                    }
+                });
+
+                return null; // Output handled by startInputMode
+            }
+
+            // Standard add atom logic
+            const element = args[0].toUpperCase();
+
+            // Validate element using ELEMENTS constant
+            if (!(element in ELEMENTS)) {
+                return { error: `Invalid element: ${element}` };
+            }
+
+            let x = 0, y = 0, z = 0;
+            if (args.length >= 4) {
+                x = parseFloat(args[1]);
+                y = parseFloat(args[2]);
+                z = parseFloat(args[3]);
+                if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                    return { error: 'Coordinates must be numbers' };
+                }
+            } else if (args.length > 1) {
+                return { error: 'Usage: add <element> [x] [y] [z]' };
+            }
+
+            this.editor.saveState();
+            const pos = new THREE.Vector3(x, y, z);
+            this.editor.addAtomToScene(element, pos);
+            return { success: `Added ${element} at (${x}, ${y}, ${z})` };
         });
 
         // Delete command
-        this.register('delete', ['del'], 'delete <index...> - Delete atoms', (args) => {
+        this.register('delete', ['del'], 'delete <index...> OR delete : - Delete atoms (: for all)', (args) => {
             if (args.length === 0) {
-                return { error: 'Usage: delete <index...>' };
+                return { error: 'Usage: delete <index...> OR delete :' };
             }
 
-            const indices = args.map(a => parseInt(a));
+            // Check for ':' (all atoms)
+            if (args.length === 1 && args[0] === ':') {
+                const count = this.editor.molecule.atoms.length;
+                if (count === 0) {
+                    return { info: 'No atoms to delete' };
+                }
+                this.editor.saveState();
+                this.editor.molecule.clear();
+                this.editor.rebuildScene();
+                return { success: `Deleted all ${count} atoms` };
+            }
+
+            const indices = args.map(a => parseInt(a)).filter(i => !isNaN(i));
+            if (indices.length === 0) {
+                return { error: 'Invalid indices' };
+            }
             const toDelete = [];
 
             for (const idx of indices) {
-                if (isNaN(idx)) {
-                    return { error: `Invalid index: ${idx}` };
-                }
                 const atom = this.editor.molecule.atoms[idx];
                 if (!atom) {
                     return { error: `Atom ${idx} does not exist` };
@@ -131,9 +202,23 @@ export class CommandRegistry {
         });
 
         // Select command
-        this.register('select', ['sel'], 'select <index...> - Select atoms', (args) => {
+        this.register('select', ['sel'], 'select <index...> OR select : - Select atoms (: for all)', (args) => {
             if (args.length === 0) {
-                return { error: 'Usage: select <index...>' };
+                return { error: 'Usage: select <index...> OR select :' };
+            }
+
+            // Check for ':' (all atoms)
+            if (args.length === 1 && args[0] === ':') {
+                this.editor.clearSelection();
+                this.editor.molecule.atoms.forEach(atom => {
+                    atom.selected = true;
+                    if (!this.editor.selectionOrder.includes(atom)) {
+                        this.editor.selectionOrder.push(atom);
+                    }
+                    this.editor.updateAtomVisuals(atom);
+                });
+                this.editor.updateSelectionInfo();
+                return { success: `Selected all ${this.editor.molecule.atoms.length} atoms` };
             }
 
             const indices = args.map(a => parseInt(a));
@@ -176,7 +261,7 @@ export class CommandRegistry {
                 selected.forEach(atom => {
                     const idx = this.editor.molecule.atoms.indexOf(atom);
                     const pos = atom.position;
-                    output += `${idx}: ${atom.element} (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})\\n`;
+                    output += `${idx}: ${atom.element} (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})\n`;
                 });
                 return { info: output };
             }
@@ -419,10 +504,12 @@ export class CommandRegistry {
 
             const fragment = this.editor.getConnectedAtoms(atom, null);
 
-            this.editor.molecule.atoms.forEach(a => a.selected = false);
+            // Select all atoms in fragment
+            this.editor.clearSelection();
             fragment.forEach(a => {
                 a.selected = true;
-                this.editor.updateAtomColor(a);
+                this.editor.selectionOrder.push(a);
+                this.editor.updateAtomVisuals(a);
             });
 
             return { success: `Selected fragment with ${fragment.size} atoms` };
@@ -449,7 +536,7 @@ export class CommandRegistry {
 
             let output = '';
             fragments.forEach((frag, i) => {
-                output += `Fragment ${i}: atoms [${frag.join(',')}] (${frag.length} atoms)\\n`;
+                output += `Fragment ${i}: atoms [${frag.join(',')}] (${frag.length} atoms)\n`;
             });
             return { info: output };
         });
@@ -486,16 +573,133 @@ export class CommandRegistry {
         });
 
         // Clear command
-        this.register('clear', [], 'clear - Clear all atoms', (args) => {
-            if (this.editor.molecule.atoms.length === 0) {
-                return { info: 'No atoms to clear' };
+        this.register('clear', ['cls'], 'clear - Clear console output', (args) => {
+            this.editor.console.clear();
+            return null; // No output needed
+        });
+
+        // Molecule Management Commands
+
+        // List molecules
+        this.register('molecules', ['mols'], 'molecules - List all molecules', (args) => {
+            const molecules = this.editor.moleculeManager.molecules;
+            const activeIndex = this.editor.moleculeManager.activeMoleculeIndex;
+
+            let output = '';
+            molecules.forEach((entry, i) => {
+                const active = i === activeIndex ? '*' : ' ';
+                output += `${active} ${i}: ${entry.name} (${entry.molecule.atoms.length} atoms)\n`;
+            });
+            return { info: output };
+        });
+
+        // New molecule command
+        this.register('new', [], 'new [name] - Create new molecule', (args) => {
+            const name = args.join(' ');
+            const result = this.editor.moleculeManager.createMolecule(name);
+
+            if (result.error) {
+                return { error: result.error };
             }
 
+            return { success: `Created new molecule "${result.name}"` };
+        });
+
+        // Switch molecule
+        this.register('switch', ['sw'], 'switch <index|name> - Switch active molecule', (args) => {
+            if (args.length === 0) return { error: 'Usage: switch <index|name>' };
+
+            const target = args.join(' ');
+            let index = parseInt(target);
+
+            // If not a number, try to find by name
+            if (isNaN(index)) {
+                index = this.editor.moleculeManager.molecules.findIndex(m => m.name === target);
+                if (index === -1) return { error: `Molecule "${target}" not found` };
+            }
+
+            const result = this.editor.moleculeManager.switchMolecule(index);
+            if (result.error) return { error: result.error };
+            return { success: result.success };
+        });
+
+        // Remove molecule
+        this.register('remove', ['rm'], 'remove [index|name] - Remove molecule', (args) => {
+            let index;
+
+            if (args.length === 0) {
+                // Remove current
+                index = this.editor.moleculeManager.activeMoleculeIndex;
+            } else {
+                const target = args.join(' ');
+                index = parseInt(target);
+
+                if (isNaN(index)) {
+                    index = this.editor.moleculeManager.molecules.findIndex(m => m.name === target);
+                    if (index === -1) return { error: `Molecule "${target}" not found` };
+                }
+            }
+
+            const result = this.editor.moleculeManager.removeMolecule(index);
+            if (result.error) return { error: result.error };
+            return { success: result.success };
+        });
+
+        // Rename molecule
+        this.register('rename', ['rn'], 'rename <name> - Rename active molecule', (args) => {
+            if (args.length === 0) return { error: 'Usage: rename <name>' };
+
+            const newName = args.join(' ');
+            const index = this.editor.moleculeManager.activeMoleculeIndex;
+
+            const result = this.editor.moleculeManager.renameMolecule(index, newName);
+            if (result.error) return { error: result.error };
+            return { success: result.success };
+        });
+
+        // Copy selection command
+        this.register('copy', ['cp'], 'copy - Copy selected atoms to clipboard', (args) => {
+            const result = this.editor.moleculeManager.copySelection();
+            if (result.error) return { error: result.error };
+            return { success: result.success };
+        });
+
+        // Paste clipboard command
+        this.register('paste', ['pa'], 'paste - Paste clipboard atoms', (args) => {
+            const result = this.editor.moleculeManager.pasteClipboard();
+            if (result.error) return { error: result.error };
+            return { success: result.success };
+        });
+
+        // Cut command (copy + delete)
+        this.register('cut', ['ct'], 'cut - Cut selected atoms', (args) => {
+            const copyResult = this.editor.moleculeManager.copySelection();
+            if (copyResult.error) return { error: copyResult.error };
+
+            // Delete selected atoms
             this.editor.saveState();
-            this.editor.molecule.clear();
-            this.editor.rebuildScene();
-            return { success: 'All atoms cleared' };
+            this.editor.deleteSelected();
+
+            return { success: `Cut ${this.editor.moleculeManager.clipboard.atoms.length} atom(s)` };
+        });
+
+        // Merge command
+        this.register('merge', ['mg'], 'merge <index|name> - Merge molecule into active', (args) => {
+            if (args.length === 0) return { error: 'Usage: merge <index|name>' };
+
+            const target = args.join(' ');
+            let index;
+
+            if (!isNaN(target)) {
+                index = parseInt(target);
+            } else {
+                index = this.editor.moleculeManager.molecules.findIndex(m => m.name === target);
+                if (index === -1) return { error: `Molecule "${target}" not found` };
+            }
+
+            const result = this.editor.moleculeManager.mergeMolecule(index);
+            if (result.error) return { error: result.error };
+            return { success: result.success };
         });
     }
 }
-
