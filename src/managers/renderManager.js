@@ -23,7 +23,8 @@ export class RenderManager {
         const radius = element.radius;
         const color = this.getElementColor(atom.element);
 
-        const geometry = new THREE.SphereGeometry(radius * 0.4, 16, 16);
+        // Increased size by 1.2x (0.4 -> 0.48)
+        const geometry = new THREE.SphereGeometry(radius * 0.6, 16, 16);
         const material = new THREE.MeshPhongMaterial({
             color: color,
             emissive: atom.selected ? 0x666600 : 0x000000,
@@ -32,7 +33,18 @@ export class RenderManager {
 
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.copy(atom.position);
-        mesh.userData = { type: 'atom', index: atom.index, atom: atom };
+        const index = this.editor.molecule.atoms.indexOf(atom);
+        mesh.userData = { type: 'atom', index: index, atom: atom };
+
+        // Add outline (Inverted Hull)
+        const outlineGeometry = geometry.clone();
+        const outlineMaterial = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            side: THREE.BackSide
+        });
+        const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
+        outlineMesh.scale.multiplyScalar(1.05); // 5% larger for outline
+        mesh.add(outlineMesh);
 
         return mesh;
     }
@@ -55,7 +67,8 @@ export class RenderManager {
         const length = direction.length();
         const midpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
 
-        const geometry = new THREE.CylinderGeometry(0.15, 0.15, length, 8);
+        // Increased thickness (0.08 -> 0.1)
+        const geometry = new THREE.CylinderGeometry(0.1, 0.1, length, 8);
         const material = new THREE.MeshPhongMaterial({
             color: 0x000000, // Black
             shininess: 30
@@ -141,6 +154,11 @@ export class RenderManager {
         });
         toRemove.forEach(obj => this.renderer.scene.remove(obj));
 
+        // Clear all existing labels from DOM
+        if (this.editor.labelContainer) {
+            this.editor.labelContainer.innerHTML = '';
+        }
+
         // Recreate atoms
         this.editor.molecule.atoms.forEach(atom => {
             const mesh = this.createAtomMesh(atom);
@@ -173,16 +191,17 @@ export class RenderManager {
         // Update position
         atom.mesh.position.copy(atom.position);
 
-        // Update color
-        const color = this.getElementColor(atom.element);
-        atom.mesh.material.color.setHex(color);
-
         // Update selection highlight
         const material = atom.mesh.material;
         if (atom.selected) {
-            material.emissive.setHex(0x666600);
+            material.color.setHex(0xffff00); // Unified Yellow Base
+            material.emissive.setHex(0x222200); // Unified Emissive
+            atom.mesh.scale.set(1, 1, 1);
         } else {
+            const color = this.getElementColor(atom.element);
+            material.color.setHex(color); // Restore Element Color
             material.emissive.setHex(0x000000);
+            atom.mesh.scale.set(1, 1, 1);
         }
     }
 
@@ -216,7 +235,7 @@ export class RenderManager {
             const material = bond.mesh.material;
 
             if (bothSelected) {
-                material.color.setHex(0x666600); // Darker yellow highlight
+                material.color.setHex(0xffff00); // Yellow
                 material.emissive.setHex(0x222200);
             } else {
                 material.color.setHex(0x000000); // Black

@@ -10,6 +10,9 @@ add atom H 1.09 0 0
 time 1
 
 add atom H -0.36 1.03 0
+set threshold 1.8
+
+rebond
 time 1
 
 # Select atoms
@@ -17,7 +20,9 @@ select 0 1
 time 1
 
 # Delete atom
+info
 del atom 2
+info
 time 1
 
 # Select all and delete

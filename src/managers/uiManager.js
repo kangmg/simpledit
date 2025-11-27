@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { ErrorHandler } from '../utils/errorHandler.js';
 import { ELEMENTS } from '../constants.js';
 
@@ -84,7 +85,7 @@ export class UIManager {
         if (projectionSelect) {
             projectionSelect.onchange = (e) => {
                 this.state.setProjectionMode(e.target.value);
-                this.editor.renderer.setProjectionMode(e.target.value);
+                this.editor.renderer.setProjection(e.target.value);
             };
         }
     }
@@ -93,7 +94,7 @@ export class UIManager {
      * Bind label toggle button
      */
     bindLabelButton() {
-        const btnLabel = document.getElementById('btn-label');
+        const btnLabel = document.getElementById('btn-toggle-labels');
         if (btnLabel) {
             btnLabel.onclick = () => {
                 const newMode = this.state.cycleLabelMode();
@@ -193,6 +194,17 @@ export class UIManager {
                 this.openPeriodicTable((element) => {
                     this.editor.selectedElement = element;
                     document.getElementById('current-element-symbol').textContent = element;
+
+                    // If atoms are selected, update their element
+                    const selectedAtoms = this.editor.molecule.atoms.filter(a => a.selected);
+                    if (selectedAtoms.length > 0) {
+                        selectedAtoms.forEach(atom => {
+                            atom.element = element;
+                            this.editor.updateAtomVisuals(atom);
+                        });
+                        this.editor.updateAllLabels(); // Update labels to reflect new element
+                    }
+
                     this.closePeriodicTable();
                 });
             };
@@ -269,7 +281,7 @@ export class UIManager {
      * Update label button text to reflect current mode
      */
     updateLabelButtonText() {
-        const btn = document.getElementById('btn-label');
+        const btn = document.getElementById('btn-toggle-labels');
         if (!btn) return;
 
         const mode = this.state.getLabelMode();
@@ -288,7 +300,7 @@ export class UIManager {
      * @param {function} callback - Callback function when element is selected
      */
     openPeriodicTable(callback) {
-        const modal = document.getElementById('periodic-table-modal');
+        const modal = document.getElementById('pt-modal');
         if (modal) {
             modal.style.display = 'block';
             this.currentPeriodicTableCallback = callback;
@@ -299,7 +311,7 @@ export class UIManager {
      * Close periodic table modal
      */
     closePeriodicTable() {
-        const modal = document.getElementById('periodic-table-modal');
+        const modal = document.getElementById('pt-modal');
         if (modal) {
             modal.style.display = 'none';
             this.currentPeriodicTableCallback = null;
@@ -575,7 +587,8 @@ export class UIManager {
     createAtomLabel(atom) {
         const label = document.createElement('div');
         label.className = 'atom-label';
-        label.dataset.atomIndex = atom.index;
+        const index = this.editor.molecule.atoms.indexOf(atom);
+        label.dataset.atomIndex = index;
 
         this.updateAtomLabelText(atom, label);
 
@@ -599,13 +612,14 @@ export class UIManager {
             label.style.display = 'none';
         } else {
             label.style.display = 'block';
+            const index = this.editor.molecule.atoms.indexOf(atom);
 
             if (mode === 'symbol') {
                 label.textContent = atom.element;
             } else if (mode === 'number') {
-                label.textContent = atom.index.toString();
+                label.textContent = index.toString();
             } else if (mode === 'both') {
-                label.textContent = `${atom.element}${atom.index}`;
+                label.textContent = `${atom.element}(${index})`;
             }
         }
     }
@@ -638,22 +652,86 @@ export class UIManager {
     /**
      * Update label positions (2D screen coordinates)
      */
+    /**
+     * Update label positions (2D screen coordinates)
+     */
     updateLabelPositions() {
-        const camera = this.editor.renderer.camera;
+        const camera = this.editor.renderer.activeCamera;
         const canvas = this.editor.canvas;
+        const scene = this.editor.renderer.scene;
+        const raycaster = new THREE.Raycaster();
 
         this.editor.molecule.atoms.forEach(atom => {
             if (!atom.label || !atom.mesh) return;
 
-            // Project 3D position to 2D screen
+            // 1. Project 3D position to NDC (Normalized Device Coordinates)
             const pos = atom.mesh.position.clone();
             pos.project(camera);
 
+            // 2. Check if behind camera or outside frustum (roughly)
+            if (pos.z > 1 || Math.abs(pos.x) > 1.1 || Math.abs(pos.y) > 1.1) {
+                atom.label.style.display = 'none';
+                return;
+            }
+
+            // 3. Occlusion Check (Raycasting)
+            raycaster.setFromCamera({ x: pos.x, y: pos.y }, camera);
+
+            // Intersect with atoms and bonds
+            // We filter objects to only include meshes that are atoms or bonds
+            const objectsToCheck = [];
+            scene.traverse(obj => {
+                if (obj.isMesh && obj.userData && (obj.userData.type === 'atom' || obj.userData.type === 'bond')) {
+                    objectsToCheck.push(obj);
+                }
+            });
+
+            const intersects = raycaster.intersectObjects(objectsToCheck);
+
+            if (intersects.length > 0) {
+                // The first hit object
+                const firstHit = intersects[0];
+
+                // If the first hit is NOT the current atom's mesh, it's occluded
+                // We allow a small tolerance or check if the object is the atom itself
+                if (firstHit.object !== atom.mesh) {
+                    // Check distance difference to avoid z-fighting flickering
+                    // If the blocking object is significantly closer than the atom
+                    if (firstHit.distance < intersects.find(hit => hit.object === atom.mesh)?.distance - 0.1) {
+                        atom.label.style.display = 'none';
+                        return;
+                    }
+                }
+            }
+
+            // 4. If visible, update position and scale
             const x = (pos.x * 0.5 + 0.5) * canvas.clientWidth;
             const y = (pos.y * -0.5 + 0.5) * canvas.clientHeight;
 
+            // Calculate scale based on distance or zoom
+            let scale = 1;
+            if (camera.isPerspectiveCamera) {
+                // Perspective: Scale inversely with distance
+                const distance = atom.mesh.position.distanceTo(camera.position);
+                const referenceDistance = 10; // Distance where scale is 1
+                scale = referenceDistance / distance;
+            } else {
+                // Orthographic: Scale with zoom
+                scale = camera.zoom;
+            }
+
+            // Clamp scale to reasonable limits (optional, but good for readability)
+            scale = Math.max(0.5, Math.min(scale, 2.0));
+
+            atom.label.style.display = 'block';
             atom.label.style.left = `${x}px`;
             atom.label.style.top = `${y}px`;
+            atom.label.style.transform = `translate(-50%, -50%) scale(${scale})`;
+
+            // Optional: Z-index based on depth so closer labels are on top
+            // pos.z in NDC is -1 (near) to 1 (far)
+            const zIndex = Math.floor((1 - pos.z) * 1000);
+            atom.label.style.zIndex = zIndex;
         });
     }
 }

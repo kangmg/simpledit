@@ -11,6 +11,7 @@ O  0.000  0.000  0.000
 H  0.757  0.586  0.000
 H -0.757  0.586  0.000
 EOF
+rebond
 
 list mols
 time 1
@@ -26,7 +27,7 @@ H -0.630 -0.630  0.630
 H -0.630  0.630 -0.630
 H  0.630 -0.630 -0.630
 EOF
-
+rebond 
 list mols
 time 1
 
@@ -53,6 +54,7 @@ new "Temp"
 add atom H 0 0 0
 add atom H 0 0.7 0
 time 1
+rebond 
 
 list mols
 time 1

@@ -107,14 +107,22 @@ export class EditorState {
         }
     }
 
-    removeFromSelection(atomIndex) {
+    removeFromSelection(atomIndex, atom) {
         // Remove from highlighted set
         this.selection.highlighted.delete(atomIndex);
 
         // Remove from order array
-        const index = this.selection.order.findIndex(a => a.index === atomIndex);
-        if (index !== -1) {
-            this.selection.order.splice(index, 1);
+        if (atom) {
+            const index = this.selection.order.indexOf(atom);
+            if (index !== -1) {
+                this.selection.order.splice(index, 1);
+            }
+        } else {
+            // Fallback if atom not provided (should not happen with updated SelectionManager)
+            const index = this.selection.order.findIndex(a => a.index === atomIndex);
+            if (index !== -1) {
+                this.selection.order.splice(index, 1);
+            }
         }
     }
 

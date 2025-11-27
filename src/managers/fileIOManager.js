@@ -131,7 +131,7 @@ export class FileIOManager {
                 y: atom.position.y,
                 z: atom.position.z
             },
-            index: atom.index
+            index: atoms.indexOf(atom)
         }));
 
         return JSON.stringify(data, null, 2);

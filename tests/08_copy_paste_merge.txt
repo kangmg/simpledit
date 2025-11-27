@@ -12,6 +12,7 @@ H        0.9419139       0.0000000      -1.6172590
 H       -0.4709570       0.8163013      -1.6172590
 H       -0.4709570      -0.8163013      -1.6172590
 BOR
+rebond 
 
 # 2. Create Ammonia (NH3)
 new Ammonia
@@ -23,6 +24,7 @@ H        0.9419139       0.0000000       0.6272589
 H       -0.4709570       0.8163013       0.6272589
 H       -0.4709570      -0.8163013       0.6272589
 AMM
+rebond
 
 list mols
 time 1
@@ -51,6 +53,7 @@ merge Borane_Copy
 # Merge Ammonia_Copy
 merge Ammonia_Copy
 time 1
+rebond
 
 list
 time 1
@@ -67,6 +70,7 @@ sw Borane
 paste
 rename Complex_pasted
 time 1
+# rebond # no rebond --> NH3-(no bond)-BH3
 
 list
 time 1
@@ -83,6 +87,7 @@ H       -0.6300000      -0.6300000       0.6300000
 H       -0.6300000       0.6300000      -0.6300000
 H        0.6300000      -0.6300000      -0.6300000
 MET
+rebond
 time 1
 
 # Copy from Complex_merged

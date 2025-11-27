@@ -271,6 +271,7 @@ export class CommandRegistry {
                 if (indices.length === 0) return { error: 'No valid indices provided' };
 
                 const toDelete = indices.map(i => this.editor.molecule.atoms[i]).filter(a => a);
+                this.editor.clearSelection(); // Clear existing selection to avoid deleting them
                 toDelete.forEach(a => a.selected = true);
                 this.editor.deleteSelected();
                 return { success: `Deleted ${toDelete.length} atom(s)` };
@@ -411,10 +412,15 @@ export class CommandRegistry {
                 atom.bonds = [];
             });
 
-            // Rebuild scene to update visuals and re-add bonds
+            // Auto bond
+            const thresholdInput = document.getElementById('bond-threshold');
+            const threshold = thresholdInput ? parseFloat(thresholdInput.value) : 1.1;
+            const count = this.editor.moleculeManager.autoBond(threshold);
+
+            // Rebuild scene to update visuals
             this.editor.rebuildScene();
 
-            return { success: 'Bonds recalculated' };
+            return { success: `Rebonded: ${count} bonds created` };
         });
 
         // Center command

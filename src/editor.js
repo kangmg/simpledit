@@ -430,21 +430,7 @@ export class Editor {
     }
 
     updateAtomVisuals(atom) {
-        if (atom.mesh) {
-            const material = atom.mesh.material;
-            if (atom.selected) {
-                material.color.setHex(0xffff00); // Yellow
-                material.emissive.setHex(0x222200);
-                material.transparent = true;
-                material.opacity = 0.6;
-            } else {
-                material.color.setHex(this.getElementColor(atom.element));
-                material.emissive.setHex(0x000000);
-                material.transparent = false;
-                material.opacity = 1.0;
-            }
-        }
-
+        this.renderManager.updateAtomVisuals(atom);
         // Update bond visuals if both atoms are selected
         this.updateBondVisuals();
     }

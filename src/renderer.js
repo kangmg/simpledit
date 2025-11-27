@@ -134,8 +134,13 @@ export class Renderer {
     this.orbitControls.object = this.activeCamera;
     this.trackballControls.object = this.activeCamera;
 
-    // If switching to ortho, orbit controls zoom works differently (changes zoom prop), 
-    // but OrbitControls handles Ortho cameras automatically.
+    // Reset controls to prevent momentum carrying over
+    this.orbitControls.reset();
+    this.trackballControls.reset();
+
+    // Explicitly clear to prevent ghosting artifacts
+    this.renderer.clear();
+
     this.orbitControls.update();
     this.trackballControls.update();
   }

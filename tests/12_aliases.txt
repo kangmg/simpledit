@@ -5,6 +5,7 @@ cls
 # Create molecule
 add atom C 0 0 0
 add atom O 1.5 0 0
+rebond
 time 1
 
 # Test trans alias (tr)

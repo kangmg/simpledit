@@ -23,10 +23,9 @@ export class SelectionManager {
         // Clear visual highlights
         this.editor.molecule.atoms.forEach(atom => {
             atom.selected = false;
-            if (atom.mesh) {
-                atom.mesh.material.emissive.setHex(0x000000);
-            }
+            this.editor.renderManager.updateAtomVisuals(atom);
         });
+        this.editor.renderManager.updateBondVisuals(); // Update bonds
 
         this.updateSelectionStatus();
     }
@@ -51,17 +50,18 @@ export class SelectionManager {
             this.deselectAtom(atom);
         } else {
             atom.selected = true;
-            this.state.addToSelection(atom.index, atom);
+            const index = this.editor.molecule.atoms.indexOf(atom);
+            this.state.addToSelection(index, atom);
 
             // Visual highlight
-            if (atom.mesh) {
-                atom.mesh.material.emissive.setHex(0xffff00);
-            }
+            this.editor.renderManager.updateAtomVisuals(atom);
+            this.editor.renderManager.updateBondVisuals(); // Update bonds
         }
 
         this.updateSelectionStatus();
         this.updateSelectionStatus();
-        return ErrorHandler.success(`Atom ${atom.index} selected`);
+        const index = this.editor.molecule.atoms.indexOf(atom);
+        return ErrorHandler.success(`Atom ${index} selected`);
     }
 
     /**
@@ -108,12 +108,12 @@ export class SelectionManager {
         if (!atom) return;
 
         atom.selected = false;
-        this.state.removeFromSelection(atom.index);
+        const index = this.editor.molecule.atoms.indexOf(atom);
+        this.state.removeFromSelection(index, atom);
 
         // Remove visual highlight
-        if (atom.mesh) {
-            atom.mesh.material.emissive.setHex(0x000000);
-        }
+        this.editor.renderManager.updateAtomVisuals(atom);
+        this.editor.renderManager.updateBondVisuals(); // Update bonds
 
         this.updateSelectionStatus();
     }
@@ -272,13 +272,7 @@ export class SelectionManager {
      */
     updateHighlights() {
         this.editor.molecule.atoms.forEach(atom => {
-            if (atom.mesh) {
-                if (atom.selected) {
-                    atom.mesh.material.emissive.setHex(0xffff00);
-                } else {
-                    atom.mesh.material.emissive.setHex(0x000000);
-                }
-            }
+            this.editor.renderManager.updateAtomVisuals(atom);
         });
     }
 

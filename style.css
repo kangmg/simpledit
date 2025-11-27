@@ -806,6 +806,7 @@ select:hover {
     font-size: 11px;
     color: #666;
 }
+
 /* Minimized Modal Styles */
 .modal-content.minimized {
     height: auto !important;
@@ -814,11 +815,26 @@ select:hover {
     padding-bottom: 0 !important;
 }
 
-.modal-content.minimized > *:not(.modal-header) {
+.modal-content.minimized>*:not(.modal-header) {
     display: none !important;
 }
 
 .modal-content.minimized .modal-header {
     margin-bottom: 0 !important;
     border-bottom: none !important;
+}
+
+/* Atom Labels */
+.atom-label {
+    position: absolute;
+    color: #ff0000;
+    font-family: 'Arial', sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+    pointer-events: none;
+    user-select: none;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    white-space: nowrap;
 }
