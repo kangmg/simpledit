@@ -11,6 +11,8 @@ export class RenderManager {
         this.editor = editor;
         this.renderer = editor.renderer;
         this.state = editor.state;
+        this.atomScale = 1.0;
+        this.bondScale = 1.0;
     }
 
     /**
@@ -196,15 +198,18 @@ export class RenderManager {
         if (atom.selected) {
             material.color.setHex(0xffff00); // Unified Yellow Base
             material.emissive.setHex(0x222200); // Unified Emissive
-            atom.mesh.scale.set(1, 1, 1);
+            atom.mesh.scale.set(this.atomScale, this.atomScale, this.atomScale);
         } else {
             const color = this.getElementColor(atom.element);
             material.color.setHex(color); // Restore Element Color
             material.emissive.setHex(0x000000);
-            atom.mesh.scale.set(1, 1, 1);
+            atom.mesh.scale.set(this.atomScale, this.atomScale, this.atomScale);
         }
     }
 
+    /**
+     * Update bond visuals
+     */
     /**
      * Update bond visuals
      */
@@ -224,7 +229,10 @@ export class RenderManager {
             const midpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
 
             bond.mesh.position.copy(midpoint);
-            bond.mesh.scale.y = length / bond.mesh.geometry.parameters.height;
+
+            // Apply bondScale to radius (X, Z) and length scaling to Y
+            bond.mesh.scale.set(this.bondScale, length / bond.mesh.geometry.parameters.height, this.bondScale);
+
             bond.mesh.quaternion.setFromUnitVectors(
                 new THREE.Vector3(0, 1, 0),
                 direction.normalize()
@@ -242,5 +250,23 @@ export class RenderManager {
                 material.emissive.setHex(0x000000);
             }
         });
+    }
+
+    /**
+     * Set atom scale
+     * @param {number} scale - Scale factor (1.0 = default)
+     */
+    setAtomScale(scale) {
+        this.atomScale = scale;
+        this.editor.molecule.atoms.forEach(atom => this.updateAtomVisuals(atom));
+    }
+
+    /**
+     * Set bond scale
+     * @param {number} scale - Scale factor (1.0 = default)
+     */
+    setBondScale(scale) {
+        this.bondScale = scale;
+        this.updateBondVisuals();
     }
 }

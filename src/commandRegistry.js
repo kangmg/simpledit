@@ -282,7 +282,7 @@ export class CommandRegistry {
 
 
         // Set command (Consolidated)
-        this.register('set', [], 'set [dist|angle|dihedral|threshold] ... - Set properties', { isDestructive: true }, (args) => {
+        this.register('set', [], 'set [dist|angle|dihedral|threshold|scale] ... - Set properties', { isDestructive: true }, (args) => {
             if (args.length < 2) return { error: 'Usage: set [property] [values...]' };
 
             const prop = args[0].toLowerCase();
@@ -355,6 +355,24 @@ export class CommandRegistry {
                 document.getElementById('bond-threshold').value = val;
                 document.getElementById('val-bond-threshold').textContent = val.toFixed(1);
                 return { success: `Threshold set to ${val}` };
+            }
+
+            if (prop === 'scale') {
+                if (vals.length !== 2) return { error: 'Usage: set scale [atom|bond] <value>' };
+                const type = vals[0].toLowerCase();
+                const val = parseFloat(vals[1]);
+
+                if (isNaN(val) || val <= 0) return { error: 'Invalid scale value' };
+
+                if (type === 'atom' || type === 'atoms') {
+                    this.editor.renderManager.setAtomScale(val);
+                    return { success: `Atom scale set to ${val}` };
+                } else if (type === 'bond' || type === 'bonds') {
+                    this.editor.renderManager.setBondScale(val);
+                    return { success: `Bond scale set to ${val}` };
+                } else {
+                    return { error: 'Invalid type. Use "atom" or "bond"' };
+                }
             }
 
             return { error: `Unknown property: ${prop}` };
