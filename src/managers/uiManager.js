@@ -1,4 +1,5 @@
 import { ErrorHandler } from '../utils/errorHandler.js';
+import { ELEMENTS } from '../constants.js';
 
 /**
  * Manages UI interactions, modals, and labels
@@ -273,6 +274,76 @@ export class UIManager {
             modal.style.display = 'none';
             this.currentPeriodicTableCallback = null;
         }
+    }
+
+    /**
+     * Render periodic table grid
+     */
+    renderPeriodicTable() {
+        const container = document.getElementById('periodic-table');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        // Standard Periodic Table Layout (18 columns)
+        const layout = [
+            ['X', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], // Dummy atom
+            ['H', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'He'],
+            ['Li', 'Be', '', '', '', '', '', '', '', '', '', '', 'B', 'C', 'N', 'O', 'F', 'Ne'],
+            ['Na', 'Mg', '', '', '', '', '', '', '', '', '', '', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar'],
+            ['K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr'],
+            ['Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te', 'I', 'Xe'],
+            ['Cs', 'Ba', 'La', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn'],
+            ['Fr', 'Ra', 'Ac', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', '', '', '', '', '', '', '', '', ''],
+        ];
+
+        layout.forEach(row => {
+            row.forEach(symbol => {
+                const cell = document.createElement('div');
+                cell.className = 'pt-cell';
+
+                if (symbol && ELEMENTS[symbol]) {
+                    const data = ELEMENTS[symbol];
+                    cell.classList.add('active');
+
+                    // Background color based on current scheme
+                    const color = this.editor.renderManager.getElementColor(symbol);
+                    const hex = color.toString(16).padStart(6, '0');
+                    cell.style.backgroundColor = `#${hex}`;
+
+                    // Text color contrast
+                    const r = (color >> 16) & 0xff;
+                    const g = (color >> 8) & 0xff;
+                    const b = color & 0xff;
+                    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                    cell.style.color = luma < 128 ? 'white' : 'black';
+
+                    cell.innerText = symbol;
+                    cell.title = `Atomic Number: ${data.atomicNumber}`;
+
+                    cell.onclick = () => {
+                        this.editor.selectedElement = symbol;
+                        const symbolSpan = document.getElementById('current-element-symbol');
+                        if (symbolSpan) {
+                            symbolSpan.innerText = symbol;
+                        } else {
+                            const btn = document.getElementById('btn-element-select');
+                            if (btn) btn.innerText = symbol;
+                        }
+
+                        // Callback if provided (e.g. from console command)
+                        if (this.currentPeriodicTableCallback) {
+                            this.currentPeriodicTableCallback(symbol);
+                        } else {
+                            this.closePeriodicTable();
+                        }
+                    };
+                } else {
+                    cell.classList.add('empty');
+                }
+                container.appendChild(cell);
+            });
+        });
     }
 
     /**
