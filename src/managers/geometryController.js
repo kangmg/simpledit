@@ -143,7 +143,7 @@ export class GeometryController {
             pivot.position,
             a3.position,
             movingAtomPositions,
-            target Angle
+            targetAngle
         );
 
         // Apply new positions
