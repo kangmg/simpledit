@@ -26,15 +26,13 @@ export class RenderManager {
         const geometry = new THREE.SphereGeometry(radius * 0.4, 16, 16);
         const material = new THREE.MeshPhongMaterial({
             color: color,
-            emissive: atom.selected ? 0xffff00 : 0x000000,
-            shininess: 30,
-            transparent: atom.selected,
-            opacity: atom.selected ? 0.6 : 1.0
+            emissive: atom.selected ? 0x666600 : 0x000000,
+            shininess: 30
         });
 
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.copy(atom.position);
-        mesh.userData = { type: 'atom', index: atom.index, atom: atom }; // Added atom reference to userData
+        mesh.userData = { type: 'atom', index: atom.index, atom: atom };
 
         return mesh;
     }
@@ -57,9 +55,9 @@ export class RenderManager {
         const length = direction.length();
         const midpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
 
-        const geometry = new THREE.CylinderGeometry(0.1, 0.1, length, 8);
+        const geometry = new THREE.CylinderGeometry(0.15, 0.15, length, 8);
         const material = new THREE.MeshPhongMaterial({
-            color: 0x888888,
+            color: 0xcccccc,
             shininess: 30
         });
 
@@ -182,13 +180,9 @@ export class RenderManager {
         // Update selection highlight
         const material = atom.mesh.material;
         if (atom.selected) {
-            material.emissive.setHex(0xffff00);
-            material.transparent = true;
-            material.opacity = 0.6;
+            material.emissive.setHex(0x666600);
         } else {
             material.emissive.setHex(0x000000);
-            material.transparent = false;
-            material.opacity = 1.0;
         }
     }
 
@@ -222,10 +216,10 @@ export class RenderManager {
             const material = bond.mesh.material;
 
             if (bothSelected) {
-                material.color.setHex(0xffff00); // Yellow highlight
+                material.color.setHex(0x666600); // Darker yellow highlight
                 material.emissive.setHex(0x222200);
             } else {
-                material.color.setHex(0x000000); // Black (default)
+                material.color.setHex(0xcccccc); // Light gray (default)
                 material.emissive.setHex(0x000000);
             }
         });
