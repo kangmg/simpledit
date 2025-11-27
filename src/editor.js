@@ -1190,11 +1190,18 @@ export class Editor {
         this.ghostBond.rotateX(Math.PI / 2);
     }
 
-    addAtom(element, position, existingAtom = null) {
+    addAtomToScene(element, position, existingAtom = null) {
         if (!existingAtom) this.saveState(); // Save before adding new atom
 
         const atom = existingAtom || this.molecule.addAtom(element, position);
-        this.createAtomMesh(atom);
+
+        // Create mesh via RenderManager
+        const mesh = this.renderManager.createAtomMesh(atom);
+        if (mesh) {
+            this.renderer.scene.add(mesh);
+            atom.mesh = mesh;
+        }
+
         return atom;
     }
 
