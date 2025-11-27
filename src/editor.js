@@ -516,39 +516,11 @@ export class Editor {
     }
 
     updateSelectionStatus() {
-        const btn = document.getElementById('btn-select');
-        const sub = btn.querySelector('.btn-sublabel');
-
-        if (sub) {
-            sub.style.display = 'block';
-            if (this.selectionMode === 'rectangle') {
-                sub.innerText = 'Rectangle';
-                sub.style.color = '#4a90e2';
-            } else if (this.selectionMode === 'lasso') {
-                sub.innerText = 'Lasso';
-                sub.style.color = '#e2904a';
-            }
-        } else {
-            if (this.selectionMode === 'rectangle') {
-                btn.innerText = 'Select: Rectangle';
-                btn.style.backgroundColor = '#4a90e2';
-            } else if (this.selectionMode === 'lasso') {
-                btn.innerText = 'Select: Lasso';
-                btn.style.backgroundColor = '#e2904a';
-            }
-        }
+        this.selectionManager.updateSelectionStatus();
     }
 
     clearSelectionStatus() {
-        const btn = document.getElementById('btn-select');
-        const sub = btn.querySelector('.btn-sublabel');
-
-        if (sub) {
-            sub.style.display = 'none';
-        } else {
-            btn.innerText = 'Select (Lasso/Rect)';
-            btn.style.backgroundColor = '';
-        }
+        this.selectionManager.clearSelectionStatus();
     }
 
 
@@ -670,13 +642,9 @@ export class Editor {
     }
 
     clearSelection() {
-        this.molecule.atoms.forEach(a => {
-            a.selected = false;
-            this.updateAtomVisuals(a);
-        });
-        this.selectionOrder = [];
+        this.selectionManager.clearSelection();
         this.updateSelectionInfo();
-        this.updateBondVisuals(); // Update bond colors when clearing selection
+        this.updateBondVisuals();
     }
 
     updateAtomVisuals(atom) {
