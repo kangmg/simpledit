@@ -57,7 +57,7 @@ export class RenderManager {
 
         const geometry = new THREE.CylinderGeometry(0.15, 0.15, length, 8);
         const material = new THREE.MeshPhongMaterial({
-            color: 0xcccccc,
+            color: 0x000000, // Black
             shininess: 30
         });
 
@@ -219,7 +219,7 @@ export class RenderManager {
                 material.color.setHex(0x666600); // Darker yellow highlight
                 material.emissive.setHex(0x222200);
             } else {
-                material.color.setHex(0xcccccc); // Light gray (default)
+                material.color.setHex(0x000000); // Black
                 material.emissive.setHex(0x000000);
             }
         });
