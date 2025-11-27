@@ -12,7 +12,7 @@ This project is a simple JavaScript-based molecular editor. It was created becau
 
 Avogadro2 and the [rowan](https://labs.rowansci.com/editor) are excellent alternatives. However, this project was initiated as a foundation for future work and experimentation.
 
-For detailed usage instructions, please refer to the [usage.md](./usage.md) file.
+For detailed usage instructions, please refer to the [usage.md](./docs/usage.md) file.
 
 ## Try it Online
 
