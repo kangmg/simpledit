@@ -12,23 +12,39 @@ This project is a simple JavaScript-based molecular editor. It was created becau
 
 Avogadro2 and the [rowan](https://labs.rowansci.com/editor) are excellent alternatives. However, this project was initiated as a foundation for future work and experimentation.
 
-For detailed usage instructions, please refer to the [usage.md](./docs/usage.md) file.
 
 ## Try it Online
 
 **Live Demo**: [https://kangmg.github.io/simpledit/](https://kangmg.github.io/simpledit/)
+
+**Documentation**:
+- [Tutorial](https://kangmg.github.io/simpledit/tutorial/) - Interactive guide with 19 test suites
+- [API Documentation](https://kangmg.github.io/simpledit/api/) - Complete API reference
+- [Usage Guide](./docs/usage.md) - Command reference and examples
 
 
 ## Features
 
 - **Interactive 3D Editor**: Click-and-drag interface for building molecules
 - **Selection Tools**: Rectangle and lasso selection modes
-- **Geometry Manipulation**: Adjust bond lengths, angles, and dihedral angles
-- **Command Console**: Terminal-style interface with 18+ commands for advanced control
+- **Advanced Geometry Manipulation**: 
+  - Fragment-based geometry engine with rigid body mechanics
+  - Real-time bond length, angle, and dihedral adjustments
+  - Smart fragment detection for precise molecular control
+- **Full Console Integration**: 
+  - 30+ commands with aliases for efficient workflows
+  - Batch command execution with heredoc support
+  - Command history and auto-completion
+- **Multi-Molecule Management**: 
+  - Unlimited molecules with independent undo/redo history
+  - Smart copy/paste/merge with collision avoidance
+  - Per-molecule visual settings
+- **Intelligent Group Substitution**: 
+  - Vector-aligned fragment replacement
+  - Automatic dummy atom detection
+  - Preservation of molecular geometry
 - **Multiple Camera Modes**: Orbit and trackball controls with perspective/orthographic projection
-- **Undo/Redo**: Full history support for all operations
-- **Fragment Management**: Select and manipulate molecular fragments
-- **Bond Control**: Manual bonding and automatic bond detection with adjustable threshold
+- **Comprehensive Testing**: 19 test suites covering all functionality
 
 
 ## Future Directions
@@ -37,6 +53,6 @@ For detailed usage instructions, please refer to the [usage.md](./docs/usage.md)
 - rdkit-js integration for 2D/SMILES sync and broader file format support  
 - ASE integration for in-editor calculations with community packages/calculators
 - Additional molecule building features
-    - ligand substitution
+    - enhanced ligand substitution
     - hybridization & steric number aware positioning
     - multi-coordinate driving deformations

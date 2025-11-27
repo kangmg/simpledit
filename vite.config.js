@@ -1,4 +1,6 @@
 import { defineConfig } from 'vite';
+import { copyFileSync, mkdirSync, cpSync } from 'fs';
+import { join } from 'path';
 
 export default defineConfig({
   base: '/simpledit/',
@@ -10,14 +12,8 @@ export default defineConfig({
     // Generate sourcemaps for debugging
     sourcemap: true,
 
-    // Minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false, // Keep console for debugging
-        drop_debugger: true,
-      },
-    },
+    // Minification (using esbuild instead of terser)
+    minify: 'esbuild',
 
     // Chunk splitting strategy
     rollupOptions: {
@@ -54,4 +50,28 @@ export default defineConfig({
       '@': '/src',
     },
   },
+
+  // Plugin to copy tutorial and API docs after build
+  plugins: [
+    {
+      name: 'copy-docs',
+      closeBundle() {
+        try {
+          // Create tutorial directory
+          const tutorialDir = join('dist', 'tutorial');
+          mkdirSync(tutorialDir, { recursive: true });
+
+          // Copy tutorial.html to dist/tutorial/index.html
+          copyFileSync('tutorial.html', join(tutorialDir, 'index.html'));
+          console.log('✓ Copied tutorial.html to dist/tutorial/index.html');
+
+          // Copy docs/api to dist/api
+          cpSync('docs/api', 'dist/api', { recursive: true });
+          console.log('✓ Copied docs/api to dist/api');
+        } catch (error) {
+          console.error('Error copying docs:', error);
+        }
+      },
+    },
+  ],
 });
