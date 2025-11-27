@@ -1,42 +1,43 @@
 # Test Substitute Command
+cls
 
 # 1. Test sub atom
-add mol xyz <<END
+add mol xyz <<WTR
 3
-Test Atom
-C 0 0 0
-H 1 0 0
-H -1 0 0
-END
+
+C 0.000000 0.000000  0.000000
+H 0.758602 0.000000  0.504284
+H 0.260455 0.000000 -0.872893
+WTR
+rebond
+time 2
 
 select :
-sub atom 1 O
-# Expect C at index 1 (0-based) to become O. (Wait, index 1 is 2nd atom. 0-based index in command? 
-# CommandRegistry says: const idx = parseInt(args[1]) - 1; // 1-based to 0-based
-# So "sub atom 1" targets index 0 (1st atom).
-# Let's verify.
-# If I say "sub atom 1 O", it targets atom 1 (C).
+sub atom 0 O
+time 2
 
 # 2. Test sub grp (Explicit)
 # Create Target Mol
 new TargetMol
 add atom C 0 0 0
 add atom H 1.5 0 0
-bond 1 2
+add bond 0 1 
+time 2
 
 # Create Source Mol
 new SourceMol
 add atom N 0 0 0
 add atom H 1.5 0 0
-bond 1 2
+add bond 0 1
+time 2
 
 # Switch to Target
-switch 2
+switch TargetMol
 
-# Substitute: Target(2) replaced by Source(1) attached at Source(2)
-# Target: Leaving=2(H), Anchor=1(C)
-# Source: Leaving=2(H), Anchor=1(N)
-# Command: sub grp 2 1 -n SourceMol 2 1
+# Substitute: Target(0) replaced by Source(0) attached at Source(1)
+# Target: Leaving=1(H), Anchor=0(C)
+# Source: Leaving=1(H), Anchor=0(N)
+sub grp 1 0 -n SourceMol 1 0
 # Result: C-N bond.
 
 # 3. Test sub grp (Implicit Dummy)
@@ -44,18 +45,21 @@ switch 2
 new TargetDummy
 add atom C 0 0 0
 add atom X 1.5 0 0
-bond 1 2
+add bond 0 1
+time 2
 
 # Create Source with Dummy X
 new SourceDummy
 add atom N 0 0 0
 add atom X 1.5 0 0
-bond 1 2
+add bond 0 1
+time 2
 
-switch 4
-# Substitute: Anchor=1(C), Implicit Leaving=2(X)
-# Source: Anchor=1(N), Implicit Leaving=2(X)
-# Command: sub grp 1 -n SourceDummy 1
+switch TargetDummy
+# Substitute: Anchor=0(C), Implicit Leaving=1(X)
+# Source: Anchor=0(N), Implicit Leaving=1(X)
+sub grp 0 -n SourceDummy 0
 # Result: C-N bond, X atoms removed.
+time 2
 
-select :
+del atoms : 

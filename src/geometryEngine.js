@@ -115,15 +115,22 @@ export class GeometryEngine {
      */
     static getNewPositionsForDihedral(p1, p2, p3, p4, movingAtomPositions, targetDihedralDegrees) {
         const currentDihedral = this.calculateDihedral(p1, p2, p3, p4);
-        const delta = targetDihedralDegrees - currentDihedral;
-        const deltaRad = delta * (Math.PI / 180);
+        let delta = targetDihedralDegrees - currentDihedral;
 
+        // Normalize delta to [-180, 180] for shortest path rotation
+        while (delta > 180) delta -= 360;
+        while (delta < -180) delta += 360;
+
+        // CRITICAL: Negate delta because quaternion rotation direction is opposite to dihedral angle convention
+        const deltaRad = -delta * (Math.PI / 180);
+
+        // Axis is the bond from p2 to p3
         const axis = p3.clone().sub(p2).normalize();
         const quaternion = new THREE.Quaternion();
         quaternion.setFromAxisAngle(axis, deltaRad);
 
-        // Pivot point is p2 (or p3, doesn't matter for rotation around axis)
-        const pivot = p2;
+        // Use p3 as pivot - we're rotating atoms attached to p3 around the p2-p3 axis
+        const pivot = p3;
 
         return movingAtomPositions.map(pos => {
             const local = pos.clone().sub(pivot);

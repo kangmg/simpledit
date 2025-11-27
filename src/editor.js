@@ -463,7 +463,14 @@ export class Editor {
     }
 
     updateSliderLabel(id, value) {
-        document.getElementById(id).innerText = value;
+        const el = document.getElementById(id);
+        if (el) {
+            if (el.tagName === 'INPUT') {
+                el.value = value;
+            } else {
+                el.innerText = value;
+            }
+        }
     }
 
     updateSelectionInfo() {
@@ -548,196 +555,24 @@ export class Editor {
         }
     }
 
-    // Helper function to find all atoms connected to startAtom, excluding excludeBond
-    // Helper function to find all atoms connected to startAtom, excluding excludeBond
-    getConnectedAtoms(startAtom, excludeBond = null) {
-        const connected = new Set();
-        const visited = new Set();
-        const queue = [startAtom];
 
-        // Temporarily remove the bond from both atoms' bond lists
-        let removedFromAtom1 = false;
-        let removedFromAtom2 = false;
-
-        try {
-            if (excludeBond) {
-                const idx1 = excludeBond.atom1.bonds.indexOf(excludeBond);
-                if (idx1 !== -1) {
-                    excludeBond.atom1.bonds.splice(idx1, 1);
-                    removedFromAtom1 = true;
-                }
-
-                const idx2 = excludeBond.atom2.bonds.indexOf(excludeBond);
-                if (idx2 !== -1) {
-                    excludeBond.atom2.bonds.splice(idx2, 1);
-                    removedFromAtom2 = true;
-                }
-            }
-
-            // BFS to find connected atoms
-            while (queue.length > 0) {
-                const atom = queue.shift();
-                if (visited.has(atom)) continue;
-                visited.add(atom);
-                connected.add(atom);
-
-                // Safety check: if atom has no bonds but we expect some (unless it's a lone atom)
-                // We can't easily know if it SHOULD have bonds, but we can rely on what's there.
-
-                // Get all bonds for this atom
-                if (atom.bonds) {
-                    atom.bonds.forEach(bond => {
-                        const otherAtom = bond.atom1 === atom ? bond.atom2 : bond.atom1;
-                        if (!visited.has(otherAtom)) {
-                            queue.push(otherAtom);
-                        }
-                    });
-                }
-            }
-        } finally {
-            // Restore the bond to both atoms' bond lists
-            if (excludeBond) {
-                if (removedFromAtom1) {
-                    excludeBond.atom1.bonds.push(excludeBond);
-                }
-                if (removedFromAtom2) {
-                    excludeBond.atom2.bonds.push(excludeBond);
-                }
-            }
-        }
-
-        return connected;
-    }
 
     setBondLength() {
-        if (this.selectionOrder.length !== 2) return;
-
         const targetDist = parseFloat(document.getElementById('input-length').value);
-        if (isNaN(targetDist)) return;
-
-        // First selected atom is fixed, second atom's fragment moves
-        const a1 = this.selectionOrder[0]; // Fixed
-        const a2 = this.selectionOrder[1]; // Moving side
-
-        // Find the bond between a1 and a2
-        const bond = this.molecule.getBond(a1, a2);
-
-        if (!bond) {
-            console.error('No bond found between selected atoms');
-            return;
-        }
-
-        // Get all atoms connected to a2 (excluding the a1-a2 bond)
-        const fragmentToMove = this.getConnectedAtoms(a2, bond);
-
-        console.log('Total atoms:', this.molecule.atoms.length);
-        console.log('Fragment to move size:', fragmentToMove.size);
-        console.log('a1 (fixed):', a1.element, 'a2 (moving):', a2.element);
-
-        const dir = a2.position.clone().sub(a1.position).normalize();
-        const oldA2Pos = a2.position.clone();
-        const newA2Pos = a1.position.clone().add(dir.multiplyScalar(targetDist));
-        const displacement = newA2Pos.clone().sub(oldA2Pos);
-
-        // Move a2's fragment
-        fragmentToMove.forEach(atom => {
-            atom.position.add(displacement);
-            if (atom.mesh) {
-                atom.mesh.position.copy(atom.position);
-                if (atom.outlineMesh) atom.outlineMesh.position.copy(atom.position);
-            }
-        });
-
-        this.updateBonds();
+        if (isNaN(targetDist)) return { error: 'Invalid distance value' };
+        return this.geometryController.setBondLength(targetDist);
     }
 
     setBondAngle() {
-        if (this.selectionOrder.length !== 3) return;
-
-        const targetAngle = parseFloat(document.getElementById('input-angle').value) * (Math.PI / 180);
-        if (isNaN(targetAngle)) return;
-
-        // a-b is fixed, c's fragment rotates around b
-        const a1 = this.selectionOrder[0]; // Fixed side
-        const a2 = this.selectionOrder[1]; // Vertex (pivot)
-        const a3 = this.selectionOrder[2]; // Moving side
-
-        // Find the bond between a2 and a3
-        const bond23 = this.molecule.getBond(a2, a3);
-
-        // Get all atoms connected to a3 (excluding the a2-a3 bond)
-        const fragmentToRotate = this.getConnectedAtoms(a3, bond23);
-
-        const v1 = a1.position.clone().sub(a2.position); // Vector from pivot to fixed atom
-        const v2 = a3.position.clone().sub(a2.position); // Vector from pivot to moving atom
-        const currentAngle = v1.angleTo(v2);
-
-        const axis = new THREE.Vector3().crossVectors(v1, v2).normalize();
-        const diff = targetAngle - currentAngle;
-
-        const rot = new THREE.Quaternion().setFromAxisAngle(axis, diff);
-
-        // Rotate a3's fragment around a2
-        fragmentToRotate.forEach(atom => {
-            const relative = atom.position.clone().sub(a2.position);
-            relative.applyQuaternion(rot);
-            atom.position.copy(a2.position).add(relative);
-            if (atom.mesh) {
-                atom.mesh.position.copy(atom.position);
-                if (atom.outlineMesh) atom.outlineMesh.position.copy(atom.position);
-            }
-        });
-
-        this.updateBonds();
+        const targetAngle = parseFloat(document.getElementById('input-angle').value);
+        if (isNaN(targetAngle)) return { error: 'Invalid angle value' };
+        return this.geometryController.setAngle(targetAngle);
     }
 
     setDihedralAngle() {
-        if (this.selectionOrder.length !== 4) return;
-
-        const targetAngle = parseFloat(document.getElementById('input-dihedral').value) * (Math.PI / 180);
-        if (isNaN(targetAngle)) return;
-
-        // b-c is the axis, d's fragment rotates
-        const a1 = this.selectionOrder[0]; // a
-        const a2 = this.selectionOrder[1]; // b (axis start)
-        const a3 = this.selectionOrder[2]; // c (axis end)
-        const a4 = this.selectionOrder[3]; // d (moving side)
-
-        // Find the bond between b and c (axis)
-        const bond23 = this.molecule.getBond(a2, a3);
-
-        // Get all atoms connected to c (excluding the b-c bond)
-        // This ensures that ALL atoms attached to c (including d and others) rotate together
-        const fragmentToRotate = this.getConnectedAtoms(a3, bond23);
-
-        const axis = a3.position.clone().sub(a2.position).normalize();
-        const v1 = a1.position.clone().sub(a2.position);
-        const v2 = a4.position.clone().sub(a3.position);
-
-        const p1 = v1.clone().sub(axis.clone().multiplyScalar(v1.dot(axis)));
-        const p2 = v2.clone().sub(axis.clone().multiplyScalar(v2.dot(axis)));
-
-        // Current dihedral angle
-        const currentAngle = Math.atan2(
-            p1.clone().cross(p2).dot(axis),
-            p1.dot(p2)
-        );
-
-        const diff = targetAngle - currentAngle;
-        const rot = new THREE.Quaternion().setFromAxisAngle(axis, diff);
-
-        // Rotate d's fragment around b-c axis (pivot at c)
-        fragmentToRotate.forEach(atom => {
-            const relative = atom.position.clone().sub(a3.position);
-            relative.applyQuaternion(rot);
-            atom.position.copy(a3.position).add(relative);
-            if (atom.mesh) {
-                atom.mesh.position.copy(atom.position);
-                if (atom.outlineMesh) atom.outlineMesh.position.copy(atom.position);
-            }
-        });
-
-        this.updateBonds();
+        const targetAngle = parseFloat(document.getElementById('input-dihedral').value);
+        if (isNaN(targetAngle)) return { error: 'Invalid dihedral value' };
+        return this.geometryController.setDihedral(targetAngle);
     }
 
     handleRightClick(event, raycaster) {

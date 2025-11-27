@@ -132,23 +132,29 @@
           <div id="length-control" style="display: none; margin-bottom: 10px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
               <span style="font-size: 12px; color: #888;">Length (Å)</span>
-              <span id="val-length" style="font-size: 12px; color: white;"></span>
+              <input type="number" id="val-length"
+                style="width: 60px; font-size: 12px; color: white; background: transparent; border: 1px solid #555; border-radius: 4px; padding: 2px; text-align: right;"
+                step="0.01">
             </div>
             <input type="range" id="input-length" min="0.5" max="5.0" step="0.01">
           </div>
           <div id="angle-control" style="display: none; margin-bottom: 10px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
               <span style="font-size: 12px; color: #888;">Angle (°)</span>
-              <span id="val-angle" style="font-size: 12px; color: white;"></span>
+              <input type="number" id="val-angle"
+                style="width: 60px; font-size: 12px; color: white; background: transparent; border: 1px solid #555; border-radius: 4px; padding: 2px; text-align: right;"
+                step="0.1">
             </div>
-            <input type="range" id="input-angle" min="0" max="180" step="1">
+            <input type="range" id="input-angle" min="0" max="180" step="0.1">
           </div>
           <div id="dihedral-control" style="display: none; margin-bottom: 10px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
               <span style="font-size: 12px; color: #888;">Dihedral (°)</span>
-              <span id="val-dihedral" style="font-size: 12px; color: white;"></span>
+              <input type="number" id="val-dihedral"
+                style="width: 60px; font-size: 12px; color: white; background: transparent; border: 1px solid #555; border-radius: 4px; padding: 2px; text-align: right;"
+                step="0.1">
             </div>
-            <input type="range" id="input-dihedral" min="-180" max="180" step="1">
+            <input type="range" id="input-dihedral" min="-180" max="180" step="0.1">
           </div>
         </div>
       </div>
