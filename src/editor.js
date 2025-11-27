@@ -1837,90 +1837,11 @@ export class Editor {
     }
 
     updateAllLabels() {
-        this.molecule.atoms.forEach(atom => {
-            if (!atom.label) {
-                this.createAtomLabel(atom);
-            }
-
-            // Update text based on mode
-            this.updateAtomLabelText(atom);
-
-            // Show/hide based on mode
-            atom.label.style.display = this.labelMode !== 'none' ? 'block' : 'none';
-        });
-
-        if (this.labelMode !== 'none') {
-            this.updateLabelPositions();
-        }
+        this.uiManager.updateAllLabels();
     }
 
     updateLabelPositions() {
-        const camera = this.renderer.activeCamera || this.renderer.camera;
-
-        this.molecule.atoms.forEach(atom => {
-            if (atom.label && atom.mesh) {
-                const pos = atom.mesh.position.clone();
-                const worldPos = atom.mesh.position.clone();
-                pos.project(camera);
-
-                // Check if atom is behind camera
-                const cameraDir = new THREE.Vector3();
-                camera.getWorldDirection(cameraDir);
-                const toAtom = worldPos.clone().sub(camera.position);
-                const dotProduct = toAtom.dot(cameraDir);
-
-                // Hide if behind camera or too far in z
-                if (dotProduct < 0 || pos.z > 1) {
-                    atom.label.style.display = 'none';
-                    return;
-                }
-
-                // Check if occluded by other atoms or bonds
-                const raycaster = new THREE.Raycaster();
-                raycaster.setFromCamera(
-                    new THREE.Vector2(pos.x, pos.y),
-                    camera
-                );
-
-                const intersects = raycaster.intersectObjects(this.renderer.scene.children, false);
-                let isOccluded = false;
-
-                for (const intersect of intersects) {
-                    if (intersect.object.userData.type === 'atom') {
-                        const intersectedAtom = intersect.object.userData.atom;
-                        if (intersectedAtom !== atom) {
-                            // Another atom is in front
-                            isOccluded = true;
-                            break;
-                        } else {
-                            // This is the atom itself, stop checking
-                            break;
-                        }
-                    } else if (intersect.object.userData.type === 'bond') {
-                        // A bond is in front of this label
-                        // Check if the bond is closer than the atom
-                        const atomDistance = camera.position.distanceTo(worldPos);
-                        if (intersect.distance < atomDistance) {
-                            isOccluded = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (isOccluded) {
-                    atom.label.style.display = 'none';
-                } else {
-                    atom.label.style.display = this.labelMode !== 'none' ? 'block' : 'none';
-                    const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
-                    const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
-
-                    // Center the label on the atom
-                    atom.label.style.left = `${x}px`;
-                    atom.label.style.top = `${y}px`;
-                    atom.label.style.transform = 'translate(-50%, -50%)';
-                }
-            }
-        });
+        this.uiManager.updateLabelPositions();
     }
 
     createBondMesh(bond) {

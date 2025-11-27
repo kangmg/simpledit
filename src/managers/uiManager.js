@@ -313,9 +313,24 @@ export class UIManager {
      */
     updateAllLabels() {
         this.editor.molecule.atoms.forEach(atom => {
+            // Create label if missing
+            if (!atom.label) {
+                const label = this.createAtomLabel(atom);
+                this.editor.labelContainer.appendChild(label);
+                atom.label = label;
+            }
+
+            // Update text based on mode
             this.updateAtomLabelText(atom);
+
+            // Show/hide based on mode
+            const mode = this.state.getLabelMode();
+            atom.label.style.display = mode !== 'none' ? 'block' : 'none';
         });
-        this.updateLabelPositions();
+
+        if (this.state.getLabelMode() !== 'none') {
+            this.updateLabelPositions();
+        }
     }
 
     /**
