@@ -243,7 +243,8 @@ export class UIManager {
         const modal = document.getElementById('coord-modal');
 
         if (btnClose) btnClose.onclick = () => this.closeCoordinateEditor();
-        if (btnMinimize && modal) btnMinimize.onclick = () => this.toggleMinimize(modal);
+        // Minimize button acts as close button (Mac-style design choice by user)
+        if (btnMinimize && modal) btnMinimize.onclick = () => this.closeCoordinateEditor();
         if (btnMaximize && modal) btnMaximize.onclick = () => this.toggleMaximize(modal);
     }
 
@@ -510,16 +511,7 @@ export class UIManager {
         }
     }
 
-    /**
-     * Toggle modal minimize
-     * @param {HTMLElement} element - Modal element
-     */
-    toggleMinimize(element) {
-        if (!element) return;
-        // Simple minimize implementation: hide content or reduce height
-        // For now, let's just toggle a 'minimized' class
-        element.classList.toggle('minimized');
-    }
+
 
     /**
      * Export current view as PNG
