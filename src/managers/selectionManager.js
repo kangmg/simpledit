@@ -244,4 +244,35 @@ export class SelectionManager {
             }
         });
     }
+
+    /**
+     * Delete selected atoms
+     */
+    deleteSelected() {
+        const selected = this.getSelectedAtoms();
+        if (selected.length === 0) return;
+
+        this.editor.saveState(); // Save before deleting
+
+        // Remove labels first (DOM manipulation)
+        selected.forEach(atom => {
+            if (atom.label && atom.label.parentNode) {
+                atom.label.parentNode.removeChild(atom.label);
+                atom.label = null;
+            }
+            // Mesh removal is handled by rebuildScene, but good to be explicit if optimizing
+            if (atom.mesh) {
+                this.editor.renderer.scene.remove(atom.mesh);
+            }
+        });
+
+        // Remove from molecule data
+        this.editor.moleculeManager.removeAtoms(selected);
+
+        // Rebuild scene to clean up bonds and update indices
+        this.editor.rebuildScene();
+
+        // Clear selection state
+        this.clearSelection();
+    }
 }

@@ -1,6 +1,7 @@
 import { Molecule } from './molecule.js';
 import { GeometryEngine } from './geometryEngine.js';
 import * as THREE from 'three';
+import { ELEMENTS, DEFAULT_ELEMENT } from '../constants.js';
 
 export class MoleculeManager {
     constructor(editor) {
@@ -320,5 +321,68 @@ export class MoleculeManager {
 
             container.appendChild(item);
         });
+    }
+
+    /**
+     * Auto-generate bonds based on distance
+     * @param {number} thresholdFactor - Factor to multiply covalent radii sum
+     * @returns {number} Number of bonds added
+     */
+    autoBond(thresholdFactor = 1.1) {
+        const activeMol = this.getActive();
+        if (!activeMol) return 0;
+
+        const atoms = activeMol.molecule.atoms;
+        let bondsAdded = 0;
+
+        for (let i = 0; i < atoms.length; i++) {
+            for (let j = i + 1; j < atoms.length; j++) {
+                const dist = atoms[i].position.distanceTo(atoms[j].position);
+
+                // Get covalent radii
+                const r1 = this.getElementRadius(atoms[i].element);
+                const r2 = this.getElementRadius(atoms[j].element);
+                const bondThreshold = (r1 + r2) * thresholdFactor;
+
+                if (dist < bondThreshold) {
+                    // Check if bond already exists
+                    if (!activeMol.molecule.getBond(atoms[i], atoms[j])) {
+                        activeMol.molecule.addBond(atoms[i], atoms[j], 1);
+                        bondsAdded++;
+                    }
+                }
+            }
+        }
+
+        return bondsAdded;
+    }
+
+    /**
+     * Remove specific atoms from the active molecule
+     * @param {Object[]} atomsToRemove - Array of atom objects to remove
+     * @returns {number} Number of atoms removed
+     */
+    removeAtoms(atomsToRemove) {
+        const activeMol = this.getActive();
+        if (!activeMol || !atomsToRemove || atomsToRemove.length === 0) return 0;
+
+        let count = 0;
+        atomsToRemove.forEach(atom => {
+            if (activeMol.molecule.removeAtom(atom)) {
+                count++;
+            }
+        });
+
+        return count;
+    }
+
+    /**
+     * Get element radius
+     * @param {string} element - Element symbol
+     * @returns {number} Radius
+     */
+    getElementRadius(element) {
+        const data = ELEMENTS[element] || DEFAULT_ELEMENT;
+        return data.radius;
     }
 }

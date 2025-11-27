@@ -1172,7 +1172,6 @@ export class Editor {
         const geometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
         const material = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.6 });
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.copy(startPos);
         this.renderer.scene.add(mesh);
         return mesh;
     }
@@ -1202,13 +1201,11 @@ export class Editor {
     removeBond(bond) {
         this.saveState(); // Save before removing bond
 
-        // Remove from scene
-        if (bond.mesh) {
-            this.renderer.scene.remove(bond.mesh);
-        }
-
         // Remove from molecule
         this.molecule.removeBond(bond);
+
+        // Update scene
+        this.renderManager.updateBondMeshes();
     }
 
     addBondToScene(atom1, atom2, save = true) {
@@ -1216,7 +1213,13 @@ export class Editor {
 
         if (save) this.saveState(); // Save before adding
         const bond = this.molecule.addBond(atom1, atom2, 1); // Default single bond
-        this.createBondMesh(bond);
+
+        // Create mesh via RenderManager
+        const mesh = this.renderManager.createBondMesh(bond);
+        if (mesh) {
+            this.renderer.scene.add(mesh);
+            bond.mesh = mesh;
+        }
     }
 
     saveState() {
@@ -1252,21 +1255,7 @@ export class Editor {
     }
 
     deleteSelected() {
-        const selected = this.molecule.atoms.filter(a => a.selected);
-        if (selected.length === 0) return;
-
-        this.saveState(); // Save before deleting
-        selected.forEach(atom => {
-            // Remove label from DOM if it exists
-            if (atom.label && atom.label.parentNode) {
-                atom.label.parentNode.removeChild(atom.label);
-                atom.label = null;
-            }
-            this.molecule.removeAtom(atom);
-            if (atom.mesh) this.renderer.scene.remove(atom.mesh);
-        });
-        // Also remove bonds
-        this.rebuildScene(); // Simplest way to clean up bonds
+        this.selectionManager.deleteSelected();
     }
 
     restoreState(xyz) {
@@ -1292,117 +1281,29 @@ export class Editor {
     }
 
     autoBond() {
-        // Bonding based on covalent radii sum * threshold factor
         const thresholdFactor = parseFloat(document.getElementById('bond-threshold').value);
-        const atoms = this.molecule.atoms;
+        this.saveState();
 
-        for (let i = 0; i < atoms.length; i++) {
-            for (let j = i + 1; j < atoms.length; j++) {
-                const dist = atoms[i].position.distanceTo(atoms[j].position);
+        // Delegate to MoleculeManager
+        const bondsAdded = this.moleculeManager.autoBond(thresholdFactor);
 
-                // Get covalent radii for both atoms
-                const r1 = this.getElementRadius(atoms[i].element);
-                const r2 = this.getElementRadius(atoms[j].element);
-                const bondThreshold = (r1 + r2) * thresholdFactor;
-
-                if (dist < bondThreshold) {
-                    this.addBondToScene(atoms[i], atoms[j], false); // Do not save state
-                }
-            }
+        if (bondsAdded > 0) {
+            this.rebuildScene();
         }
     }
 
 
 
-    getElementColor(element) {
-        const data = ELEMENTS[element] || DEFAULT_ELEMENT;
-        return this.colorScheme === 'cpk' ? data.cpk : data.jmol;
-    }
+    // getElementColor and getElementRadius removed (moved to RenderManager)
 
-    getElementRadius(element) {
-        const data = ELEMENTS[element] || DEFAULT_ELEMENT;
-        return data.radius;
-    }
+
 
     updateAtomColors() {
         this.renderManager.updateAtomColors();
     }
 
     renderPeriodicTable() {
-        const container = document.getElementById('periodic-table');
-        container.innerHTML = '';
-
-        // Standard Periodic Table Layout (18 columns)
-        // Map atomic number to position? Or just iterate elements and place them?
-        // We have ELEMENTS map. We need to know row/col for grid.
-        // Simplified layout:
-        const layout = [
-            ['X', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], // Dummy atom
-            ['H', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'He'],
-            ['Li', 'Be', '', '', '', '', '', '', '', '', '', '', 'B', 'C', 'N', 'O', 'F', 'Ne'],
-            ['Na', 'Mg', '', '', '', '', '', '', '', '', '', '', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar'],
-            ['K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr'],
-            ['Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te', 'I', 'Xe'],
-            ['Cs', 'Ba', 'La', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn'],
-            ['Fr', 'Ra', 'Ac', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', '', '', '', '', '', '', '', '', ''],
-            // Lanthanides/Actinides omitted for brevity in main grid or added below?
-            // Let's stick to main block for now or add them if needed.
-            // The user provided data up to Mt.
-        ];
-
-        // Lanthanides (La-Lu) and Actinides (Ac-Lr) usually separate.
-        // For this simple grid, let's just render the main block and handle La/Ac as placeholders or simple buttons.
-        // Actually, let's just render a list of buttons if grid is too complex, 
-        // BUT user asked for "Periodic Table". So grid is better.
-
-        // Let's use the layout above.
-
-        layout.forEach(row => {
-            row.forEach(symbol => {
-                const cell = document.createElement('div');
-                cell.className = 'pt-cell'; // Use CSS class
-
-                if (symbol && ELEMENTS[symbol]) {
-                    const data = ELEMENTS[symbol];
-                    cell.classList.add('active'); // Mark as active element
-
-                    // Background color based on current scheme
-                    const color = this.getElementColor(symbol);
-                    const hex = color.toString(16).padStart(6, '0');
-                    cell.style.backgroundColor = `#${hex}`;
-
-                    // Text color contrast
-                    const r = (color >> 16) & 0xff;
-                    const g = (color >> 8) & 0xff;
-                    const b = color & 0xff;
-                    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                    cell.style.color = luma < 128 ? 'white' : 'black';
-
-                    cell.innerText = symbol;
-                    cell.title = `Atomic Number: ${data.atomicNumber}`;
-
-                    cell.onclick = () => {
-                        this.selectedElement = symbol;
-                        const symbolSpan = document.getElementById('current-element-symbol');
-                        if (symbolSpan) {
-                            symbolSpan.innerText = symbol;
-                        } else {
-                            document.getElementById('btn-element-select').innerText = symbol;
-                        }
-                        const ptModal = document.getElementById('pt-modal');
-                        // Reset maximize state before closing
-                        if (ptModal.classList.contains('maximized')) {
-                            this.toggleMaximize(ptModal);
-                        }
-                        ptModal.style.display = 'none';
-                    };
-                } else {
-                    cell.classList.add('empty'); // Mark as empty
-                }
-
-                container.appendChild(cell);
-            });
-        });
+        this.uiManager.renderPeriodicTable();
     }
 
     createAtomMesh(atom) {
@@ -1490,30 +1391,7 @@ export class Editor {
         this.uiManager.updateLabelPositions();
     }
 
-    createBondMesh(bond) {
-        const start = bond.atom1.position;
-        const end = bond.atom2.position;
-
-        const dist = start.distanceTo(end);
-        // Create with height 1 for easy scaling
-        const geometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
-        const material = new THREE.MeshPhongMaterial({ color: 0x000000 });
-        const mesh = new THREE.Mesh(geometry, material);
-
-        // Initial positioning will be handled by updateBonds or manually here
-        const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-        mesh.position.copy(mid);
-
-        const axis = new THREE.Vector3().subVectors(end, start).normalize();
-        const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis);
-        mesh.setRotationFromQuaternion(quaternion);
-
-        mesh.scale.set(1, dist, 1);
-
-        mesh.userData = { type: 'bond', bond: bond };
-        bond.mesh = mesh;
-        this.renderer.scene.add(mesh);
-    }
+    // createBondMesh moved to RenderManager
 
     animate() {
         requestAnimationFrame(this.animate);
@@ -1531,48 +1409,7 @@ export class Editor {
     }
 
     toggleMaximize(element) {
-        if (!element) return;
-
-        if (element.classList.contains('maximized')) {
-            element.classList.remove('maximized');
-
-            // Reset to default modal styles (from HTML)
-            element.style.position = 'fixed';
-            element.style.top = '50%';
-            element.style.left = '50%';
-            element.style.transform = 'translate(-50%, -50%)';
-            element.style.zIndex = '1000';
-            element.style.padding = '25px';
-
-            // Remove maximize-specific properties
-            element.style.right = '';
-            element.style.bottom = '';
-
-            if (element.id === 'coord-modal') {
-                element.style.width = '600px';
-                element.style.maxWidth = '90%';
-                element.style.height = '';
-                element.style.maxHeight = '';
-            } else if (element.id === 'pt-modal') {
-                element.style.width = '';
-                element.style.height = '';
-                element.style.maxWidth = '';
-                element.style.maxHeight = '80vh';
-                element.style.overflowY = 'auto';
-            }
-        } else {
-            element.classList.add('maximized');
-            // Maximize style - center with 90vw/90vh
-            element.style.position = 'fixed';
-            element.style.width = '90vw';
-            element.style.height = '90vh';
-            element.style.maxWidth = '90vw';
-            element.style.maxHeight = '90vh';
-            element.style.top = '50%';
-            element.style.left = '50%';
-            element.style.transform = 'translate(-50%, -50%)';
-            element.style.overflowY = '';
-        }
+        this.uiManager.toggleMaximize(element);
     }
 
 }
