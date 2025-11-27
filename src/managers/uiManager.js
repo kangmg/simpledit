@@ -19,6 +19,11 @@ export class UIManager {
         this.bindLabelButton();
         this.bindExportButton();
         this.bindMoleculeButtons();
+        this.bindSidebarEvents();
+        this.bindUndoRedoEvents();
+        this.bindPeriodicTableEvents();
+        this.bindAutoBondButton();
+        this.bindCoordinateEditorButton();
     }
 
     /**
@@ -132,6 +137,100 @@ export class UIManager {
                     }
                 }
             };
+        }
+    }
+
+    /**
+     * Bind sidebar toggle events
+     */
+    bindSidebarEvents() {
+        const sidebar = document.querySelector('.floating-sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+
+        const iconCollapse = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 1.5033V3.5033L13 3.5033V7.6749L14.8285 5.84644L16.2427 7.26066L12 11.5033L7.75739 7.26066L9.17161 5.84644L11 7.67483V3.5033L6 3.5033V1.5033L18 1.5033Z" fill="currentColor" /><path d="M18 20.4967V22.4967H6V20.4967H11V16.3251L9.17154 18.1536L7.75732 16.7393L12 12.4967L16.2426 16.7393L14.8284 18.1536L13 16.3252V20.4967H18Z" fill="currentColor" /></svg>`;
+        const iconExpand = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 1V3L7 3V1L17 1Z" fill="currentColor" /><path d="M16.2427 8.44772L14.8285 9.86194L13 8.03347L13 15.9665L14.8285 14.138L16.2427 15.5522L12 19.7949L7.75742 15.5522L9.17163 14.138L11 15.9664L11 8.03357L9.17163 9.86194L7.75742 8.44772L12 4.20508L16.2427 8.44772Z" fill="currentColor" /><path d="M17 23V21H7V23H17Z" fill="currentColor" /></svg>`;
+
+        if (toggleBtn && sidebar) {
+            toggleBtn.onclick = () => {
+                sidebar.classList.toggle('collapsed');
+                toggleBtn.innerHTML = sidebar.classList.contains('collapsed') ? iconExpand : iconCollapse;
+                toggleBtn.style.transform = 'none';
+                this.state.ui.sidebarCollapsed = sidebar.classList.contains('collapsed');
+            };
+        }
+    }
+
+    /**
+     * Bind undo/redo buttons
+     */
+    bindUndoRedoEvents() {
+        const btnUndo = document.getElementById('btn-undo');
+        const btnRedo = document.getElementById('btn-redo');
+
+        if (btnUndo) btnUndo.onclick = () => this.editor.undo();
+        if (btnRedo) btnRedo.onclick = () => this.editor.redo();
+    }
+
+    /**
+     * Bind periodic table events
+     */
+    bindPeriodicTableEvents() {
+        const btnElement = document.getElementById('btn-element-select');
+        const ptModal = document.getElementById('pt-modal');
+        const maximizePt = document.querySelector('.maximize-pt');
+        const closePtBtns = document.querySelectorAll('.close-pt');
+
+        if (btnElement && ptModal) {
+            btnElement.onclick = () => {
+                // Reset maximize state
+                if (ptModal.classList.contains('maximized')) {
+                    this.toggleMaximize(ptModal);
+                }
+                this.editor.renderPeriodicTable();
+                this.openPeriodicTable((element) => {
+                    this.editor.selectedElement = element;
+                    document.getElementById('current-element-symbol').textContent = element;
+                    this.closePeriodicTable();
+                });
+            };
+        }
+
+        if (maximizePt && ptModal) {
+            maximizePt.onclick = () => this.toggleMaximize(ptModal);
+        }
+
+        closePtBtns.forEach(btn => {
+            btn.onclick = () => {
+                if (ptModal.classList.contains('maximized')) {
+                    this.toggleMaximize(ptModal);
+                }
+                this.closePeriodicTable();
+            };
+        });
+    }
+
+    /**
+     * Bind auto-bond button
+     */
+    bindAutoBondButton() {
+        const btnAutoBond = document.getElementById('btn-auto-bond');
+        if (btnAutoBond) {
+            btnAutoBond.onclick = () => {
+                this.editor.autoBond();
+                this.editor.renderManager.updateBondVisuals();
+                this.editor.saveState();
+                this.showSuccess('Auto-bonding complete');
+            };
+        }
+    }
+
+    /**
+     * Bind coordinate editor button
+     */
+    bindCoordinateEditorButton() {
+        const btnCoordEditor = document.getElementById('btn-coord-editor');
+        if (btnCoordEditor) {
+            btnCoordEditor.onclick = () => this.openCoordinateEditor();
         }
     }
 
