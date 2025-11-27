@@ -112,4 +112,21 @@ export const ELEMENTS = {
     'Mt': { atomicNumber: 109, jmol: 0xEB0026, cpk: 0xFFFFFF, radius: 1.70 },
 };
 
-export const DEFAULT_ELEMENT = { jmol: 0xFF00FF, cpk: 0xFF00FF, radius: 0.7 };
+export const DEFAULT_ELEMENT = 'C';
+
+// UI Constants - Window and component sizing
+export const UI_CONSTANTS = {
+    MIN_CONSOLE_WIDTH: 200,
+    MIN_CONSOLE_HEIGHT: 150,
+    MIN_MODAL_WIDTH: 400,
+    MIN_MODAL_HEIGHT: 300,
+    SIDEBAR_WIDTH: 300,
+    MODAL_MARGIN: 30,
+};
+
+// Rendering Constants
+export const RENDER_CONSTANTS = {
+    LABEL_UPDATE_THROTTLE_MS: 16,   // ~60fps label update throttle
+    ATOM_MESH_SEGMENTS: 16,         // Sphere segments for atom rendering
+    BOND_MESH_RADIAL_SEGMENTS: 8,   // Cylinder radial segments for bonds
+};
