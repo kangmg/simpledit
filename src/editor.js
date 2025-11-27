@@ -1477,155 +1477,17 @@ export class Editor {
     // getElementColor(element) { ... }
 
     openCoordinateEditor(initialFormat = 'xyz') {
-        const modal = document.getElementById('coord-modal');
-        const backdrop = document.getElementById('modal-backdrop');
-        const input = document.getElementById('coord-input');
-        const formatSelect = document.getElementById('coord-format');
-        const btnCopy = document.getElementById('btn-coord-copy');
-        const btnImport = document.getElementById('btn-coord-import');
-
-        // Reset maximize state before opening
-        if (modal.classList.contains('maximized')) {
-            this.toggleMaximize(modal);
-        }
-
-        // Set initial format
-        formatSelect.value = initialFormat;
-
-        // Load current molecule data
-        const loadCurrentData = () => {
-            const currentFormat = formatSelect.value;
-            if (currentFormat === 'xyz') {
-                // Only show XYZ if there are atoms, otherwise show empty
-                if (this.molecule.atoms.length > 0) {
-                    input.value = this.molecule.toXYZ();
-                } else {
-                    input.value = '';
-                }
-            } else {
-                input.value = ''; // Clear for other formats for now
-            }
-        };
-
-        loadCurrentData();
-
-        modal.style.display = 'block';
-        backdrop.style.display = 'block';
-        input.focus();
-
-        // Disable editor interactions
-        this.renderer.controls.enabled = false;
-
-        // Format change handler
-        formatSelect.onchange = () => {
-            loadCurrentData();
-        };
-
-        // Copy to clipboard
-        btnCopy.onclick = () => {
-            const text = input.value;
-            navigator.clipboard.writeText(text).then(() => {
-                console.log('Coordinates copied to clipboard');
-                // Visual feedback
-                const originalText = btnCopy.innerText;
-                btnCopy.innerText = 'Copied!';
-                setTimeout(() => {
-                    btnCopy.innerText = originalText;
-                }, 1000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-            });
-        };
-
-        // Cancel/Close
-        // Bindings moved to init
-
-        // Import
-        btnImport.onclick = () => {
-            const text = input.value;
-            const format = formatSelect.value;
-
-            if (text) {
-                try {
-                    this.saveState(); // Save before importing
-
-                    if (format === 'xyz') {
-                        this.clearVisuals(); // Clear visuals BEFORE clearing data
-                        this.molecule.fromXYZ(text);
-                        this.rebuildScene();
-                    }
-                    // Future formats will be added here
-                } catch (error) {
-                    console.error('Error importing coordinates:', error);
-                    alert('Error importing coordinates. See console for details.');
-                }
-            }
-            this.closeCoordinateEditor();
-        };
+        this.uiManager.openCoordinateEditor(initialFormat);
     }
 
     closeCoordinateEditor() {
-        const modal = document.getElementById('coord-modal');
-        const backdrop = document.getElementById('modal-backdrop');
-
-        // Reset maximize state before closing
-        if (modal.classList.contains('maximized')) {
-            this.toggleMaximize(modal);
-        }
-
-        modal.style.display = 'none';
-        backdrop.style.display = 'none';
-        this.renderer.controls.enabled = true;
-
-        // Clean up event handlers
-        document.getElementById('coord-format').onchange = null;
-        document.getElementById('btn-coord-copy').onclick = null;
-        document.getElementById('btn-coord-import').onclick = null;
-        // Cancel/Close
-        document.getElementById('coord-close').onclick = () => {
-            this.closeCoordinateEditor();
-        };
+        this.uiManager.closeCoordinateEditor();
     }
 
-    clearVisuals() {
-        // Clear ALL existing labels from container
-        if (this.labelContainer) {
-            this.labelContainer.innerHTML = '';
-        }
 
-        // Clear references in atoms
-        if (this.molecule && this.molecule.atoms) {
-            this.molecule.atoms.forEach(atom => {
-                atom.label = null;
-            });
-        }
-
-        // Clear existing meshes
-        for (let i = this.renderer.scene.children.length - 1; i >= 0; i--) {
-            const child = this.renderer.scene.children[i];
-            if (child.type === 'Mesh' || child.type === 'LineSegments') {
-                this.renderer.scene.remove(child);
-            }
-        }
-    }
 
     rebuildScene() {
-        this.clearVisuals();
-
-        // Re-add atoms
-        for (const atom of this.molecule.atoms) {
-            this.addAtomToScene(atom.element, atom.position, atom);
-        }
-
-        // Clear all bond data before auto-bonding
-        this.molecule.bonds = [];
-        this.molecule.atoms.forEach(atom => {
-            atom.bonds = [];
-        });
-
-        // Re-add bonds (if any were parsed, though standard XYZ doesn't have bonds)
-        // We might need to auto-generate bonds based on distance here
-        this.autoBond();
+        this.renderManager.rebuildScene();
     }
 
     autoBond() {
