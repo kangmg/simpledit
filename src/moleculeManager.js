@@ -1,7 +1,7 @@
 import { Molecule } from './molecule.js';
 import { GeometryEngine } from './geometryEngine.js';
 import * as THREE from 'three';
-import { ELEMENTS, DEFAULT_ELEMENT } from '../constants.js';
+import { ELEMENTS, DEFAULT_ELEMENT } from './constants.js';
 
 export class MoleculeManager {
     constructor(editor) {
