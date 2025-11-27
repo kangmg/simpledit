@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { ErrorHandler } from '../utils/errorHandler.js';
 
 /**
@@ -56,7 +57,7 @@ export class FileIOManager {
             this.editor.molecule.bonds = [];
 
             atoms.forEach(({ element, x, y, z }) => {
-                this.editor.addAtom(element, x, y, z);
+                this.editor.addAtomToScene(element, new THREE.Vector3(x, y, z));
             });
 
             // Auto-detect bonds

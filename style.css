@@ -806,3 +806,19 @@ select:hover {
     font-size: 11px;
     color: #666;
 }
+/* Minimized Modal Styles */
+.modal-content.minimized {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+}
+
+.modal-content.minimized > *:not(.modal-header) {
+    display: none !important;
+}
+
+.modal-content.minimized .modal-header {
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+}
