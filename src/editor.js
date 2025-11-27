@@ -7,6 +7,14 @@ import { ELEMENTS, DEFAULT_ELEMENT } from './constants.js';
 import { Console } from './console.js';
 import { Interaction } from './interaction.js';
 
+// Manager classes
+import { EditorState } from './editorState.js';
+import { SelectionManager } from './managers/selectionManager.js';
+import { UIManager } from './managers/uiManager.js';
+import { FileIOManager } from './managers/fileIOManager.js';
+import { RenderManager } from './managers/renderManager.js';
+import { GeometryController } from './managers/geometryController.js';
+
 export class Editor {
     constructor() {
         this.canvas = document.getElementById('editor-canvas');
@@ -17,21 +25,24 @@ export class Editor {
         }
         this.renderer = new Renderer(this.canvas);
 
+        // Initialize centralized state
+        this.state = new EditorState();
+
         // Initialize MoleculeManager (this will create the first molecule and set this.molecule)
         this.moleculeManager = new MoleculeManager(this);
 
+        // Initialize Manager classes
+        this.selectionManager = new SelectionManager(this);
+        this.uiManager = new UIManager(this);
+        this.fileIOManager = new FileIOManager(this);
+        this.renderManager = new RenderManager(this);
+        this.geometryController = new GeometryController(this);
+
         this.interaction = new Interaction(this.renderer, this.canvas);
 
-        this.mode = 'edit';
+        // Legacy properties (will be migrated gradually)
         this.selectedElement = 'C';
-        this.colorScheme = 'jmol'; // Default to Jmol colors
         this.manipulationMode = 'translate'; // For move mode: translate or rotate
-        this.selectionMode = 'lasso'; // For select mode: rectangle or lasso
-        this.labelMode = 'none'; // Label modes: 'none', 'symbol', 'number', 'both'
-        // this.selectedBondOrder = 1; // Removed
-
-        // Track selection order for geometry adjustments
-        this.selectionOrder = [];
 
         // Undo/Redo History
         this.history = [];
@@ -76,6 +87,43 @@ export class Editor {
         // Start animation loop
         this.animate = this.animate.bind(this);
         this.animate();
+    }
+
+    // Compatibility layer: proxy properties to state
+    // This allows gradual migration from this.mode to this.state.mode
+    get mode() {
+        return this.state.mode;
+    }
+    set mode(value) {
+        this.state.setMode(value);
+    }
+
+    get labelMode() {
+        return this.state.ui.labelMode;
+    }
+    set labelMode(value) {
+        this.state.setLabelMode(value);
+    }
+
+    get selectionOrder() {
+        return this.state.selection.order;
+    }
+    set selectionOrder(value) {
+        this.state.selection.order = value;
+    }
+
+    get colorScheme() {
+        return this.state.ui.colorScheme;
+    }
+    set colorScheme(value) {
+        this.state.setColorScheme(value);
+    }
+
+    get selectionMode() {
+        return this.selectionManager.selectionMode;
+    }
+    set selectionMode(value) {
+        this.selectionManager.selectionMode = value;
     }
 
     animate() {
