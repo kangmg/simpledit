@@ -205,6 +205,18 @@ export class RenderManager {
                 new THREE.Vector3(0, 1, 0),
                 direction.normalize()
             );
+
+            // Update selection highlight
+            const bothSelected = atom1.selected && atom2.selected;
+            const material = bond.mesh.material;
+
+            if (bothSelected) {
+                material.color.setHex(0xffff00); // Yellow highlight
+                material.emissive.setHex(0x222200);
+            } else {
+                material.color.setHex(0x000000); // Black (default)
+                material.emissive.setHex(0x000000);
+            }
         });
     }
 }

@@ -669,20 +669,7 @@ export class Editor {
     }
 
     updateBondVisuals() {
-        this.molecule.bonds.forEach(bond => {
-            if (bond.mesh) {
-                const bothSelected = bond.atom1.selected && bond.atom2.selected;
-                const material = bond.mesh.material;
-
-                if (bothSelected) {
-                    material.color.setHex(0xffff00); // Yellow highlight
-                    material.emissive.setHex(0x222200);
-                } else {
-                    material.color.setHex(0x000000); // Black (default)
-                    material.emissive.setHex(0x000000);
-                }
-            }
-        });
+        this.renderManager.updateBondVisuals();
     }
 
     updateSliderLabel(id, value) {
@@ -1675,12 +1662,7 @@ export class Editor {
     }
 
     updateAtomColors() {
-        this.molecule.atoms.forEach(atom => {
-            if (atom.mesh) {
-                const color = this.getElementColor(atom.element);
-                atom.mesh.material.color.setHex(color);
-            }
-        });
+        this.renderManager.updateAtomColors();
     }
 
     renderPeriodicTable() {
