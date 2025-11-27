@@ -23,7 +23,7 @@ export class RenderManager {
         const radius = element.radius;
         const color = this.getElementColor(atom.element);
 
-        const geometry = new THREE.SphereGeometry(radius, 16, 16);
+        const geometry = new THREE.SphereGeometry(radius * 0.4, 16, 16);
         const material = new THREE.MeshPhongMaterial({
             color: color,
             emissive: atom.selected ? 0xffff00 : 0x000000,
@@ -152,7 +152,7 @@ export class RenderManager {
                 atom.label.remove();
             }
             const label = this.editor.uiManager.createAtomLabel(atom);
-            this.renderer.labelContainer.appendChild(label);
+            this.editor.labelContainer.appendChild(label);
             atom.label = label;
         });
 
