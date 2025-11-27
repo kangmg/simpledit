@@ -28,15 +28,16 @@ export class Editor {
         // Initialize centralized state
         this.state = new EditorState();
 
-        // Initialize MoleculeManager (this will create the first molecule and set this.molecule)
-        this.moleculeManager = new MoleculeManager(this);
-
-        // Initialize Manager classes
+        // IMPORTANT: Initialize Manager classes BEFORE MoleculeManager
+        // because MoleculeManager.createMolecule() calls updateAllLabels()
         this.selectionManager = new SelectionManager(this);
         this.uiManager = new UIManager(this);
         this.fileIOManager = new FileIOManager(this);
         this.renderManager = new RenderManager(this);
         this.geometryController = new GeometryController(this);
+
+        // Now safe to initialize MoleculeManager (will call updateAllLabels)
+        this.moleculeManager = new MoleculeManager(this);
 
         this.interaction = new Interaction(this.renderer, this.canvas);
 
