@@ -60,7 +60,38 @@ export class SelectionManager {
         }
 
         this.updateSelectionStatus();
+        this.updateSelectionStatus();
         return ErrorHandler.success(`Atom ${atom.index} selected`);
+    }
+
+    /**
+     * Toggle selection of an atom
+     * @param {Object} atom - Atom to toggle
+     * @param {boolean} multiSelect - Whether to allow multiple selection (e.g. Ctrl/Shift key)
+     */
+    toggleSelection(atom, multiSelect) {
+        if (!atom) return;
+
+        if (!multiSelect) {
+            // If not multi-select, clear others first unless clicking an already selected one (standard behavior)
+            // But usually in 3D editors, clicking without Ctrl clears everything else and selects the target.
+            // If the target is already selected and we click without Ctrl, we usually just select ONLY that one.
+            const wasSelected = atom.selected;
+            this.clearSelection();
+            if (!wasSelected) {
+                this.selectAtom(atom, true);
+            } else {
+                // If it was selected and we cleared everything, re-select it
+                this.selectAtom(atom, true);
+            }
+        } else {
+            // Multi-select mode
+            if (atom.selected) {
+                this.deselectAtom(atom);
+            } else {
+                this.selectAtom(atom, true);
+            }
+        }
     }
 
     /**
