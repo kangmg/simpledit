@@ -401,7 +401,7 @@ export class Editor {
             });
 
             if (intersection) {
-                this.addAtom(this.selectedElement, target);
+                this.addAtomToScene(this.selectedElement, target);
             }
         } else if (this.mode === 'select') {
             const intersects = raycaster.intersectObjects(this.renderer.scene.children);
@@ -419,27 +419,7 @@ export class Editor {
     }
 
     toggleSelection(atom, multiSelect) {
-        if (!multiSelect) {
-            this.clearSelection();
-        }
-
-        atom.selected = !atom.selected;
-
-        // Update selection order
-        if (atom.selected) {
-            // Add to selection order if not already there
-            if (!this.selectionOrder.includes(atom)) {
-                this.selectionOrder.push(atom);
-            }
-        } else {
-            // Remove from selection order
-            const idx = this.selectionOrder.indexOf(atom);
-            if (idx !== -1) {
-                this.selectionOrder.splice(idx, 1);
-            }
-        }
-
-        this.updateAtomVisuals(atom);
+        this.selectionManager.toggleSelection(atom, multiSelect);
         this.updateSelectionInfo();
     }
 
