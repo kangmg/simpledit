@@ -181,10 +181,84 @@ export class UIManager {
      */
     openCoordinateEditor() {
         const modal = document.getElementById('coord-modal');
-        if (modal) {
-            modal.style.display = 'block';
-            this.editor.updateCoordinateEditor();
+        const backdrop = document.getElementById('modal-backdrop');
+        const input = document.getElementById('coord-input');
+        const formatSelect = document.getElementById('coord-format');
+        const btnCopy = document.getElementById('btn-coord-copy');
+        const btnImport = document.getElementById('btn-coord-import');
+        const btnClose = document.getElementById('coord-close');
+
+        if (!modal || !input) return;
+
+        // Load current data
+        const loadCurrentData = () => {
+            const format = formatSelect.value;
+            if (format === 'xyz') {
+                const xyz = this.editor.fileIOManager.exportXYZ();
+                input.value = xyz || '';
+            } else if (format === 'json') {
+                const json = this.editor.fileIOManager.atomsToJSON(this.editor.molecule.atoms);
+                input.value = json;
+            } else {
+                input.value = '';
+            }
+        };
+
+        loadCurrentData();
+
+        modal.style.display = 'block';
+        if (backdrop) backdrop.style.display = 'block';
+        input.focus();
+
+        // Disable editor interactions
+        if (this.editor.renderer.controls) {
+            this.editor.renderer.controls.enabled = false;
         }
+
+        // Event Handlers
+        this._coordHandlers = {
+            formatChange: () => loadCurrentData(),
+            copy: () => {
+                const text = input.value;
+                navigator.clipboard.writeText(text).then(() => {
+                    const originalText = btnCopy.innerText;
+                    btnCopy.innerText = 'Copied!';
+                    setTimeout(() => btnCopy.innerText = originalText, 1000);
+                }).catch(err => console.error('Failed to copy:', err));
+            },
+            import: () => {
+                const text = input.value;
+                const format = formatSelect.value;
+
+                if (text) {
+                    try {
+                        this.editor.saveState(); // Save before importing
+
+                        if (format === 'xyz') {
+                            const result = this.editor.fileIOManager.importXYZ(text);
+                            if (result.error) {
+                                this.showError(result.error);
+                            } else {
+                                this.editor.renderManager.rebuildScene();
+                                this.showSuccess(result.success);
+                                this.closeCoordinateEditor();
+                            }
+                        }
+                        // Future formats here
+                    } catch (error) {
+                        console.error('Error importing coordinates:', error);
+                        this.showError('Error importing coordinates');
+                    }
+                }
+            },
+            close: () => this.closeCoordinateEditor()
+        };
+
+        // Bind events
+        if (formatSelect) formatSelect.onchange = this._coordHandlers.formatChange;
+        if (btnCopy) btnCopy.onclick = this._coordHandlers.copy;
+        if (btnImport) btnImport.onclick = this._coordHandlers.import;
+        if (btnClose) btnClose.onclick = this._coordHandlers.close;
     }
 
     /**
@@ -192,9 +266,35 @@ export class UIManager {
      */
     closeCoordinateEditor() {
         const modal = document.getElementById('coord-modal');
-        if (modal) {
-            modal.style.display = 'none';
+        const backdrop = document.getElementById('modal-backdrop');
+
+        if (!modal) return;
+
+        // Reset maximize state
+        if (modal.classList.contains('maximized')) {
+            this.toggleMaximize(modal);
         }
+
+        modal.style.display = 'none';
+        if (backdrop) backdrop.style.display = 'none';
+
+        // Re-enable interactions
+        if (this.editor.renderer.controls) {
+            this.editor.renderer.controls.enabled = true;
+        }
+
+        // Cleanup events
+        const formatSelect = document.getElementById('coord-format');
+        const btnCopy = document.getElementById('btn-coord-copy');
+        const btnImport = document.getElementById('btn-coord-import');
+        const btnClose = document.getElementById('coord-close');
+
+        if (formatSelect) formatSelect.onchange = null;
+        if (btnCopy) btnCopy.onclick = null;
+        if (btnImport) btnImport.onclick = null;
+        if (btnClose) btnClose.onclick = null;
+
+        this._coordHandlers = null;
     }
 
     /**
