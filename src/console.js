@@ -1,5 +1,6 @@
 import { CommandParser } from './commandParser.js';
 import { CommandRegistry } from './commandRegistry.js';
+import { UI_CONSTANTS } from './constants.js';
 
 export class Console {
     constructor(editor) {
@@ -124,11 +125,11 @@ export class Console {
             }
 
             // Constraints (min size)
-            if (newWidth >= 200) {
+            if (newWidth >= UI_CONSTANTS.MIN_CONSOLE_WIDTH) {
                 this.panel.style.width = newWidth + 'px';
                 this.panel.style.left = newLeft + 'px';
             }
-            if (newHeight >= 150) {
+            if (newHeight >= UI_CONSTANTS.MIN_CONSOLE_HEIGHT) {
                 this.panel.style.height = newHeight + 'px';
                 this.panel.style.top = newTop + 'px';
             }
