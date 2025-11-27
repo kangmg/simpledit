@@ -37,7 +37,7 @@ time 1
 list mols
 time 1
 
-sw 1
+sw 2
 time 1
 list mols
 
@@ -51,13 +51,13 @@ time 1
 # Create and remove molecule
 new "Temp"
 add atom H 0 0 0
-add atom H 0 0 0.7
+add atom H 0 0.7 0
 time 1
 
 list mols
 time 1
 
-del mol 2
+del mol 1
 time 1
 
 del mol "CH4 Molecule"

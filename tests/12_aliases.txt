@@ -1,5 +1,6 @@
 # Aliases & Flags Test
 # Tests: tr, set dist, paste -o, label -o
+cls 
 
 # Create molecule
 add atom C 0 0 0
