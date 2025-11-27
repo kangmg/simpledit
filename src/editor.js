@@ -365,6 +365,26 @@ export class Editor {
         }
 
         if (this.mode === 'edit') {
+            // Check for atom intersection first
+            const intersects = raycaster.intersectObjects(this.renderer.scene.children);
+            const atomMesh = intersects.find(i => i.object.userData.type === 'atom');
+
+            if (atomMesh) {
+                const atom = atomMesh.object.userData.atom;
+                // If selected element is different, substitute
+                if (this.selectedElement && atom.element !== this.selectedElement) {
+                    this.saveState();
+                    atom.element = this.selectedElement;
+                    this.rebuildScene();
+                    return;
+                }
+                // If same element, maybe we want to add a neighbor? 
+                // For now, let's just return to avoid adding an atom on top or in background.
+                // Or if we want to support "click to add neighbor", we need logic for that.
+                // But user specifically asked for substitution.
+                return;
+            }
+
             // In edit mode, clicking empty space adds an atom
             // Create a plane perpendicular to the camera at an appropriate depth
             const normal = new THREE.Vector3();
@@ -385,7 +405,8 @@ export class Editor {
             } else {
                 // No atoms yet - place at a reasonable distance from camera
                 const distance = camera.position.length() * 0.5; // Halfway to camera
-                planePoint = camera.position.clone().add(normal.clone().multiplyScalar(-distance));
+                // Normal points INTO the scene (away from camera). So we add normal * distance.
+                planePoint = camera.position.clone().add(normal.clone().multiplyScalar(distance));
             }
 
             const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, planePoint);
