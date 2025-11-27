@@ -25,6 +25,8 @@ export class UIManager {
         this.bindPeriodicTableEvents();
         this.bindAutoBondButton();
         this.bindCoordinateEditorButton();
+        this.bindBondThresholdSlider();
+        console.log('UIManager: Toolbar events bound');
     }
 
     /**
@@ -232,6 +234,33 @@ export class UIManager {
         const btnCoordEditor = document.getElementById('btn-coord-editor');
         if (btnCoordEditor) {
             btnCoordEditor.onclick = () => this.openCoordinateEditor();
+        }
+
+        // Bind window controls for Coordinate Editor
+        const btnClose = document.getElementById('coord-close');
+        const btnMinimize = document.getElementById('coord-minimize');
+        const btnMaximize = document.getElementById('coord-maximize');
+        const modal = document.getElementById('coord-modal');
+
+        if (btnClose) btnClose.onclick = () => this.closeCoordinateEditor();
+        if (btnMinimize && modal) btnMinimize.onclick = () => this.toggleMinimize(modal);
+        if (btnMaximize && modal) btnMaximize.onclick = () => this.toggleMaximize(modal);
+    }
+
+    /**
+     * Bind bond threshold slider
+     */
+    bindBondThresholdSlider() {
+        const slider = document.getElementById('bond-threshold');
+        const display = document.getElementById('val-bond-threshold');
+
+        if (slider && display) {
+            slider.oninput = (e) => {
+                display.textContent = e.target.value;
+            };
+            // Rebond on change? Or just update value? 
+            // Original behavior was likely just updating value, and autoBond uses it.
+            // But user said "UI not updating", implying the display value didn't change.
         }
     }
 
@@ -479,6 +508,17 @@ export class UIManager {
         } else {
             element.classList.add('maximized');
         }
+    }
+
+    /**
+     * Toggle modal minimize
+     * @param {HTMLElement} element - Modal element
+     */
+    toggleMinimize(element) {
+        if (!element) return;
+        // Simple minimize implementation: hide content or reduce height
+        // For now, let's just toggle a 'minimized' class
+        element.classList.toggle('minimized');
     }
 
     /**

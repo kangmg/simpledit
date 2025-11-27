@@ -1313,59 +1313,8 @@ export class Editor {
         this.uiManager.renderPeriodicTable();
     }
 
-    createAtomMesh(atom) {
-        const radius = this.getElementRadius(atom.element);
-        const geometry = new THREE.SphereGeometry(1, 32, 32); // Base radius 1
-        const color = this.getElementColor(atom.element);
-        const material = new THREE.MeshPhongMaterial({ color });
-        const mesh = new THREE.Mesh(geometry, material);
-
-        mesh.scale.setScalar(radius * 0.5); // Scale factor
-
-        mesh.position.copy(atom.position);
-        mesh.userData = { type: 'atom', atom: atom };
-
-        // Create black outline using backface technique
-        const outlineGeometry = new THREE.SphereGeometry(1, 32, 32);
-        const outlineMaterial = new THREE.MeshBasicMaterial({
-            color: 0x000000,
-            side: THREE.BackSide
-        });
-        const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
-        outlineMesh.scale.setScalar(radius * 0.5 * 1.05); // 5% larger for outline
-        outlineMesh.position.copy(atom.position);
-
-        // Add both meshes
-        atom.mesh = mesh;
-        atom.outlineMesh = outlineMesh;
-        this.renderer.scene.add(outlineMesh); // Add outline first (rendered behind)
-        this.renderer.scene.add(mesh);
-
-        // Create label (initially hidden)
-        this.createAtomLabel(atom);
-    }
-
-    createAtomLabel(atom) {
-        const label = document.createElement('div');
-        label.className = 'atom-label';
-        label.style.position = 'absolute';
-        label.style.color = '#ff0000'; // Red color
-        label.style.fontSize = '16px';
-        label.style.fontWeight = 'normal'; // Thinner font
-        label.style.fontFamily = 'Arial, sans-serif';
-        label.style.pointerEvents = 'none';
-        label.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8)'; // Outline for visibility
-        label.style.display = 'none';
-
-        if (this.labelContainer) {
-            this.labelContainer.appendChild(label);
-        } else {
-            document.body.appendChild(label);
-        }
-
-        atom.label = label;
-        this.updateAtomLabelText(atom);
-    }
+    // createAtomMesh removed (duplicate)
+    // createAtomLabel removed (moved to UIManager)
 
     updateAtomLabelText(atom) {
         if (!atom.label) return;
