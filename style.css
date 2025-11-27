@@ -188,6 +188,89 @@ select:hover {
     background: #2d2d2e;
 }
 
+.modal-header {
+    flex-shrink: 0;
+}
+
+.console-output::-webkit-scrollbar {
+    width: 8px;
+}
+
+.console-output::-webkit-scrollbar-track {
+    background: #000000;
+}
+
+.console-output::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 0, 0.5);
+    /* Light green */
+    border-radius: 4px;
+}
+
+.console-line {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.console-prompt {
+    color: #00ff00;
+}
+
+.console-input-prompt {
+    color: #00ff00;
+    margin-right: 8px;
+    font-weight: bold;
+}
+
+.console-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #00ff00;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    resize: none;
+    /* Auto-resize via JS */
+    overflow: hidden;
+    min-height: 20px;
+    line-height: 1.5;
+    padding: 0;
+    margin: 0;
+    caret-color: #00ff00;
+}
+
+.console-input::placeholder {
+    color: rgba(0, 255, 0, 0.3);
+}
+
+.console-output .error {
+    color: #ff0000;
+}
+
+.console-output .success {
+    color: #87CEEB;
+    /* Sky Blue (same as info) */
+}
+
+.console-output .warning {
+    color: #ffff00;
+}
+
+.console-input-container {
+    padding: 15px;
+    border-top: 1px solid rgba(0, 255, 0, 0.3);
+    /* Green separator */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    /* Force to bottom if flex fails */
+    background: rgba(15, 15, 15, 0.95);
+    /* Darker gray than panel */
+    flex-shrink: 0;
+    /* Prevent shrinking */
+}
+
 .action-btn {
     background: var(--panel-bg);
     border: none;
@@ -315,138 +398,355 @@ select:hover {
     position: fixed;
     top: 20px;
     right: -420px;
-    bottom: 20px;
+    /* Initial hidden state */
+    /* bottom: 20px; Removed to allow resizing */
+    height: calc(100vh - 40px);
+    /* Default height */
     width: 400px;
-    background: #000000;
+    background: rgba(30, 30, 30, 0.95);
+    /* Dark semi-transparent background */
+    backdrop-filter: blur(10px);
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
     z-index: 100;
     transition: right 0.3s ease;
-    border: 1px solid #00ff00;
+    /* Only transition right for slide effect */
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    /* Green border */
+    min-width: 200px;
+    min-height: 150px;
+    overflow: hidden;
+    /* Ensure rounded corners clip content */
 }
 
 .console-panel.open {
     right: 20px;
 }
 
+.console-panel.dragging,
+.console-panel.resizing {
+    transition: none !important;
+    /* Disable transition during interaction */
+    user-select: none;
+}
+
 .console-header {
-    padding: 15px;
-    border-bottom: 1px solid #00ff00;
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+    /* Green separator */
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
+    /* Align left */
     align-items: center;
+    cursor: move;
+    /* Indicate draggable */
+    background: rgba(20, 37, 188, 0.05);
+    /* Subtle green tint */
 }
 
 .console-title {
-    color: #00ff00;
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 14px;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
     font-weight: 600;
+    margin-left: 10px;
+    /* Space after button */
+    flex: 1;
+    text-align: center;
+    /* Center title like Mac window */
+    margin-right: 24px;
+    /* Balance the close button width */
 }
 
 .console-close {
-    background: transparent;
-    border: none;
-    color: #00ff00;
-    font-size: 20px;
-    cursor: pointer;
+    background: #ff5f56;
+    /* Mac Red */
+    border: 1px solid #e0443e;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
     padding: 0;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    cursor: pointer;
+    display: block;
+    transition: transform 0.1s;
 }
 
 .console-close:hover {
-    opacity: 0.7;
+    background: #ff7b75;
+}
+
+.console-close:active {
+    transform: scale(0.9);
+}
+
+/* Mac-style Window Controls */
+.mac-window-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-right: 15px;
+    /* Spacing from title */
+}
+
+.mac-btn {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    padding: 0;
+    cursor: pointer;
+    display: block;
+    transition: transform 0.1s, background 0.1s;
+    flex-shrink: 0;
+    border: none;
+}
+
+.mac-btn:active {
+    transform: scale(0.9);
+}
+
+.mac-close-btn {
+    background: #ff5f56;
+    border: 1px solid #e0443e;
+}
+
+.mac-close-btn:hover {
+    background: #ff7b75;
+}
+
+.mac-minimize-btn {
+    background: #ffbd2e;
+    border: 1px solid #dea123;
+}
+
+.mac-minimize-btn:hover {
+    background: #ffc94c;
+}
+
+.mac-maximize-btn {
+    background: #27c93f;
+    border: 1px solid #1aab29;
+}
+
+.mac-maximize-btn:hover {
+    background: #35d44d;
+}
+
+/* Mac-style Close Button (Generic) */
+.mac-close-btn {
+    background: #ff5f56;
+    /* Mac Red */
+    border: 1px solid #e0443e;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    cursor: pointer;
+    display: block;
+    transition: transform 0.1s, background 0.1s;
+    flex-shrink: 0;
+}
+
+.mac-close-btn:hover {
+    background: #ff7b75;
+}
+
+.mac-close-btn:active {
+    transform: scale(0.9);
+}
+
+/* Periodic Table Cells */
+.pt-cell {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: 1px solid #555;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.pt-cell.empty {
+    visibility: hidden;
+    border: none;
+    cursor: default;
+}
+
+.pt-cell:hover:not(.empty) {
+    transform: scale(1.1);
+    z-index: 1;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Maximized Modal Styles */
+.modal-content.maximized {
+    /* Center the modal with safe margins */
+    width: 90vw !important;
+    height: 90vh !important;
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+    position: fixed !important;
+}
+
+.modal-content.maximized .modal-header {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1001 !important;
+    pointer-events: auto !important;
+    background: #1e1e1e !important;
+}
+
+.modal-content.maximized .mac-window-controls {
+    z-index: 1002 !important;
+    pointer-events: auto !important;
+    position: relative;
+}
+
+.modal-content.maximized .mac-btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative;
+    z-index: 1003 !important;
+}
+
+.modal-content.maximized #periodic-table {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: repeat(18, minmax(30px, 1fr)) !important;
+    gap: 6px;
+    align-content: start;
+    justify-content: center;
+    padding: 15px;
+    box-sizing: border-box;
+    z-index: 1 !important;
+}
+
+.modal-content.maximized #coord-input {
+    flex: 1;
+    overflow: auto;
+    z-index: 1 !important;
+}
+
+.modal-content.maximized .pt-cell {
+    width: 100%;
+    height: auto;
+    min-height: 35px;
+    aspect-ratio: 1;
+    font-size: clamp(10px, 0.9vw, 14px) !important;
 }
 
 .console-output {
     flex: 1;
     padding: 15px;
     overflow-y: auto;
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
+    line-height: 1.5;
     color: #00ff00;
+    /* Green terminal color */
     scrollbar-width: thin;
-    scrollbar-color: #00ff00 #000000;
-}
-
-.console-output::-webkit-scrollbar {
-    width: 8px;
-}
-
-.console-output::-webkit-scrollbar-track {
-    background: #000000;
-}
-
-.console-output::-webkit-scrollbar-thumb {
-    background: #00ff00;
-    border-radius: 4px;
-}
-
-.console-line {
-    margin-bottom: 8px;
-    line-height: 1.5;
-}
-
-.console-prompt {
-    color: #00ff00;
-}
-
-.console-input-container {
-    padding: 15px;
-    border-top: 1px solid #00ff00;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.console-input-prompt {
-    color: #00ff00;
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 13px;
-}
-
-.console-input {
-    background: transparent;
-    border: none;
-    color: #e0e0e0;
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 13px;
-    flex: 1;
-    outline: none;
-    resize: none;
-    /* Auto-resize via JS */
-    overflow: hidden;
-    min-height: 20px;
-    line-height: 1.5;
-    padding: 0;
-    margin: 0;
-    caret-color: #00ff00;
-}
-
-.console-input::placeholder {
-    color: rgba(0, 255, 0, 0.3);
-}
-
-.console-output .error {
-    color: #ff0000;
-}
-
-.console-output .success {
-    color: #00ff00;
-}
-
-.console-output .warning {
-    color: #ffff00;
+    scrollbar-color: rgba(0, 255, 0, 0.5) rgba(0, 0, 0, 0.3);
 }
 
 .console-output .info {
-    color: #00ffff;
+    color: #87CEEB;
+    /* Sky Blue */
+}
+
+.console-output .input-data {
+    color: #00ff00;
+    /* Green for echoed input */
+}
+
+/* Resize Handles */
+.resize-handle {
+    position: absolute;
+    z-index: 101;
+}
+
+.resize-handle.n {
+    top: -5px;
+    left: 0;
+    width: 100%;
+    height: 10px;
+    cursor: ns-resize;
+}
+
+.resize-handle.s {
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 10px;
+    cursor: ns-resize;
+}
+
+.resize-handle.e {
+    top: 0;
+    right: -5px;
+    width: 10px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.resize-handle.w {
+    top: 0;
+    left: -5px;
+    width: 10px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.resize-handle.ne {
+    top: -5px;
+    right: -5px;
+    width: 15px;
+    height: 15px;
+    cursor: ne-resize;
+    z-index: 102;
+}
+
+.resize-handle.se {
+    bottom: -5px;
+    right: -5px;
+    width: 15px;
+    height: 15px;
+    cursor: se-resize;
+    z-index: 102;
+}
+
+.resize-handle.sw {
+    bottom: -5px;
+    left: -5px;
+    width: 15px;
+    height: 15px;
+    cursor: sw-resize;
+    z-index: 102;
+}
+
+.resize-handle.nw {
+    top: -5px;
+    left: -5px;
+    width: 15px;
+    height: 15px;
+    cursor: nw-resize;
+    z-index: 102;
 }
 
 /* Molecule List */
@@ -480,7 +780,6 @@ select:hover {
 
 .molecule-item.active {
     background: rgba(187, 134, 252, 0.15);
-    /* border: 1px solid rgba(187, 134, 252, 0.3); Removed border */
     color: var(--accent-color);
 }
 
@@ -499,7 +798,6 @@ select:hover {
     font-weight: 500;
     font-size: 13px;
     color: inherit;
-    /* Inherit color from parent (white or accent) */
     display: flex;
     align-items: center;
 }

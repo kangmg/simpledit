@@ -168,7 +168,15 @@
 
     <div id="coord-modal" class="modal-content"
       style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px; z-index: 1000; width: 600px; max-width: 90%;">
-      <h3 style="margin-top: 0; color: white; margin-bottom: 20px;">Atomic Coordinate Editor</h3>
+      <div class="modal-header"
+        style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px; position: relative;">
+        <div class="mac-window-controls" style="position: absolute; left: 0;">
+          <button id="coord-close" class="mac-btn mac-close-btn"></button>
+          <button id="coord-minimize" class="mac-btn mac-minimize-btn"></button>
+          <button id="coord-maximize" class="mac-btn mac-maximize-btn"></button>
+        </div>
+        <h3 style="margin: 0; color: white;">Atomic Coordinate Editor</h3>
+      </div>
       <div style="margin-bottom: 15px;">
         <label for="coord-format" style="color: #aaa; margin-right: 10px;">Format:</label>
         <select id="coord-format" style="width: auto; background: #333; color: white; border: none; padding: 5px;">
@@ -182,7 +190,7 @@
       <div style="margin-top: 20px; display: flex; justify-content: space-between;">
         <button id="btn-coord-copy" class="action-btn" style="width: auto;">Copy to Clipboard</button>
         <div style="display: flex; gap: 10px;">
-          <button id="btn-coord-cancel" class="action-btn" style="width: auto;">Cancel</button>
+          <!-- Cancel button removed -->
           <button id="btn-coord-import" class="primary-btn"
             style="width: auto; padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer;">Import
             Data</button>
@@ -192,9 +200,15 @@
 
     <div id="pt-modal" class="modal-content"
       style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px; z-index: 1000; max-height: 80vh; overflow-y: auto;">
-      <span class="close-pt"
-        style="position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #888;">&times;</span>
-      <h3 style="margin-top: 0; color: white; margin-bottom: 20px;">Select Element</h3>
+      <div class="modal-header"
+        style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px; position: relative;">
+        <h3 style="margin: 0; color: white;">Periodic Table</h3>
+        <div class="mac-window-controls" style="position: absolute; left: 0;">
+          <button class="mac-btn mac-close-btn close-pt"></button>
+          <button class="mac-btn mac-minimize-btn close-pt"></button>
+          <button class="mac-btn mac-maximize-btn maximize-pt"></button>
+        </div>
+      </div>
       <div id="periodic-table"
         style="display: grid; grid-template-columns: repeat(18, 36px); gap: 4px; margin-top: 10px;"></div>
 
@@ -203,14 +217,27 @@
     <!-- Console Panel -->
     <div id="console-panel" class="console-panel">
       <div class="console-header">
+        <div class="mac-window-controls">
+          <button id="console-close" class="mac-btn mac-close-btn"></button>
+          <button id="console-minimize" class="mac-btn mac-minimize-btn"></button>
+          <button id="console-maximize" class="mac-btn mac-maximize-btn"></button>
+        </div>
         <div class="console-title">Console</div>
-        <button id="console-close" class="console-close">×</button>
       </div>
       <div id="console-output" class="console-output"></div>
       <div class="console-input-container">
         <span id="console-prompt" class="console-prompt">&gt;</span>
         <textarea id="console-input" class="console-input" rows="1" spellcheck="false"></textarea>
       </div>
+      <!-- Resize Handles -->
+      <div class="resize-handle n"></div>
+      <div class="resize-handle e"></div>
+      <div class="resize-handle s"></div>
+      <div class="resize-handle w"></div>
+      <div class="resize-handle ne"></div>
+      <div class="resize-handle se"></div>
+      <div class="resize-handle sw"></div>
+      <div class="resize-handle nw"></div>
     </div>
   </div>
   <script type="module" src="./src/main.js"></script>

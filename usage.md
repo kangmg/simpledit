@@ -1,131 +1,151 @@
-# Usage Guide
+# Simpledit Console Usage Guide
 
-# Interactive
+Simpledit provides a powerful command-line interface (CLI) for manipulating molecules. This guide details all available commands, their aliases, and usage examples.
 
-## Modes
+## General Syntax
+- **Commands**: Case-insensitive (e.g., `ADD`, `add`, `Add`).
+- **Arguments**: Space-separated. Use quotes for arguments with spaces (e.g., `new "My Molecule"`).
+- **Flags**: Start with `-` or `--` (e.g., `--offset 5`, `-s`).
+- **Indices**: 0-based atom indices.
 
-### Edit Mode
-- **Click empty space**: Add atom
-- **Drag from atom to atom**: Create/remove bond
-- **Drag from atom to empty space**: Create new atom with bond
+## Core Commands
 
-### Select Mode
-- **Click atom**: Select/deselect atom
-- **`Shift`/`Cmd`/`Ctrl` + Click/Drag**: Multi-select
-- **Drag empty space**: Box/lasso selection
-    - **`r`**: Switch to rectangle selection
-    - **`l`**: Switch to lasso selection
+### `help` (`h`)
+Show available commands or help for a specific command.
+- `help`: List all commands.
+- `help <command>`: Show help for a specific command.
 
+### `list` (`ls`, `l`)
+List atoms, molecules, or fragments.
+- `list`: List all atoms in the active molecule.
+- `list -s`: List only selected atoms.
+- `list mols`: List all molecules.
+- `list frags`: List disconnected fragments.
 
-### Move/Rotate Mode
-- **Drag selected atoms**: Move or rotate fragment
-    - **`t`**: Translate mode
-    - **`r`**: Trackball rotate mode
-    - **`o`**: Orbit rotate mode
+### `add` (`a`)
+Add atoms, bonds, or import data.
+- `add atom <element> [x] [y] [z]`: Add an atom.
+  - `add atom C 0 0 0`
+  - `add atom O 1.2 0 0`
+- `add bond <idx1> <idx2>`: Add a bond between two atoms.
+  - `add bond 0 1`
+- `add mol <format>`: Enter interactive mode to paste data (e.g., XYZ).
+  - `add mol xyz`
 
-## Atom Labels
-- **`s`**: Show symbol only e.g. (C, H, O)
-- **`n`**: Show number only e.g. (0, 1, 2)
-- **`a`**: Show all e.g. (C(0), H(1))
-- **Button click**: Cycle through modes
+### `del` (`delete`, `rm`, `remove`)
+Delete atoms, bonds, or molecules.
+- `del atom <indices>`: Delete atoms by index.
+  - `del atom 0 1 5`
+  - `del atom 0:5` (Range)
+  - `del atom :` (Delete all atoms)
+- `del bond <idx1> <idx2>`: Delete a bond.
+  - `del bond 0 1`
+- `del mol [index|name]` (or `mols`): Delete a molecule.
+  - `del mol` (Delete active)
+  - `del mol 2`
+  - `del mol "Molecule 1"`
 
-## Camera
-- **Orbit Camera**: Standard rotation around target
-- **Trackball Camera**: Free rotation with auto-rotation feature
-  - Note: Auto-rotation after atom selection is a bug but kept for usefulness
+### `select` (`sel`)
+Select atoms for operations.
+- `select <indices>`: Select specific atoms.
+  - `select 0 1 2`
+  - `select 0:5`
+  - `select :` (Select all)
 
-## General
-- **`Ctrl`/`Cmd` + `Z`**: Undo
-- **`Ctrl`/`Cmd` + Y**: Redo
-- **`Delete`/`Backspace`**: Delete selected atoms
-- **`Escape`**: Clear selection and return to select mode
+### `clear` (`cls`)
+Clear the console output.
 
-## Selection Info
-- **2 atoms selected**: Distance displayed in top-left
-- **3 atoms selected**: Angle displayed in top-left
-- **4 atoms selected**: Dihedral angle displayed in top-left
+## Geometry & Manipulation
 
-## Projection
-- **Perspective**: Standard 3D view
-- **Orthographic**: Parallel projection view
+### `set`
+Set geometric properties or editor settings.
+- `set dist <idx1> <idx2> <value>`: Set distance between two atoms.
+- `set angle <idx1> <idx2> <idx3> <value>`: Set angle (p1-p2-p3).
+- `set dihedral <idx1> <idx2> <idx3> <idx4> <value>`: Set dihedral angle.
+- `set threshold <value>`: Set bond detection threshold.
 
----
+### `measure` (`meas`, `info`)
+Measure distances, angles, or dihedrals.
+- `measure <idx1> <idx2>`: Measure distance.
+- `measure <idx1> <idx2> <idx3>`: Measure angle.
+- `measure <idx1> <idx2> <idx3> <idx4>`: Measure dihedral.
+- `measure`: Show info for selected atoms.
 
-# Console
+### `rebond` (`rb`)
+Recalculate bonds based on the current threshold.
+- `rebond`
 
-> Check out the [tutorial](tutorial.html) for detailed description of commands.
+### `center` (`cen`)
+Move the molecule's center of mass to the origin (0,0,0).
+- `center`
 
-**Toggle**: **`c`** key
+### `rotate` (`rot`)
+Rotate the molecule around the origin.
+- `rotate <x> <y> <z>`: Rotate by degrees.
+  - `rotate 90 0 0` (Rotate 90° around X-axis)
 
-## Basic Commands
-- **`help`** / **`h`**: Show all commands or specific command help
-
-## Atom Management
-- **`add <element> [x] [y] [z]`** / **`a`**: Add atom at coordinates
-- **`add <format>`**: Format-based input (xyz, smi, mol2)
-- **`add <format> <<DELIMITER`**: Heredoc syntax for batch input (e.g., `add xyz <<EOF`)
-- **`select <index...>`** / **`sel`**: Select atoms by index
-  - **`select :`**: Select all atoms
-  - **`select 0:3`**: Select range (atoms 0, 1, 2, 3)
-- **`delete <index...>`** / **`del`**: Delete atoms by index
-  - **`delete :`**: Delete all atoms
-  - **`delete 0:3`**: Delete range
-- **`list [selected]`** / **`ls`**: List atoms
-- **`info [idx...]`** / **`i`**: Show atom info/measurements
-  - **`info`**: Show selected atoms info
-  - **`info <index>`**: Show specific atom details
-  - **`info <i> <j>`**: Show distance between two atoms
-  - **`info <i> <j> <k>`**: Show angle between three atoms
-  - **`info <i> <j> <k> <l>`**: Show dihedral angle
-
-## Bond Operations
-- **`bond <idx1> <idx2>`** / **`b`**: Create bond between atoms
-- **`unbond <idx1> <idx2>`** / **`ub`**: Remove bond
-- **`adjustbond`** / **`ab`**: Auto-adjust bonds based on distance
-- **`setthreshold <value>`** / **`st`**: Set bond distance threshold (default: 1.2 Å)
-
-## Geometry
-- **`setdist <idx1> <idx2> <value>`** / **`sd`**: Set bond length
-- **`setangle <idx1> <idx2> <idx3> <value>`** / **`sa`**: Set bond angle
-- **`setdihedral <idx1> <idx2> <idx3> <idx4> <value>`** / **`sdi`**: Set dihedral angle
-
-## Display
-- **`label -s|-n|-a|off`** / **`lbl`**: Control atom labels
-  - **`-s`**: Show element symbols
-  - **`-n`**: Show atom numbers
-  - **`-a`**: Show both
-  - **`off`**: Hide labels
-- **`camera orbit|trackball`** / **`cam`**: Change camera mode
-- **`projection perspective|orthographic`** / **`proj`**: Change projection
-
-## Fragment Management
-- **`fragment <index>`** / **`frag`**: Select entire fragment containing atom
-- **`fragments`** / **`frags`**: List all fragments with atom counts
+### `trans` (`tr`, `translation`)
+Translate the molecule.
+- `trans <x> <y> <z>`: Move by units.
+  - `trans 5 0 0` (Move 5 units on X-axis)
 
 ## Molecule Management
-- **`molecules`** / **`mols`**: List all molecules
-- **`new [name]`**: Create new molecule
-- **`switch <index|name>`** / **`sw`**: Switch active molecule
-- **`rename <name>`** / **`rn`**: Rename active molecule
-- **`remove [index|name]`** / **`rm`**: Remove molecule
-- **`copy`** / **`cp`**: Copy selected atoms to clipboard
-- **`paste [-offset <dist>]`** / **`pa`**: Paste clipboard atoms. Optional `-offset` sets minimum distance.
-- **`cut`** / **`ct`**: Cut selected atoms
-- **`merge <index|name> [-offset <dist>]`** / **`mg`**: Merge molecule into active. Optional `-offset` sets minimum distance.
 
-## Utility
-- **`clear`** / **`cls`**: Clear console output
-- **`capture [bg|nobg]`** / **`cap`**: Capture snapshot of current view.
-  - **`bg`** (default): Include background
-  - **`nobg`**: Transparent background
-- **`#`**: Comment prefix (lines starting with `#` are ignored)
-- **`\`**: Multi-line command
-- **`<<EOF`**,**`EOF`**: Heredoc syntax for batch input
-- **`time <seconds>`** / **`sleep`** / **`wait`**: Wait for specified seconds (for tests)
+### `new`
+Create a new empty molecule.
+- `new [name]`: Create with optional name.
 
-## History Navigation
-- **Up/Down arrows**: Navigate command history
+### `switch` (`sw`)
+Switch between molecules.
+- `switch <index|name>`: Switch by index or name.
 
+### `rename` (`rn`)
+Rename the active molecule.
+- `rename <new_name>`
 
+### `merge` (`mg`)
+Merge another molecule into the active one.
+- `merge <index|name>`
 
+## Clipboard
 
+### `copy` (`cp`)
+Copy selected atoms to clipboard.
+
+### `cut` (`ct`)
+Cut selected atoms to clipboard.
+
+### `paste` (`pa`)
+Paste atoms from clipboard.
+- `paste`: Paste at original coordinates (smart offset applied if overlapping).
+- `paste --offset <val>` (or `-o`): Paste with explicit offset.
+
+## Visualization
+
+### `label` (`lbl`)
+Control atom labels.
+- `label -s` (or `--symbol`): Show symbols.
+- `label -n` (or `--number`): Show indices (numbers).
+- `label -a` (or `--all`): Show both.
+- `label -o` (or `--off`): Clear labels.
+
+### `camera` (`cam`)
+Set camera mode.
+- `camera orbit`
+- `camera trackball`
+
+### `projection` (`proj`)
+Set camera projection.
+- `projection persp` (or `ps`): Perspective.
+- `projection ortho` (or `ot`): Orthographic.
+
+### `capture` (`cap`)
+Capture a snapshot of the viewport.
+- `capture`: Capture with background.
+- `capture -n` (or `--no-background`): Capture with transparent background.
+
+## Utilities
+
+### `time` (`sleep`)
+Pause execution (useful in scripts).
+- `time <seconds>`

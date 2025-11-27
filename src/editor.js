@@ -1,14 +1,20 @@
 import * as THREE from 'three';
 import { Renderer } from './renderer.js';
-import { Molecule } from './molecule.js';
-import { Interaction } from './interaction.js';
+import { MoleculeManager } from './moleculeManager.js';
+import { GeometryEngine } from './geometryEngine.js';
+import { AxisHelper } from './axisHelper.js';
 import { ELEMENTS, DEFAULT_ELEMENT } from './constants.js';
 import { Console } from './console.js';
-import { MoleculeManager } from './moleculeManager.js';
+import { Interaction } from './interaction.js';
 
 export class Editor {
     constructor() {
         this.canvas = document.getElementById('editor-canvas');
+        if (!this.canvas) {
+            this.canvas = document.createElement('canvas');
+            this.canvas.id = 'editor-canvas';
+            document.getElementById('app').appendChild(this.canvas);
+        }
         this.renderer = new Renderer(this.canvas);
 
         // Initialize MoleculeManager (this will create the first molecule and set this.molecule)
@@ -50,12 +56,41 @@ export class Editor {
         this.bindEvents();
         this.setupInteraction();
 
+        // Initialize label container
+        this.labelContainer = document.createElement('div');
+        this.labelContainer.id = 'label-container';
+        this.labelContainer.style.position = 'absolute';
+        this.labelContainer.style.top = '0';
+        this.labelContainer.style.left = '0';
+        this.labelContainer.style.width = '100%';
+        this.labelContainer.style.height = '100%';
+        this.labelContainer.style.pointerEvents = 'none';
+        this.labelContainer.style.overflow = 'hidden';
+        document.body.appendChild(this.labelContainer);
+
         // Initialize console
         this.console = new Console(this);
 
-        // Render loop
+        this.axisHelper = new AxisHelper(this.renderer.renderer);
+
+        // Start animation loop
         this.animate = this.animate.bind(this);
-        requestAnimationFrame(this.animate);
+        this.animate();
+    }
+
+    animate() {
+        requestAnimationFrame(this.animate.bind(this));
+
+        // Update controls
+        this.renderer.controls.update();
+
+        // Update axis helper
+        if (this.axisHelper) {
+            this.axisHelper.update(this.renderer.camera);
+        }
+
+        // Render scene
+        this.renderer.render();
     }
 
     init() {
@@ -157,20 +192,55 @@ export class Editor {
         }
 
         // Properties
-        // document.getElementById('atom-element').onchange = (e) => this.selectedElement = e.target.value; // Replaced by button
+        // Properties
         const btnElement = document.getElementById('btn-element-select');
         const ptModal = document.getElementById('pt-modal');
-        const closePt = document.getElementsByClassName('close-pt')[0];
+
+        // Bind all close buttons for PT
+        const closePtBtns = document.querySelectorAll('.close-pt');
+        closePtBtns.forEach(btn => {
+            btn.onclick = () => {
+                // Reset maximize state before closing
+                if (ptModal.classList.contains('maximized')) {
+                    this.toggleMaximize(ptModal);
+                }
+                ptModal.style.display = 'none';
+            };
+        });
+
+        // Bind maximize button for PT
+        const maximizePt = document.querySelector('.maximize-pt');
+        if (maximizePt) {
+            maximizePt.onclick = () => this.toggleMaximize(ptModal);
+        }
 
         btnElement.onclick = () => {
+            // Reset maximize state before opening
+            if (ptModal.classList.contains('maximized')) {
+                this.toggleMaximize(ptModal);
+            }
             this.renderPeriodicTable();
             ptModal.style.display = 'block';
         };
-        closePt.onclick = () => ptModal.style.display = 'none';
+
         window.onclick = (event) => {
-            if (event.target === ptModal) ptModal.style.display = 'none';
-            if (event.target === document.getElementById('coord-modal')) this.closeCoordinateEditor();
+            if (event.target === ptModal) {
+                // Reset maximize state before closing
+                if (ptModal.classList.contains('maximized')) {
+                    this.toggleMaximize(ptModal);
+                }
+                ptModal.style.display = 'none';
+            }
+            if (event.target === document.getElementById('coord-modal')) {
+                this.closeCoordinateEditor();
+            }
         };
+
+        // Bind Coordinate Editor window controls
+        const coordModal = document.getElementById('coord-modal');
+        document.getElementById('coord-close').onclick = () => this.closeCoordinateEditor();
+        document.getElementById('coord-minimize').onclick = () => this.closeCoordinateEditor();
+        document.getElementById('coord-maximize').onclick = () => this.toggleMaximize(coordModal);
 
         // Bond Threshold
         document.getElementById('bond-threshold').oninput = (e) => {
@@ -629,7 +699,7 @@ export class Editor {
             // Display in top-left corner
             const idx1 = this.molecule.atoms.indexOf(a1);
             const idx2 = this.molecule.atoms.indexOf(a2);
-            measurementInfo.innerHTML = `${a1.element}(${idx1}) - ${a2.element}(${idx2}): ${dist.toFixed(2)} Å`;
+            measurementInfo.innerHTML = `${a1.element} (${idx1}) - ${a2.element} (${idx2}): ${dist.toFixed(2)} Å`;
             measurementInfo.style.display = 'block';
         } else if (count === 3) {
             const a1 = this.selectionOrder[0];
@@ -646,7 +716,7 @@ export class Editor {
             const idx1 = this.molecule.atoms.indexOf(a1);
             const idx2 = this.molecule.atoms.indexOf(a2);
             const idx3 = this.molecule.atoms.indexOf(a3);
-            measurementInfo.innerHTML = `${a1.element}(${idx1}) - ${a2.element}(${idx2}) - ${a3.element}(${idx3}): ${angle.toFixed(1)}°`;
+            measurementInfo.innerHTML = `${a1.element} (${idx1}) - ${a2.element} (${idx2}) - ${a3.element} (${idx3}): ${angle.toFixed(1)}°`;
             measurementInfo.style.display = 'block';
         } else if (count === 4) {
             // Calculate current dihedral
@@ -677,7 +747,7 @@ export class Editor {
             const idx2 = this.molecule.atoms.indexOf(a2);
             const idx3 = this.molecule.atoms.indexOf(a3);
             const idx4 = this.molecule.atoms.indexOf(a4);
-            measurementInfo.innerHTML = `${a1.element}(${idx1}) - ${a2.element}(${idx2}) - ${a3.element}(${idx3}) - ${a4.element}(${idx4}): ${angleDeg.toFixed(1)}°`;
+            measurementInfo.innerHTML = `${a1.element} (${idx1}) - ${a2.element} (${idx2}) - ${a3.element} (${idx3}) - ${a4.element} (${idx4}): ${angleDeg.toFixed(1)}°`;
             measurementInfo.style.display = 'block';
         } else {
             measurementInfo.style.display = 'none';
@@ -1204,9 +1274,9 @@ export class Editor {
             // Update SVG path
             const path = this.selectionBox.querySelector('#lasso-path');
             if (path && this.lassoPath.length > 0) {
-                let pathData = `M ${this.lassoPath[0].x} ${this.lassoPath[0].y}`;
+                let pathData = `M ${this.lassoPath[0].x} ${this.lassoPath[0].y} `;
                 for (let i = 1; i < this.lassoPath.length; i++) {
-                    pathData += ` L ${this.lassoPath[i].x} ${this.lassoPath[i].y}`;
+                    pathData += ` L ${this.lassoPath[i].x} ${this.lassoPath[i].y} `;
                 }
                 path.setAttribute('d', pathData);
             }
@@ -1409,7 +1479,11 @@ export class Editor {
         const formatSelect = document.getElementById('coord-format');
         const btnCopy = document.getElementById('btn-coord-copy');
         const btnImport = document.getElementById('btn-coord-import');
-        const btnCancel = document.getElementById('btn-coord-cancel');
+
+        // Reset maximize state before opening
+        if (modal.classList.contains('maximized')) {
+            this.toggleMaximize(modal);
+        }
 
         // Set initial format
         formatSelect.value = initialFormat;
@@ -1459,10 +1533,8 @@ export class Editor {
             });
         };
 
-        // Cancel
-        btnCancel.onclick = () => {
-            this.closeCoordinateEditor();
-        };
+        // Cancel/Close
+        // Bindings moved to init
 
         // Import
         btnImport.onclick = () => {
@@ -1492,6 +1564,11 @@ export class Editor {
         const modal = document.getElementById('coord-modal');
         const backdrop = document.getElementById('modal-backdrop');
 
+        // Reset maximize state before closing
+        if (modal.classList.contains('maximized')) {
+            this.toggleMaximize(modal);
+        }
+
         modal.style.display = 'none';
         backdrop.style.display = 'none';
         this.renderer.controls.enabled = true;
@@ -1500,17 +1577,17 @@ export class Editor {
         document.getElementById('coord-format').onchange = null;
         document.getElementById('btn-coord-copy').onclick = null;
         document.getElementById('btn-coord-import').onclick = null;
-        document.getElementById('btn-coord-cancel').onclick = null;
+        // Cancel/Close
+        document.getElementById('coord-close').onclick = () => {
+            this.closeCoordinateEditor();
+        };
     }
 
     clearVisuals() {
-        // Clear ALL existing labels from DOM to prevent ghosting
-        const labels = document.querySelectorAll('.atom-label');
-        labels.forEach(label => {
-            if (label.parentNode) {
-                label.parentNode.removeChild(label);
-            }
-        });
+        // Clear ALL existing labels from container
+        if (this.labelContainer) {
+            this.labelContainer.innerHTML = '';
+        }
 
         // Clear references in atoms
         if (this.molecule && this.molecule.atoms) {
@@ -1621,34 +1698,22 @@ export class Editor {
         layout.forEach(row => {
             row.forEach(symbol => {
                 const cell = document.createElement('div');
-                cell.style.width = '32px';
-                cell.style.height = '32px';
-                cell.style.flexShrink = '0';
+                cell.className = 'pt-cell'; // Use CSS class
 
                 if (symbol && ELEMENTS[symbol]) {
                     const data = ELEMENTS[symbol];
-                    cell.style.border = '1px solid #555';
-                    cell.style.cursor = 'pointer';
-                    cell.style.display = 'flex';
-                    cell.style.flexDirection = 'column';
-                    cell.style.alignItems = 'center';
-                    cell.style.justifyContent = 'center';
-                    cell.style.fontSize = '11px';
-                    cell.style.fontWeight = 'bold';
+                    cell.classList.add('active'); // Mark as active element
 
                     // Background color based on current scheme
                     const color = this.getElementColor(symbol);
                     const hex = color.toString(16).padStart(6, '0');
                     cell.style.backgroundColor = `#${hex}`;
 
-                    // Text color contrast - simple logic
-                    // If color is dark, white text; else black.
-                    // Calculate luminance? Or just default to black/white based on hex.
-                    // Simple approximation:
+                    // Text color contrast
                     const r = (color >> 16) & 0xff;
                     const g = (color >> 8) & 0xff;
                     const b = color & 0xff;
-                    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; // per ITU-R BT.709
+                    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
                     cell.style.color = luma < 128 ? 'white' : 'black';
 
                     cell.innerText = symbol;
@@ -1660,14 +1725,17 @@ export class Editor {
                         if (symbolSpan) {
                             symbolSpan.innerText = symbol;
                         } else {
-                            // Fallback
                             document.getElementById('btn-element-select').innerText = symbol;
                         }
-                        document.getElementById('pt-modal').style.display = 'none';
+                        const ptModal = document.getElementById('pt-modal');
+                        // Reset maximize state before closing
+                        if (ptModal.classList.contains('maximized')) {
+                            this.toggleMaximize(ptModal);
+                        }
+                        ptModal.style.display = 'none';
                     };
                 } else {
-                    // Empty cell - make it invisible but maintain grid structure
-                    cell.style.visibility = 'hidden';
+                    cell.classList.add('empty'); // Mark as empty
                 }
 
                 container.appendChild(cell);
@@ -1718,7 +1786,13 @@ export class Editor {
         label.style.pointerEvents = 'none';
         label.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8)'; // Outline for visibility
         label.style.display = 'none';
-        document.body.appendChild(label);
+
+        if (this.labelContainer) {
+            this.labelContainer.appendChild(label);
+        } else {
+            document.body.appendChild(label);
+        }
+
         atom.label = label;
         this.updateAtomLabelText(atom);
     }
@@ -1737,7 +1811,7 @@ export class Editor {
                 text = idx.toString();
                 break;
             case 'both':
-                text = `${atom.element}(${idx})`;
+                text = `${atom.element} (${idx})`;
                 break;
             default:
                 text = '';
@@ -1871,5 +1945,50 @@ export class Editor {
     updateMeasurements() {
         // Measurements are now displayed in the top-left corner via updateSelectionInfo
         // This function is kept for compatibility but does nothing
+    }
+
+    toggleMaximize(element) {
+        if (!element) return;
+
+        if (element.classList.contains('maximized')) {
+            element.classList.remove('maximized');
+
+            // Reset to default modal styles (from HTML)
+            element.style.position = 'fixed';
+            element.style.top = '50%';
+            element.style.left = '50%';
+            element.style.transform = 'translate(-50%, -50%)';
+            element.style.zIndex = '1000';
+            element.style.padding = '25px';
+
+            // Remove maximize-specific properties
+            element.style.right = '';
+            element.style.bottom = '';
+
+            if (element.id === 'coord-modal') {
+                element.style.width = '600px';
+                element.style.maxWidth = '90%';
+                element.style.height = '';
+                element.style.maxHeight = '';
+            } else if (element.id === 'pt-modal') {
+                element.style.width = '';
+                element.style.height = '';
+                element.style.maxWidth = '';
+                element.style.maxHeight = '80vh';
+                element.style.overflowY = 'auto';
+            }
+        } else {
+            element.classList.add('maximized');
+            // Maximize style - center with 90vw/90vh
+            element.style.position = 'fixed';
+            element.style.width = '90vw';
+            element.style.height = '90vh';
+            element.style.maxWidth = '90vw';
+            element.style.maxHeight = '90vh';
+            element.style.top = '50%';
+            element.style.left = '50%';
+            element.style.transform = 'translate(-50%, -50%)';
+            element.style.overflowY = '';
+        }
     }
 }

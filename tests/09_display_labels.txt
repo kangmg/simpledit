@@ -2,7 +2,7 @@
 # Tests: label modes, camera, projection
 
 # Create test molecule
-add xyz <<EOF
+add mol xyz <<EOF
 8
 
 F        1.34840       -0.55490        0.14980
@@ -26,7 +26,7 @@ time 1
 label -a
 time 1
 
-label off
+label -o
 time 1
 
 # Test camera modes
@@ -37,12 +37,12 @@ camera trackball
 time 1
 
 # Test projection modes
-projection perspective
+projection ps
 time 1
 
-projection orthographic
+projection ot
 time 1
 
-projection perspective
+projection ps
 
-del :
+del atom :

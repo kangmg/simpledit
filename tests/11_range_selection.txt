@@ -3,7 +3,7 @@
 cls 
 
 # Create test molecule
-add xyz <<EOF
+add mol xyz <<EOF
 30
 
 O   -1.3726747  -0.1552490   2.4000752
@@ -43,48 +43,48 @@ time 1
 
 # Test range selection: select atoms 0 through 2
 select 0:2
-info
+measure
 time 1
 
 # Test range selection: select atoms 9 through 14 
 select 9:14
-info 
+measure 
 time 1
 
 # Test mixed selection: individual + range
 select 3 4 5 6:8 
-info
+measure
 time 1
 cut # alternative for removing selected atoms
 time 1
 
 # Create more atoms for delete test
-del :
+del atom :
 time 1
 
-add C 0 0 0
-add C 1 0 0
-add C 2 0 0
-add C 3 0 0
-add C 4 0 0
-add C 5 0 0
-add C 6 0 0
-add C 7 0 0
+add atom C 0 0 0
+add atom C 1 0 0
+add atom C 2 0 0
+add atom C 3 0 0
+add atom C 4 0 0
+add atom C 5 0 0
+add atom C 6 0 0
+add atom C 7 0 0
 time 1
 
 list
 time 1
 
 # Delete range 2:4
-delete 2:4
+del atom 2:4
 time 1
 
 list
 time 1
 
 # Delete mixed: individual + range
-delete 0 2:3
+del atom 0 2:3
 time 2
 
 list
-del :
+del atom :

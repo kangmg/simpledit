@@ -1,9 +1,9 @@
 # Fragment Analysis Test
-# Tests: fragments, fragment
+# Tests: list frags, select
 cls 
 
 # Create disconnected fragments
-add xyz <<EOF
+add mol xyz <<EOF
 8
 
 F        1.34840       -0.55490        0.14980
@@ -18,33 +18,33 @@ EOF
 time 1
 
 # Analyze fragments
-fragments
+list frags
 time 1
 
 # fragmentation
-unbond 2 3
-frags
+del bond 2 3
+list frags
 time 1
 
 # Select first fragment
-fragment 0
+select 0 2 4 6
 time 1
 
-info
+measure
 time 1
 
 # Select second fragment
-fragment 1
+select 1 3 5 7
 time 1
 
-info
+measure
 time 1
 
-del :
+del atom :
 
 
 # water cluster
-add xyz <<EOF
+add mol xyz <<EOF
 30
 
 O   -1.3726747  -0.1552490   2.4000752
@@ -79,9 +79,9 @@ H    0.7227966  -3.6649391  -0.0654267
 H   -0.2100590  -2.4764337   0.0301288
 EOF
 
-frags
+list frags
 time 1
 
-frag 3
+select 9:11
 time 3
-del :
+del atom :

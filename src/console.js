@@ -20,6 +20,127 @@ export class Console {
 
         this.bindEvents();
         this.print('Console initialized. Type "help" for commands.', 'info');
+
+        // Drag and Resize State
+        this.isDragging = false;
+        this.isResizing = false;
+        this.dragStart = { x: 0, y: 0 };
+        this.panelStart = { left: 0, top: 0, width: 0, height: 0 };
+        this.resizeDir = '';
+
+        this.setupInteractions();
+    }
+
+    setupInteractions() {
+        const header = this.panel.querySelector('.console-header');
+        const handles = this.panel.querySelectorAll('.resize-handle');
+
+        // Drag Start
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.console-close')) return; // Ignore close button
+            this.startDrag(e);
+        });
+
+        // Resize Start
+        handles.forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation(); // Prevent drag
+                const classes = handle.className.split(' ');
+                const dir = classes.find(c => ['n', 's', 'e', 'w', 'ne', 'se', 'sw', 'nw'].includes(c));
+                this.startResize(e, dir);
+            });
+        });
+
+        // Global Move/Up
+        window.addEventListener('mousemove', (e) => this.onMove(e));
+        window.addEventListener('mouseup', () => this.onUp());
+    }
+
+    convertToAbsolute() {
+        const rect = this.panel.getBoundingClientRect();
+        this.panel.style.right = 'auto';
+        this.panel.style.bottom = 'auto';
+        this.panel.style.left = rect.left + 'px';
+        this.panel.style.top = rect.top + 'px';
+        this.panel.style.width = rect.width + 'px';
+        this.panel.style.height = rect.height + 'px';
+    }
+
+    startDrag(e) {
+        this.isDragging = true;
+        this.panel.classList.add('dragging');
+        this.convertToAbsolute();
+
+        this.dragStart = { x: e.clientX, y: e.clientY };
+        const rect = this.panel.getBoundingClientRect();
+        this.panelStart = { left: rect.left, top: rect.top };
+    }
+
+    startResize(e, dir) {
+        this.isResizing = true;
+        this.resizeDir = dir;
+        this.panel.classList.add('resizing');
+        this.convertToAbsolute();
+
+        this.dragStart = { x: e.clientX, y: e.clientY };
+        const rect = this.panel.getBoundingClientRect();
+        this.panelStart = {
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height
+        };
+    }
+
+    onMove(e) {
+        if (this.isDragging) {
+            const dx = e.clientX - this.dragStart.x;
+            const dy = e.clientY - this.dragStart.y;
+            this.panel.style.left = (this.panelStart.left + dx) + 'px';
+            this.panel.style.top = (this.panelStart.top + dy) + 'px';
+        } else if (this.isResizing) {
+            const dx = e.clientX - this.dragStart.x;
+            const dy = e.clientY - this.dragStart.y;
+            const start = this.panelStart;
+            let newWidth = start.width;
+            let newHeight = start.height;
+            let newLeft = start.left;
+            let newTop = start.top;
+
+            // Horizontal
+            if (this.resizeDir.includes('e')) {
+                newWidth = start.width + dx;
+            } else if (this.resizeDir.includes('w')) {
+                newWidth = start.width - dx;
+                newLeft = start.left + dx;
+            }
+
+            // Vertical
+            if (this.resizeDir.includes('s')) {
+                newHeight = start.height + dy;
+            } else if (this.resizeDir.includes('n')) {
+                newHeight = start.height - dy;
+                newTop = start.top + dy;
+            }
+
+            // Constraints (min size)
+            if (newWidth >= 200) {
+                this.panel.style.width = newWidth + 'px';
+                this.panel.style.left = newLeft + 'px';
+            }
+            if (newHeight >= 150) {
+                this.panel.style.height = newHeight + 'px';
+                this.panel.style.top = newTop + 'px';
+            }
+        }
+    }
+
+    onUp() {
+        if (this.isDragging || this.isResizing) {
+            this.isDragging = false;
+            this.isResizing = false;
+            this.panel.classList.remove('dragging', 'resizing');
+        }
     }
 
     bindEvents() {
@@ -56,16 +177,51 @@ export class Console {
             this.input.style.height = this.input.scrollHeight + 'px';
         });
 
-        // Close button
-        this.closeBtn.addEventListener('click', () => {
-            this.toggle();
-        });
+        // Close/Minimize button
+        this.closeBtn.addEventListener('click', () => this.toggle());
+        document.getElementById('console-minimize').addEventListener('click', () => this.toggle());
+
+        // Maximize button
+        document.getElementById('console-maximize').addEventListener('click', () => this.maximize());
     }
 
     toggle() {
         this.panel.classList.toggle('open');
         if (this.panel.classList.contains('open')) {
             this.input.focus();
+        } else {
+            // Closing - reset inline styles to allow CSS transitions or default state
+            this.panel.style.left = '';
+            this.panel.style.top = '';
+            this.panel.style.width = '';
+            this.panel.style.height = '';
+            this.panel.style.right = '';
+            this.panel.style.bottom = '';
+            this.panel.classList.remove('maximized'); // Reset maximize state
+        }
+    }
+
+    maximize() {
+        this.panel.classList.toggle('maximized');
+        if (this.panel.classList.contains('maximized')) {
+            // Store previous state if needed, but for now just overwrite styles
+            this.panel.style.left = '10px';
+            this.panel.style.top = '10px';
+            this.panel.style.width = 'calc(100% - 20px)';
+            this.panel.style.height = 'calc(100% - 20px)';
+            this.panel.style.right = 'auto';
+            this.panel.style.bottom = 'auto';
+        } else {
+            // Restore to default or previous drag state?
+            // For simplicity, restore to default "open" state (reset inline styles)
+            // Or ideally, restore to pre-maximize state.
+            // Let's reset to default open state for now.
+            this.panel.style.left = '';
+            this.panel.style.top = '';
+            this.panel.style.width = '';
+            this.panel.style.height = '';
+            this.panel.style.right = '';
+            this.panel.style.bottom = '';
         }
     }
 
@@ -142,6 +298,11 @@ export class Console {
                 // If heredoc data exists, pass it via special __heredoc__ arg
                 if (heredocData) {
                     parsed.args.push('__heredoc__', heredocData);
+                }
+
+                // Auto-save state for destructive commands
+                if (command.isDestructive) {
+                    this.editor.saveState();
                 }
 
                 // Await the command execution to support async commands like 'time'

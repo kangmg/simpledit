@@ -1,4 +1,5 @@
 import { Molecule } from './molecule.js';
+import { GeometryEngine } from './geometryEngine.js';
 import * as THREE from 'three';
 
 export class MoleculeManager {
@@ -185,10 +186,7 @@ export class MoleculeManager {
         }));
 
         // Calculate center of mass
-        let com = new THREE.Vector3();
-        selectedAtoms.forEach(atom => com.add(atom.position));
-        com.divideScalar(selectedAtoms.length);
-        this.clipboard.centerOfMass = com;
+        this.clipboard.centerOfMass = GeometryEngine.getCenterOfMass(selectedAtoms);
 
         // Store bond data (only bonds between selected atoms)
         this.clipboard.bonds = [];
@@ -221,7 +219,7 @@ export class MoleculeManager {
         // Calculate smart offset
         const currentAtoms = activeMol.molecule.atoms;
         const incomingAtoms = this.clipboard.atoms; // Simple objects with position
-        const offset = this.calculateSmartOffset(incomingAtoms, currentAtoms, minDistance);
+        const offset = GeometryEngine.calculateSmartOffset(incomingAtoms, currentAtoms, minDistance);
 
         // Create new atoms with offset
         const newAtoms = [];
@@ -265,7 +263,7 @@ export class MoleculeManager {
         // Calculate offset to avoid overlap
         const currentAtoms = targetMol.molecule.atoms;
         const incomingAtoms = sourceMol.molecule.atoms; // Atom objects
-        const offset = this.calculateSmartOffset(incomingAtoms, currentAtoms, minDistance);
+        const offset = GeometryEngine.calculateSmartOffset(incomingAtoms, currentAtoms, minDistance);
 
         // Copy atoms from source to target
         const atomMap = new Map(); // Map source atoms to new atoms
@@ -322,38 +320,5 @@ export class MoleculeManager {
 
             container.appendChild(item);
         });
-    }
-
-    calculateSmartOffset(incomingAtoms, currentAtoms, minDistance) {
-        if (minDistance <= 0) return new THREE.Vector3(0, 0, 0);
-        if (currentAtoms.length === 0 || incomingAtoms.length === 0) return new THREE.Vector3(0, 0, 0);
-
-        let offsetZ = 0;
-        const step = 3.0; // Shift by 3 units at a time
-        const maxSteps = 50; // Prevent infinite loop
-
-        for (let i = 0; i < maxSteps; i++) {
-            let collision = false;
-            const currentOffset = new THREE.Vector3(0, 0, offsetZ);
-
-            for (const incAtom of incomingAtoms) {
-                const incPos = incAtom.position.clone().add(currentOffset);
-                for (const curAtom of currentAtoms) {
-                    if (incPos.distanceTo(curAtom.position) < minDistance) {
-                        collision = true;
-                        break;
-                    }
-                }
-                if (collision) break;
-            }
-
-            if (!collision) {
-                return currentOffset;
-            }
-
-            offsetZ += step;
-        }
-
-        return new THREE.Vector3(0, 0, offsetZ);
     }
 }

@@ -4,7 +4,7 @@ cls
 
 # 1. Create Borane (BH3)
 new Borane
-add xyz <<BOR
+add mol xyz <<BOR
 4
 
 B        0.0000000       0.0000000      -1.2778648
@@ -15,7 +15,7 @@ BOR
 
 # 2. Create Ammonia (NH3)
 new Ammonia
-add xyz <<AMM
+add mol xyz <<AMM
 4
 
 N        0.0000000       0.0000000       0.2878648
@@ -24,7 +24,7 @@ H       -0.4709570       0.8163013       0.6272589
 H       -0.4709570      -0.8163013       0.6272589
 AMM
 
-molecules
+list mols
 time 1
 
 # 3. Create Copies for Merge
@@ -74,7 +74,7 @@ time 1
 # 6. Smart Offset Test
 # Create Methane
 new Methane
-add xyz <<MET
+add mol xyz <<MET
 5
 
 C        0.0000000       0.0000000       0.0000000
@@ -92,15 +92,14 @@ copy
 
 # Paste into Methane with offset
 sw Methane
-paste -offset 3
+paste --offset 3
 time 1
 
 list
 time 1
-molecules
+list mols
 
-rm Ammonia
-rm Borane
-rm Methane
-rm Complex_merged
-rm Complex_pasted
+del mol Ammonia
+del mol Methane
+del mol Complex_merged
+del mol Complex_pasted

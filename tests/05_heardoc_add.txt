@@ -3,7 +3,7 @@
 cls 
 
 # Test heredoc syntax
-add xyz <<EOF
+add mol xyz <<EOF
 3
 Water molecule
 O  0.000  0.000  0.000
@@ -15,10 +15,10 @@ time 1
 list
 time 1
 
-del : 
+del atom : 
 
 # Add more with heredoc
-add xyz <<DATA
+add mol xyz <<DATA
 5
 Methane
 C  0.000  0.000  0.000
@@ -31,4 +31,4 @@ time 1
 
 list
 time 3
-del :
+del atom :

@@ -1,0 +1,12 @@
+# Test Undo/Redo
+add atom C 0 0 0
+add atom O 1.5 0 0
+undo
+# Should have only C
+redo
+# Should have C and O
+undo
+undo
+# Should be empty (or initial state)
+redo
+# Should have C

@@ -4,7 +4,7 @@ cls
 
 # Create first molecule
 new "Water"
-add xyz <<EOF
+add mol xyz <<EOF
 3
 Water
 O  0.000  0.000  0.000
@@ -12,12 +12,12 @@ H  0.757  0.586  0.000
 H -0.757  0.586  0.000
 EOF
 
-molecules
+list mols
 time 1
 
 # Create second molecule
 new "Methane"
-add xyz <<EOF
+add mol xyz <<EOF
 5
 Methane
 C  0.000  0.000  0.000
@@ -27,43 +27,43 @@ H -0.630  0.630 -0.630
 H  0.630 -0.630 -0.630
 EOF
 
-molecules
+list mols
 time 1
 
 # Switch between molecules
 sw 0
 time 1
 
-molecules
+list mols
 time 1
 
 sw 1
 time 1
-molecules
+list mols
 
 # Rename molecule
 rename "CH4 Molecule"
 time 1
 
-molecules
+list mols
 time 1
 
 # Create and remove molecule
 new "Temp"
-add H 0 0 0
-add H 0 0 0.7
+add atom H 0 0 0
+add atom H 0 0 0.7
 time 1
 
-molecules
+list mols
 time 1
 
-remove 2
+del mol 2
 time 1
 
-remove "CH4 Molecule"
-remove "Temp"
+del mol "CH4 Molecule"
+del mol "Temp"
 
-molecules
+list mols
 
 time 3
-del :
+del atom :
