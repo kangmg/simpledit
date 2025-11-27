@@ -61,7 +61,7 @@ export class FileIOManager {
             });
 
             // Auto-detect bonds
-            this.editor.autoDetectBonds();
+            this.editor.autoBond();
 
             return ErrorHandler.success(`Imported ${atoms.length} atoms`);
 
