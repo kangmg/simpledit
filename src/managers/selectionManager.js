@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { ErrorHandler } from '../utils/errorHandler.js';
 
 /**
@@ -305,5 +306,154 @@ export class SelectionManager {
 
         // Clear selection state
         this.clearSelection();
+    }
+    /**
+     * Start selection drag
+     * @param {number} x - Mouse X
+     * @param {number} y - Mouse Y
+     */
+    startSelection(x, y) {
+        this.selectionStart = new THREE.Vector2(x, y);
+        this.lassoPath = [{ x, y }];
+        this.createSelectionBox();
+    }
+
+    /**
+     * Update selection drag
+     * @param {number} x - Mouse X
+     * @param {number} y - Mouse Y
+     */
+    updateSelection(x, y) {
+        if (!this.selectionStart) return;
+        this.updateSelectionBox(x, y);
+    }
+
+    /**
+     * End selection drag
+     * @param {number} x - Mouse X
+     * @param {number} y - Mouse Y
+     * @param {boolean} add - Whether to add to existing selection
+     */
+    endSelection(x, y, add) {
+        if (!this.selectionStart) return;
+
+        this.performBoxSelection(x, y, add);
+        this.removeSelectionBox();
+        this.selectionStart = null;
+        this.lassoPath = [];
+    }
+
+    createSelectionBox() {
+        const div = document.createElement('div');
+        div.id = 'selection-box';
+        div.style.position = 'absolute';
+        div.style.pointerEvents = 'none';
+
+        if (this.selectionMode === 'rectangle') {
+            div.style.border = '2px dashed #ff8800';
+            div.style.backgroundColor = 'rgba(255, 136, 0, 0.15)';
+        } else if (this.selectionMode === 'lasso') {
+            div.innerHTML = '<svg style="width: 100%; height: 100%; position: absolute; top: 0; left: 0;"><path id="lasso-path" stroke="#ff8800" stroke-width="2" stroke-dasharray="5,5" fill="rgba(255, 136, 0, 0.15)" /></svg>';
+            div.style.width = '100%';
+            div.style.height = '100%';
+            div.style.top = '0';
+            div.style.left = '0';
+        }
+
+        document.body.appendChild(div);
+        this.selectionBox = div;
+    }
+
+    updateSelectionBox(x, y) {
+        if (this.selectionMode === 'rectangle') {
+            const startX = this.selectionStart.x;
+            const startY = this.selectionStart.y;
+
+            const minX = Math.min(startX, x);
+            const maxX = Math.max(startX, x);
+            const minY = Math.min(startY, y);
+            const maxY = Math.max(startY, y);
+
+            this.selectionBox.style.left = minX + 'px';
+            this.selectionBox.style.top = minY + 'px';
+            this.selectionBox.style.width = (maxX - minX) + 'px';
+            this.selectionBox.style.height = (maxY - minY) + 'px';
+        } else if (this.selectionMode === 'lasso') {
+            this.lassoPath.push({ x, y });
+
+            const path = this.selectionBox.querySelector('#lasso-path');
+            if (path && this.lassoPath.length > 0) {
+                let pathData = `M ${this.lassoPath[0].x} ${this.lassoPath[0].y} `;
+                for (let i = 1; i < this.lassoPath.length; i++) {
+                    pathData += ` L ${this.lassoPath[i].x} ${this.lassoPath[i].y} `;
+                }
+                path.setAttribute('d', pathData);
+            }
+        }
+    }
+
+    removeSelectionBox() {
+        if (this.selectionBox) {
+            document.body.removeChild(this.selectionBox);
+            this.selectionBox = null;
+        }
+    }
+
+    performBoxSelection(endX, endY, add) {
+        if (!add) this.clearSelection();
+
+        const camera = this.editor.renderer.activeCamera || this.editor.renderer.camera;
+
+        if (this.selectionMode === 'rectangle') {
+            const startX = this.selectionStart.x;
+            const startY = this.selectionStart.y;
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
+
+            this.editor.molecule.atoms.forEach(atom => {
+                if (!atom.mesh) return;
+
+                const pos = atom.mesh.position.clone();
+                pos.project(camera);
+
+                const screenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                const screenY = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+
+                if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+                    this.selectAtom(atom, true);
+                }
+            });
+        } else if (this.selectionMode === 'lasso') {
+            if (this.lassoPath.length < 3) return;
+
+            this.editor.molecule.atoms.forEach(atom => {
+                if (!atom.mesh) return;
+
+                const pos = atom.mesh.position.clone();
+                pos.project(camera);
+
+                const screenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                const screenY = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+
+                if (this.isPointInPolygon(screenX, screenY, this.lassoPath)) {
+                    this.selectAtom(atom, true);
+                }
+            });
+        }
+    }
+
+    isPointInPolygon(x, y, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].x, yi = polygon[i].y;
+            const xj = polygon[j].x, yj = polygon[j].y;
+
+            const intersect = ((yi > y) !== (yj > y))
+                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
     }
 }

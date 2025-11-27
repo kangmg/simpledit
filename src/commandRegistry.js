@@ -677,5 +677,19 @@ export class CommandRegistry {
             this.editor.redo();
             return { success: 'Redid last action' };
         });
+
+        this.register('debug_conn', [], 'debug_conn - Check connectivity', () => {
+            const selected = this.editor.molecule.atoms.filter(a => a.selected);
+            if (selected.length === 0) return { error: 'Select an atom' };
+
+            const info = selected.map(a => {
+                return `Atom ${a.element}(${a.id}): ${a.bonds.length} bonds. Connected to: ${a.bonds.map(b => {
+                    const other = b.atom1 === a ? b.atom2 : b.atom1;
+                    return `${other.element}(${other.id})`;
+                }).join(', ')}`;
+            });
+
+            return { info: info.join('\n') };
+        });
     }
 }

@@ -129,4 +129,44 @@ export class Molecule {
         }
         return output;
     }
+
+    toJSON() {
+        return {
+            atoms: this.atoms.map(a => ({
+                id: a.id,
+                element: a.element,
+                x: a.position.x,
+                y: a.position.y,
+                z: a.position.z
+            })),
+            bonds: this.bonds.map(b => ({
+                atom1Id: b.atom1.id,
+                atom2Id: b.atom2.id,
+                order: b.order
+            }))
+        };
+    }
+
+    fromJSON(data) {
+        this.clear();
+        const atomMap = new Map();
+
+        // Recreate atoms
+        data.atoms.forEach(a => {
+            const atom = new Atom(a.element, new THREE.Vector3(a.x, a.y, a.z), a.id);
+            this.atoms.push(atom);
+            atomMap.set(a.id, atom);
+            // Update nextAtomId to avoid collisions
+            if (a.id >= this.nextAtomId) this.nextAtomId = a.id + 1;
+        });
+
+        // Recreate bonds
+        data.bonds.forEach(b => {
+            const atom1 = atomMap.get(b.atom1Id);
+            const atom2 = atomMap.get(b.atom2Id);
+            if (atom1 && atom2) {
+                this.addBond(atom1, atom2, b.order);
+            }
+        });
+    }
 }

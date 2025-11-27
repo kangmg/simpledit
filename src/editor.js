@@ -78,6 +78,7 @@ export class Editor {
         this.labelContainer.style.height = '100%';
         this.labelContainer.style.pointerEvents = 'none';
         this.labelContainer.style.overflow = 'hidden';
+        this.labelContainer.style.zIndex = '5'; // Ensure below UI (Sidebar is 10)
         document.body.appendChild(this.labelContainer);
 
         // Initialize console
@@ -344,8 +345,9 @@ export class Editor {
         }
         this.dragStartAtom = null;
 
-        this.removeSelectionBox();
-        this.selectionStart = null;
+        this.selectionManager.removeSelectionBox();
+        this.selectionManager.selectionStart = null;
+        this.selectionManager.lassoPath = [];
 
         this.isManipulating = false;
         this.initialPositions = null;
@@ -526,6 +528,7 @@ export class Editor {
     }
 
     // Helper function to find all atoms connected to startAtom, excluding excludeBond
+    // Helper function to find all atoms connected to startAtom, excluding excludeBond
     getConnectedAtoms(startAtom, excludeBond = null) {
         const connected = new Set();
         const visited = new Set();
@@ -535,43 +538,50 @@ export class Editor {
         let removedFromAtom1 = false;
         let removedFromAtom2 = false;
 
-        if (excludeBond) {
-            const idx1 = excludeBond.atom1.bonds.indexOf(excludeBond);
-            if (idx1 !== -1) {
-                excludeBond.atom1.bonds.splice(idx1, 1);
-                removedFromAtom1 = true;
-            }
-
-            const idx2 = excludeBond.atom2.bonds.indexOf(excludeBond);
-            if (idx2 !== -1) {
-                excludeBond.atom2.bonds.splice(idx2, 1);
-                removedFromAtom2 = true;
-            }
-        }
-
-        // BFS to find connected atoms
-        while (queue.length > 0) {
-            const atom = queue.shift();
-            if (visited.has(atom)) continue;
-            visited.add(atom);
-            connected.add(atom);
-
-            // Get all bonds for this atom
-            atom.bonds.forEach(bond => {
-                const otherAtom = bond.atom1 === atom ? bond.atom2 : bond.atom1;
-                if (!visited.has(otherAtom)) {
-                    queue.push(otherAtom);
+        try {
+            if (excludeBond) {
+                const idx1 = excludeBond.atom1.bonds.indexOf(excludeBond);
+                if (idx1 !== -1) {
+                    excludeBond.atom1.bonds.splice(idx1, 1);
+                    removedFromAtom1 = true;
                 }
-            });
-        }
 
-        // Restore the bond to both atoms' bond lists
-        if (excludeBond) {
-            if (removedFromAtom1) {
-                excludeBond.atom1.bonds.push(excludeBond);
+                const idx2 = excludeBond.atom2.bonds.indexOf(excludeBond);
+                if (idx2 !== -1) {
+                    excludeBond.atom2.bonds.splice(idx2, 1);
+                    removedFromAtom2 = true;
+                }
             }
-            if (removedFromAtom2) {
-                excludeBond.atom2.bonds.push(excludeBond);
+
+            // BFS to find connected atoms
+            while (queue.length > 0) {
+                const atom = queue.shift();
+                if (visited.has(atom)) continue;
+                visited.add(atom);
+                connected.add(atom);
+
+                // Safety check: if atom has no bonds but we expect some (unless it's a lone atom)
+                // We can't easily know if it SHOULD have bonds, but we can rely on what's there.
+
+                // Get all bonds for this atom
+                if (atom.bonds) {
+                    atom.bonds.forEach(bond => {
+                        const otherAtom = bond.atom1 === atom ? bond.atom2 : bond.atom1;
+                        if (!visited.has(otherAtom)) {
+                            queue.push(otherAtom);
+                        }
+                    });
+                }
+            }
+        } finally {
+            // Restore the bond to both atoms' bond lists
+            if (excludeBond) {
+                if (removedFromAtom1) {
+                    excludeBond.atom1.bonds.push(excludeBond);
+                }
+                if (removedFromAtom2) {
+                    excludeBond.atom2.bonds.push(excludeBond);
+                }
             }
         }
 
@@ -749,9 +759,7 @@ export class Editor {
 
             if (!atomMesh) {
                 // Start selection (rectangle or lasso)
-                this.selectionStart = new THREE.Vector2(event.clientX, event.clientY);
-                this.lassoPath = [{ x: event.clientX, y: event.clientY }]; // Initialize lasso path
-                this.createSelectionBox();
+                this.selectionManager.startSelection(event.clientX, event.clientY);
                 this.renderer.controls.enabled = false; // Disable rotation while selecting
             }
         } else if (this.mode === 'move') {
@@ -808,8 +816,8 @@ export class Editor {
 
             const endPos = atomMesh ? atomMesh.object.position : target;
             this.updateGhostBond(endPos);
-        } else if (this.mode === 'select' && this.selectionStart) {
-            this.updateSelectionBox(event.clientX, event.clientY);
+        } else if (this.mode === 'select') {
+            this.selectionManager.updateSelection(event.clientX, event.clientY);
         } else if (this.mode === 'move' && this.initialPositions) {
             // Check if we've moved enough to start manipulation
             if (!this.isManipulating && this.manipulationStartMouse) {
@@ -970,11 +978,8 @@ export class Editor {
                 }
             }
             this.dragStartAtom = null;
-        } else if (this.mode === 'select' && this.selectionStart) {
-            this.performBoxSelection(event.clientX, event.clientY, event.shiftKey || event.ctrlKey || event.metaKey);
-            this.removeSelectionBox();
-            this.selectionStart = null;
-            this.lassoPath = []; // Clear lasso path
+        } else if (this.mode === 'select') {
+            this.selectionManager.endSelection(event.clientX, event.clientY, event.shiftKey || event.ctrlKey || event.metaKey);
         } else if (this.mode === 'move') {
             this.isManipulating = false;
             this.initialPositions = null;
@@ -1000,138 +1005,6 @@ export class Editor {
                 bond.mesh.scale.set(1, dist, 1); // Scale Y (height) to distance
             }
         });
-    }
-
-    createSelectionBox() {
-        const div = document.createElement('div');
-        div.id = 'selection-box';
-        div.style.position = 'absolute';
-        div.style.pointerEvents = 'none';
-
-        if (this.selectionMode === 'rectangle') {
-            div.style.border = '2px dashed #ff8800';
-            div.style.backgroundColor = 'rgba(255, 136, 0, 0.15)';
-        } else if (this.selectionMode === 'lasso') {
-            // For lasso, we'll draw using SVG
-            div.innerHTML = '<svg style="width: 100%; height: 100%; position: absolute; top: 0; left: 0;"><path id="lasso-path" stroke="#ff8800" stroke-width="2" stroke-dasharray="5,5" fill="rgba(255, 136, 0, 0.15)" /></svg>';
-            div.style.width = '100%';
-            div.style.height = '100%';
-            div.style.top = '0';
-            div.style.left = '0';
-        }
-
-        document.body.appendChild(div);
-        this.selectionBox = div;
-    }
-
-    updateSelectionBox(x, y) {
-        if (this.selectionMode === 'rectangle') {
-            const startX = this.selectionStart.x;
-            const startY = this.selectionStart.y;
-
-            const minX = Math.min(startX, x);
-            const maxX = Math.max(startX, x);
-            const minY = Math.min(startY, y);
-            const maxY = Math.max(startY, y);
-
-            this.selectionBox.style.left = minX + 'px';
-            this.selectionBox.style.top = minY + 'px';
-            this.selectionBox.style.width = (maxX - minX) + 'px';
-            this.selectionBox.style.height = (maxY - minY) + 'px';
-        } else if (this.selectionMode === 'lasso') {
-            // Add current point to lasso path
-            this.lassoPath.push({ x, y });
-
-            // Update SVG path
-            const path = this.selectionBox.querySelector('#lasso-path');
-            if (path && this.lassoPath.length > 0) {
-                let pathData = `M ${this.lassoPath[0].x} ${this.lassoPath[0].y} `;
-                for (let i = 1; i < this.lassoPath.length; i++) {
-                    pathData += ` L ${this.lassoPath[i].x} ${this.lassoPath[i].y} `;
-                }
-                path.setAttribute('d', pathData);
-            }
-        }
-    }
-
-    removeSelectionBox() {
-        if (this.selectionBox) {
-            document.body.removeChild(this.selectionBox);
-            this.selectionBox = null;
-        }
-    }
-
-    performBoxSelection(endX, endY, add) {
-        if (!add) this.clearSelection();
-
-        const camera = this.renderer.activeCamera || this.renderer.camera;
-
-        if (this.selectionMode === 'rectangle') {
-            // Rectangle selection
-            const startX = this.selectionStart.x;
-            const startY = this.selectionStart.y;
-            const minX = Math.min(startX, endX);
-            const maxX = Math.max(startX, endX);
-            const minY = Math.min(startY, endY);
-            const maxY = Math.max(startY, endY);
-
-            this.molecule.atoms.forEach(atom => {
-                if (!atom.mesh) return;
-
-                // Project atom position to screen
-                const pos = atom.mesh.position.clone();
-                pos.project(camera);
-
-                const screenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
-                const screenY = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
-
-                if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
-                    atom.selected = true;
-                    if (!this.selectionOrder.includes(atom)) {
-                        this.selectionOrder.push(atom);
-                    }
-                    this.updateAtomVisuals(atom);
-                }
-            });
-        } else if (this.selectionMode === 'lasso') {
-            // Lasso selection - check if point is inside polygon
-            if (this.lassoPath.length < 3) return; // Need at least 3 points for a polygon
-
-            this.molecule.atoms.forEach(atom => {
-                if (!atom.mesh) return;
-
-                // Project atom position to screen
-                const pos = atom.mesh.position.clone();
-                pos.project(camera);
-
-                const screenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
-                const screenY = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
-
-                if (this.isPointInPolygon(screenX, screenY, this.lassoPath)) {
-                    atom.selected = true;
-                    if (!this.selectionOrder.includes(atom)) {
-                        this.selectionOrder.push(atom);
-                    }
-                    this.updateAtomVisuals(atom);
-                }
-            });
-        }
-
-        this.updateSelectionInfo();
-    }
-
-    // Point-in-polygon test using ray casting algorithm
-    isPointInPolygon(x, y, polygon) {
-        let inside = false;
-        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-            const xi = polygon[i].x, yi = polygon[i].y;
-            const xj = polygon[j].x, yj = polygon[j].y;
-
-            const intersect = ((yi > y) !== (yj > y))
-                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
-        }
-        return inside;
     }
 
     createGhostBond(startPos) {
@@ -1178,21 +1051,17 @@ export class Editor {
         this.molecule.removeBond(bond);
 
         // Update scene
-        this.renderManager.updateBondMeshes();
+        this.rebuildScene();
     }
 
-    addBondToScene(atom1, atom2, save = true) {
-        if (this.molecule.getBond(atom1, atom2)) return; // Already exists
+    addBondToScene(atom1, atom2) {
+        this.saveState(); // Save before adding bond
 
-        if (save) this.saveState(); // Save before adding
-        const bond = this.molecule.addBond(atom1, atom2, 1); // Default single bond
+        // Add to molecule
+        this.molecule.addBond(atom1, atom2);
 
-        // Create mesh via RenderManager
-        const mesh = this.renderManager.createBondMesh(bond);
-        if (mesh) {
-            this.renderer.scene.add(mesh);
-            bond.mesh = mesh;
-        }
+        // Update scene
+        this.rebuildScene();
     }
 
     saveState() {
@@ -1201,7 +1070,7 @@ export class Editor {
             this.history = this.history.slice(0, this.historyIndex + 1);
         }
 
-        const state = this.molecule.toXYZ(); // Use XYZ as state snapshot for simplicity
+        const state = this.molecule.toJSON(); // Use JSON to preserve bonds
         this.history.push(state);
         if (this.history.length > this.maxHistory) {
             this.history.shift();
@@ -1231,8 +1100,8 @@ export class Editor {
         this.selectionManager.deleteSelected();
     }
 
-    restoreState(xyz) {
-        this.molecule.fromXYZ(xyz);
+    restoreState(state) {
+        this.molecule.fromJSON(state);
         this.rebuildScene();
     }
 
@@ -1282,28 +1151,7 @@ export class Editor {
     // createAtomMesh removed (duplicate)
     // createAtomLabel removed (moved to UIManager)
 
-    updateAtomLabelText(atom) {
-        if (!atom.label) return;
-
-        const idx = this.molecule.atoms.indexOf(atom);
-        let text = '';
-
-        switch (this.labelMode) {
-            case 'symbol':
-                text = atom.element;
-                break;
-            case 'number':
-                text = idx.toString();
-                break;
-            case 'both':
-                text = `${atom.element} (${idx})`;
-                break;
-            default:
-                text = '';
-        }
-
-        atom.label.innerText = text;
-    }
+    // updateAtomLabelText removed (moved to UIManager)
 
     updateAllLabels() {
         this.uiManager.updateAllLabels();

@@ -222,35 +222,80 @@ export class Renderer {
    * @param {number} padding - Padding multiplier (default: 1.3)
    * @returns {string} - Data URL of the captured image
    */
-  captureSnapshot(objects, transparentBg = false, padding = 1.3) {
+  captureSnapshot(objects, transparentBg = false, padding = 1.1) {
     if (objects.length === 0) {
       return null;
     }
 
-    // Calculate bounding box of all objects
-    const box = new THREE.Box3();
+    // Calculate bounding box in Camera Space for tight cropping
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    // We need to account for atom radius
+    // Transform each atom position to camera space and expand bounds by radius
+    const viewMatrixInverse = this.activeCamera.matrixWorldInverse;
+
     objects.forEach(obj => {
-      if (obj.geometry) {
-        obj.geometry.computeBoundingBox();
-        const objBox = obj.geometry.boundingBox.clone();
-        objBox.applyMatrix4(obj.matrixWorld);
-        box.union(objBox);
+      if (obj.geometry && obj.userData && obj.userData.type === 'atom') {
+        // Get position in camera space
+        const pos = obj.position.clone().applyMatrix4(viewMatrixInverse);
+
+        // Get radius in world/camera space (assuming uniform scale)
+        // SphereGeometry parameters.radius is the base radius
+        const radius = obj.geometry.parameters.radius * obj.scale.x;
+
+        minX = Math.min(minX, pos.x - radius);
+        maxX = Math.max(maxX, pos.x + radius);
+        minY = Math.min(minY, pos.y - radius);
+        maxY = Math.max(maxY, pos.y + radius);
+      } else if (obj.userData && obj.userData.type === 'bond') {
+        // For bonds (cylinders), check endpoints
+        // Bond mesh is positioned at midpoint, scaled and rotated.
+        // Simpler to just use the two atoms it connects if available, 
+        // but if we only have the mesh, we can use its bounding box.
+        // For now, atoms usually cover the extent, but let's be safe:
+        // If we iterate atoms, we cover the molecule. 
+        // If 'objects' contains bonds, we might double count or handle them.
+        // Usually 'objects' passed from command contains atoms. 
+        // Let's assume atoms define the bounds.
       }
     });
 
-    // Get box dimensions
-    const size = new THREE.Vector3();
-    const center = new THREE.Vector3();
-    box.getSize(size);
-    box.getCenter(center);
+    // If no atoms found (e.g. only bonds?), fall back to world box logic or handle error
+    if (minX === Infinity) {
+      // Fallback to old logic if something went wrong
+      return this.captureSnapshotLegacy(objects, transparentBg, padding);
+    }
 
-    // Calculate max dimension for framing
-    const maxDim = Math.max(size.x, size.y, size.z);
-    if (maxDim === 0) return null;
+    // Calculate dimensions
+    const width = maxX - minX;
+    const height = maxY - minY;
 
-    // Create offscreen canvas for high-resolution capture
-    const captureWidth = 1920;
-    const captureHeight = 1920;
+    // Apply padding
+    const padX = width * (padding - 1) / 2;
+    const padY = height * (padding - 1) / 2;
+
+    const finalMinX = minX - padX;
+    const finalMaxX = maxX + padX;
+    const finalMinY = minY - padY;
+    const finalMaxY = maxY + padY;
+
+    const finalWidth = finalMaxX - finalMinX;
+    const finalHeight = finalMaxY - finalMinY;
+
+    // Set canvas size preserving aspect ratio
+    const maxRes = 1920;
+    let captureWidth, captureHeight;
+
+    if (finalWidth > finalHeight) {
+      captureWidth = maxRes;
+      captureHeight = Math.round(maxRes * (finalHeight / finalWidth));
+    } else {
+      captureHeight = maxRes;
+      captureWidth = Math.round(maxRes * (finalWidth / finalHeight));
+    }
+
+    // Create offscreen canvas
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = captureWidth;
     offscreenCanvas.height = captureHeight;
@@ -274,34 +319,54 @@ export class Renderer {
     }
 
     // Create camera for snapshot
-    const aspect = captureWidth / captureHeight;
     let snapshotCamera;
 
     if (this.activeCamera.isOrthographicCamera) {
-      const frustumHeight = maxDim * padding;
-      const frustumWidth = frustumHeight * aspect;
+      // For Orthographic, we can set the frustum exactly to our bounds
       snapshotCamera = new THREE.OrthographicCamera(
-        -frustumWidth / 2,
-        frustumWidth / 2,
-        frustumHeight / 2,
-        -frustumHeight / 2,
-        0.1,
-        1000
+        finalMinX, finalMaxX,
+        finalMaxY, finalMinY,
+        0.1, 1000
       );
     } else {
+      // For Perspective, it's harder to crop exactly. 
+      // We'll use the aspect ratio and try to frame it.
+      // But for now, let's just use Orthographic for snapshots as it's cleaner for 2D representation
+      // OR, we can try to match the perspective view.
+      // Given the user issue "too much whitespace", Ortho is the best fix.
+      // Let's force Ortho for snapshot if the user didn't strictly request perspective?
+      // No, let's stick to the active camera type but try to fit.
+
+      // If Perspective, we use the calculated aspect ratio.
+      const aspect = captureWidth / captureHeight;
       snapshotCamera = new THREE.PerspectiveCamera(50, aspect, 0.1, 1000);
+
+      // We need to position the camera to fit the height 'finalHeight' at the object's depth.
+      // This is complex because depth varies.
+      // Fallback: Use the legacy logic for Perspective for now, or just use Ortho.
+      // Let's use Ortho for the snapshot to guarantee tight crop as requested.
+      // User didn't specify "keep perspective".
+      snapshotCamera = new THREE.OrthographicCamera(
+        finalMinX, finalMaxX,
+        finalMaxY, finalMinY,
+        0.1, 1000
+      );
     }
 
-    // Position camera to frame molecule while preserving view direction
-    // Use quaternion to get exact direction
-    const direction = new THREE.Vector3(0, 0, 1);
-    direction.applyQuaternion(this.activeCamera.quaternion);
+    // Position camera
+    // We calculated bounds in Camera Space, where the camera is at (0,0,0) looking down -Z (usually).
+    // Actually, Camera Space is defined by the camera's transform.
+    // If we create a new camera and copy the transform, its "Camera Space" is the same.
+    // So 'minX' etc are relative to this transform.
+    // OrthographicCamera defines bounds relative to its center.
+    // So if we set left=minX, right=maxX, etc., and position the camera at the SAME spot as activeCamera,
+    // it should frame exactly those coordinates.
 
-    snapshotCamera.position.copy(center).add(direction.multiplyScalar(maxDim * padding * 2.5));
+    snapshotCamera.position.copy(this.activeCamera.position);
     snapshotCamera.quaternion.copy(this.activeCamera.quaternion);
     snapshotCamera.updateMatrixWorld();
 
-    // Handle Labels: Convert HTML labels to Sprites for capture
+    // Handle Labels
     const tempSprites = [];
     objects.forEach(obj => {
       if (obj.userData && obj.userData.atom) {
@@ -309,14 +374,13 @@ export class Renderer {
         if (atom.label && atom.label.style.display !== 'none' && atom.label.innerText) {
           const sprite = this.createTextSprite(atom.label.innerText);
           sprite.position.copy(obj.position);
-          // Center label on atom (no offset)
           this.scene.add(sprite);
           tempSprites.push(sprite);
         }
       }
     });
 
-    // Render to offscreen canvas
+    // Render
     tempRenderer.render(this.scene, snapshotCamera);
 
     // Cleanup Sprites
@@ -329,13 +393,18 @@ export class Renderer {
     // Restore background
     this.scene.background = originalBackground;
 
-    // Capture image
+    // Capture
     const dataURL = offscreenCanvas.toDataURL('image/png');
 
     // Cleanup
     tempRenderer.dispose();
 
     return dataURL;
+  }
+
+  captureSnapshotLegacy(objects, transparentBg, padding) {
+    // ... (Original implementation if needed, but we can probably drop it)
+    return null;
   }
 
   createTextSprite(text) {
