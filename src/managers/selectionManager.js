@@ -73,19 +73,25 @@ export class SelectionManager {
         if (!atom) return;
 
         if (!multiSelect) {
-            // If not multi-select, clear others first unless clicking an already selected one (standard behavior)
-            // But usually in 3D editors, clicking without Ctrl clears everything else and selects the target.
-            // If the target is already selected and we click without Ctrl, we usually just select ONLY that one.
-            const wasSelected = atom.selected;
-            this.clearSelection();
-            if (!wasSelected) {
-                this.selectAtom(atom, true);
+            // Single select mode
+            if (atom.selected) {
+                // If clicking the ONLY selected atom, deselect it (toggle off)
+                // If multiple atoms are selected and we click one of them, usually we select ONLY that one.
+                const selectedCount = this.getSelectedAtoms().length;
+                if (selectedCount === 1) {
+                    this.deselectAtom(atom);
+                } else {
+                    // Multiple selected -> select only this one
+                    this.clearSelection();
+                    this.selectAtom(atom, true);
+                }
             } else {
-                // If it was selected and we cleared everything, re-select it
+                // Not selected -> clear others and select this one
+                this.clearSelection();
                 this.selectAtom(atom, true);
             }
         } else {
-            // Multi-select mode
+            // Multi-select mode (Ctrl/Shift)
             if (atom.selected) {
                 this.deselectAtom(atom);
             } else {

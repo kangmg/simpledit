@@ -27,12 +27,14 @@ export class RenderManager {
         const material = new THREE.MeshPhongMaterial({
             color: color,
             emissive: atom.selected ? 0xffff00 : 0x000000,
-            shininess: 30
+            shininess: 30,
+            transparent: atom.selected,
+            opacity: atom.selected ? 0.6 : 1.0
         });
 
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.copy(atom.position);
-        mesh.userData = { type: 'atom', index: atom.index };
+        mesh.userData = { type: 'atom', index: atom.index, atom: atom }; // Added atom reference to userData
 
         return mesh;
     }
@@ -43,8 +45,8 @@ export class RenderManager {
      * @returns {THREE.Mesh} Bond mesh
      */
     createBondMesh(bond) {
-        const atom1 = this.editor.molecule.atoms[bond.atom1];
-        const atom2 = this.editor.molecule.atoms[bond.atom2];
+        const atom1 = bond.atom1;
+        const atom2 = bond.atom2;
 
         if (!atom1 || !atom2) return null;
 
@@ -70,7 +72,7 @@ export class RenderManager {
             direction.normalize()
         );
 
-        mesh.userData = { type: 'bond', atom1: bond.atom1, atom2: bond.atom2 };
+        mesh.userData = { type: 'bond', atom1: atom1, atom2: atom2 };
 
         return mesh;
     }
@@ -178,7 +180,16 @@ export class RenderManager {
         atom.mesh.material.color.setHex(color);
 
         // Update selection highlight
-        atom.mesh.material.emissive.setHex(atom.selected ? 0xffff00 : 0x000000);
+        const material = atom.mesh.material;
+        if (atom.selected) {
+            material.emissive.setHex(0xffff00);
+            material.transparent = true;
+            material.opacity = 0.6;
+        } else {
+            material.emissive.setHex(0x000000);
+            material.transparent = false;
+            material.opacity = 1.0;
+        }
     }
 
     /**
@@ -188,8 +199,8 @@ export class RenderManager {
         this.editor.molecule.bonds.forEach(bond => {
             if (!bond.mesh) return;
 
-            const atom1 = this.editor.molecule.atoms[bond.atom1];
-            const atom2 = this.editor.molecule.atoms[bond.atom2];
+            const atom1 = bond.atom1;
+            const atom2 = bond.atom2;
 
             if (!atom1 || !atom2) return;
 
