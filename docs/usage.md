@@ -89,6 +89,38 @@ Translate the molecule.
 - `trans <x> <y> <z>`: Move by units.
   - `trans 5 0 0` (Move 5 units on X-axis)
 
+### `set`
+Set geometric properties or editor settings.
+- `set dist <idx1> <idx2> <value>`: Set distance between two atoms.
+- `set angle <idx1> <idx2> <idx3> <value>`: Set angle (p1-p2-p3).
+- `set dihedral <idx1> <idx2> <idx3> <idx4> <value>`: Set dihedral angle.
+- `set threshold <value>`: Set bond detection threshold.
+- `set scale atom <value>`: Set atom visual scale.
+  - `set scale atom 1.5` (Increase atom size by 1.5x)
+- `set scale bond <value>`: Set bond visual scale.
+  - `set scale bond 0.8` (Decrease bond thickness to 0.8x)
+
+### `substitute` (`sub`)
+Substitute atoms or groups in the molecule.
+- `sub atom <index> <element>`: Change an atom's element.
+  - `sub atom 0 N` (Change atom 0 to Nitrogen)
+- `sub grp <target_leaving> <target_anchor> -n <source_mol> <source_leaving> <source_anchor>`: Substitute a group (Explicit mode).
+  - `sub grp 1 0 -n SourceMol 1 0` (Target: leaving=1, anchor=0; Source from SourceMol: leaving=1, anchor=0)
+  - Target fragment attaches to source fragment via anchor atoms
+  - Leaving atoms are removed after substitution
+  - Alternatively use `-i <index>` instead of `-n <name>` to specify source molecule by index (not recommended)
+- `sub grp <target_anchor> -n <source_mol> <source_anchor>`: Substitute with implicit dummy atoms (Implicit mode).
+  - `sub grp 0 -n SourceMol 0` (Find and remove terminal 'X' dummy atoms automatically)
+  - System identifies terminal 'X' atoms connected to anchors as leaving atoms
+
+## Debugging
+
+### `debug_conn`
+Display bond connectivity debugging information.
+- `debug_conn`: Show all bonds and connectivity for each atom.
+  - Useful for diagnosing bonding issues or verifying molecular structure
+
+
 ## Molecule Management
 
 ### `new`

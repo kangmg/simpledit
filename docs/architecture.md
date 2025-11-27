@@ -104,9 +104,12 @@ graph TB
 ### GeometryController
 **Purpose:** Geometry manipulation  
 **Features:**
-- Slider bindings (bond/angle/dihedral)
+- Slider bindings (bond/angle/dihedral) with real-time updates
 - Fragment detection for partial manipulation
+- Rigid body mechanics for dihedral rotation
+- Specialized `getMovingFragmentForDihedral` for proper axis handling
 - Uses GeometryEngine for calculations
+- Support for continuous UI updates via `oninput` events
 
 ## Supporting Modules
 
@@ -125,6 +128,7 @@ graph TB
 - Command history (up/down arrows)
 - Command registry with aliases
 - Draggable/resizable UI
+- Advanced commands: set scale (atom/bond), substitute (atom/group), debug_conn
 
 ### Renderer
 **Purpose:** Three.js wrapper  
@@ -138,7 +142,9 @@ graph TB
 **Purpose:** Pure geometry calculations  
 **Features:**
 - Distance/angle/dihedral calculations
-- Fragment transformation calculations
+- Fragment transformation calculations (bond length, angle, dihedral)
+- Vector alignment for molecular fragment substitution
+- Shortest-path dihedral rotation with proper direction handling
 - All math operations (stateless)
 
 ## Utility Classes

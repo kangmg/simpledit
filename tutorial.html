@@ -662,6 +662,53 @@ EOF</code></pre>
                 <p>Move molecule's center of mass to origin (0,0,0).</p>
                 <pre><code><span class="command">center</span>
 <span class="command">cen</span>                           <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>set scale</code></h3>
+                <p>Set visual scale for atoms or bonds.</p>
+                <pre><code><span class="command">set scale atom</span> 1.5           <span class="comment"># Increase atom size by 1.5x</span>
+<span class="command">set scale bond</span> 0.8           <span class="comment"># Decrease bond thickness to 0.8x</span>
+<span class="command">set scale atom</span> 2.0           <span class="comment"># Double atom size</span></code></pre>
+                <div class="alert alert-tip">
+                    The <code>set scale</code> command adjusts the visual rendering scale without changing actual atomic
+                    coordinates. Useful for improving visualization clarity.
+                </div>
+
+                <h3><code>substitute</code> <span class="badge badge-alias">sub</span></h3>
+                <p>Substitute atoms or molecular groups with intelligent fragment alignment.</p>
+                <pre><code><span class="comment"># Atom substitution</span>
+<span class="command">sub atom</span> 0 N                 <span class="comment"># Change atom 0 to Nitrogen</span>
+<span class="command">sub atom</span> 3 O                 <span class="comment"># Change atom 3 to Oxygen</span>
+
+<span class="comment"># Group substitution (Explicit mode)</span>
+<span class="command">sub grp</span> 1 0 -n SourceMol 1 0  <span class="comment"># Target: leaving=1, anchor=0</span>
+                                     <span class="comment"># Source: leaving=1, anchor=0</span>
+
+<span class="comment"># Group substitution (Implicit dummy mode)</span>
+<span class="command">sub grp</span> 0 -n SourceMol 0      <span class="comment"># Finds terminal 'X' atoms automatically</span></code></pre>
+                <div class="alert alert-info">
+                    <strong>Group Substitution Syntax:</strong>
+                    <ul>
+                        <li><strong>Explicit:</strong>
+                            <code>sub grp &lt;target_leaving&gt; &lt;target_anchor&gt; -n &lt;source_mol&gt; &lt;source_leaving&gt; &lt;source_anchor&gt;</code>
+                        </li>
+                        <li><strong>Implicit:</strong>
+                            <code>sub grp &lt;target_anchor&gt; -n &lt;source_mol&gt; &lt;source_anchor&gt;</code> (uses
+                            terminal 'X' dummy atoms)
+                        </li>
+                    </ul>
+                    The <code>-n</code> flag specifies the source molecule name (recommended). Alternatively,
+                    <code>-i &lt;index&gt;</code> can specify source molecule by 0-based index, but this is not
+                    recommended as indices may change. Fragments are aligned using vector matching for proper
+                    orientation.
+                </div>
+
+                <h3><code>debug_conn</code></h3>
+                <p>Display detailed bond connectivity information for debugging.</p>
+                <pre><code><span class="command">debug_conn</span>                     <span class="comment"># Show all bonds and connectivity</span></code></pre>
+                <div class="alert alert-tip">
+                    Useful for diagnosing bonding issues, verifying molecular structure, or understanding fragment
+                    connectivity.
+                </div>
             </section>
 
             <section id="molecules">
@@ -796,7 +843,7 @@ EOF</code></pre>
             <!-- Test Suite Section -->
             <section id="tests">
                 <h2>Test Suite</h2>
-                <p>Simpledit includes 14 comprehensive test files covering all features. Each test can be copied and
+                <p>Simpledit includes 19 comprehensive test files covering all features. Each test can be copied and
                     pasted directly into the console.</p>
 
                 <div class="test-card">
@@ -971,6 +1018,80 @@ EOF</code></pre>
                     <div class="alert alert-tip">
                         Uses small incremental steps with timing to create smooth visual animations of molecular
                         movements.
+                    </div>
+                </div>
+
+                <div class="test-card">
+                    <h4>15_visual_scaling.txt</h4>
+                    <p><strong>Purpose:</strong> Molecular scaling and coordinate transformations</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>scale</code> - Uniform coordinate scaling</li>
+                        <li>Factor-based size adjustment</li>
+                        <li>Incremental scaling with smooth animations</li>
+                        <li>Combined with rotation for visual effects</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>16_debug_connectivity.txt</h4>
+                    <p><strong>Purpose:</strong> Bond connectivity debugging and verification</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>debug_conn</code> - Connectivity information display</li>
+                        <li>Bond verification after manual operations</li>
+                        <li>Fragment connectivity analysis</li>
+                        <li>Troubleshooting bonding issues</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>17_substitute_command.txt</h4>
+                    <p><strong>Purpose:</strong> Atom and group substitution</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>sub atom</code> - Element substitution</li>
+                        <li><code>sub grp</code> (Mode A) - Explicit group substitution</li>
+                        <li><code>sub grp</code> (Mode B) - Implicit dummy atom mode</li>
+                        <li>Vector alignment for fragment orientation</li>
+                        <li>Bond preservation during substitution</li>
+                    </ul>
+                    <div class="alert alert-tip">
+                        Demonstrates the advanced molecular fragment substitution engine with intelligent geometric
+                        alignment.
+                    </div>
+                </div>
+
+                <div class="test-card">
+                    <h4>18_substitute_benzene.txt</h4>
+                    <p><strong>Purpose:</strong> Complex group substitution with benzene, methane, and water</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li>Benzene-Methane substitution</li>
+                        <li>Benzene-Water substitution</li>
+                        <li>Terminal dummy atom ('X') handling</li>
+                        <li>Multi-molecule substitution workflows</li>
+                        <li>Source molecule removal after substitution</li>
+                    </ul>
+                    <div class="alert alert-info">
+                        Comprehensive test for the substitute command using real organic molecules.
+                    </div>
+                </div>
+
+                <div class="test-card">
+                    <h4>19_geometry_comprehensive.txt</h4>
+                    <p><strong>Purpose:</strong> Comprehensive geometry adjustment testing</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>set dist</code> - Bond length adjustments with fragment movement</li>
+                        <li><code>set angle</code> - Angle adjustments with proper pivot behavior</li>
+                        <li><code>set dihedral</code> - Dihedral rotation with rigid body mechanics</li>
+                        <li>Real-time UI slider updates</li>
+                        <li>Fragment-based geometry engine verification</li>
+                    </ul>
+                    <div class="alert alert-tip">
+                        Tests the sophisticated fragment identification and rigid body rotation mechanics that ensure
+                        only intended atoms move during geometry adjustments.
                     </div>
                 </div>
 
@@ -1156,7 +1277,12 @@ EOF
             '11': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/11_range_selection.txt',
             '12': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/12_aliases.txt',
             '13': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/13_undo_redo.txt',
-            '14': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/14_transformations.txt'
+            '14': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/14_transformations.txt',
+            '15': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/15_visual_scaling.txt',
+            '16': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/16_debug_connectivity.txt',
+            '17': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/17_substitute_command.txt',
+            '18': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/18_substitute_benzene.txt',
+            '19': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/19_geometry_comprehensive.txt'
         };
 
         document.querySelectorAll('.test-card').forEach((card, index) => {
