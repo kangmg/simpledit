@@ -18,10 +18,31 @@ Avogadro2 and the [rowan](https://labs.rowansci.com/editor) are excellent altern
 **Live Demo**: [https://kangmg.github.io/simpledit/](https://kangmg.github.io/simpledit/)
 
 **Documentation**:
-- [Tutorial](https://kangmg.github.io/simpledit/tutorial/) - Interactive guide with 19 test suites
-- [API Documentation](https://kangmg.github.io/simpledit/api/) - Complete API reference
-- [Usage Guide](./docs/usage.md) - Command reference and examples
+- [Documentation](https://kangmg.github.io/simpledit/tutorial/) 
+- [JS API Documentation](https://kangmg.github.io/simpledit/api/)
+- [Console CMD Guide](./docs/usage.md)
 
+
+## Local Development
+
+```bash
+# Clone the repository
+git clone https://github.com/kangmg/simpledit.git
+cd simpledit
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+# Opens at http://localhost:3000
+
+# Build for production
+npm run build
+
+# Generate API documentation
+npm run docs
+```
 
 ## Features
 
