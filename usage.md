@@ -144,6 +144,16 @@ Capture a snapshot of the viewport.
 - `capture`: Capture with background.
 - `capture -n` (or `--no-background`): Capture with transparent background.
 
+## History
+
+### `undo`
+Undo the last destructive operation.
+- `undo`
+
+### `redo`
+Redo the last undone operation.
+- `redo`
+
 ## Utilities
 
 ### `time` (`sleep`)

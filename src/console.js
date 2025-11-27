@@ -309,10 +309,13 @@ export class Console {
                 const result = await command.execute(parsed.args);
 
                 if (result) {
-                    if (result.success) this.print(result.success, 'success');
+                    // Check if result has a type property (e.g., 'image')
+                    const displayType = result.type || 'info';
+
+                    if (result.success) this.print(result.success, displayType === 'image' ? displayType : 'success');
                     if (result.error) this.print(result.error, 'error');
                     if (result.warning) this.print(result.warning, 'warning');
-                    if (result.info) this.print(result.info, 'info');
+                    if (result.info) this.print(result.info, displayType === 'image' ? 'image' : 'info');
                 }
             } catch (error) {
                 this.print(`Error executing '${commandString}': ${error.message}`, 'error');

@@ -26,7 +26,7 @@
 
         /* Sidebar */
         .sidebar {
-            width: 260px;
+            width: 280px;
             background: white;
             border-right: 1px solid #e0e0e0;
             position: fixed;
@@ -41,9 +41,15 @@
         }
 
         .sidebar-header h1 {
-            font-size: 1.4em;
+            font-size: 1.5em;
             font-weight: 600;
             color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-header .version {
+            font-size: 0.85em;
+            color: #888;
         }
 
         .sidebar nav {
@@ -57,10 +63,10 @@
         .nav-section-title {
             padding: 0 25px 10px;
             font-size: 0.75em;
-            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: #888;
+            font-weight: 600;
         }
 
         .nav-link {
@@ -68,7 +74,6 @@
             padding: 8px 25px;
             color: #555;
             text-decoration: none;
-            font-size: 0.95em;
             transition: all 0.2s;
         }
 
@@ -78,1313 +83,1114 @@
         }
 
         .nav-link.active {
-            background: #f0f0f0;
-            color: #1a1a1a;
+            background: #bb86fc;
+            color: white;
             font-weight: 500;
         }
 
-        /* Main content */
+        /* Main Content */
         .main-content {
-            margin-left: 260px;
+            margin-left: 280px;
             flex: 1;
-            padding: 40px 60px;
-            max-width: 900px;
+            padding: 50px 80px;
+            max-width: 1000px;
         }
 
         h1 {
-            font-size: 2.2em;
-            font-weight: 600;
-            margin-bottom: 15px;
+            font-size: 2.5em;
+            margin-bottom: 20px;
             color: #1a1a1a;
         }
 
         h2 {
-            font-size: 1.6em;
-            font-weight: 600;
-            margin: 40px 0 20px;
+            font-size: 1.8em;
+            margin: 50px 0 20px;
             color: #1a1a1a;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 2px solid #bb86fc;
             padding-bottom: 10px;
         }
 
         h3 {
-            font-size: 1.2em;
-            font-weight: 600;
+            font-size: 1.3em;
             margin: 30px 0 15px;
-            color: #1a1a1a;
+            color: #333;
+        }
+
+        h4 {
+            font-size: 1.1em;
+            margin: 20px 0 10px;
+            color: #555;
         }
 
         p {
-            margin: 15px 0;
+            margin-bottom: 15px;
             color: #555;
-            line-height: 1.7;
         }
 
         code {
             background: #f5f5f5;
-            padding: 2px 6px;
+            padding: 2px 8px;
             border-radius: 3px;
-            font-family: 'Consolas', 'Monaco', monospace;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
             font-size: 0.9em;
-            color: #d14;
+            color: #bb86fc;
         }
 
-        .code-block {
-            position: relative;
-            margin: 20px 0;
-            background: #f8f8f8;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-        }
-
-        .code-block pre {
+        pre {
+            background: #1e1e1e;
+            color: #e0e0e0;
             padding: 20px;
+            border-radius: 8px;
             overflow-x: auto;
-            font-family: 'Consolas', 'Monaco', monospace;
+            margin: 20px 0;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
             font-size: 0.9em;
             line-height: 1.5;
-            color: #333;
+            position: relative;
         }
 
         .copy-btn {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background: white;
-            border: 1px solid #d0d0d0;
+            top: 8px;
+            right: 8px;
+            background: #333;
+            color: #e0e0e0;
+            border: none;
             padding: 6px 12px;
-            font-size: 0.85em;
+            border-radius: 4px;
             cursor: pointer;
-            border-radius: 3px;
-            color: #555;
-            transition: all 0.2s;
+            font-size: 0.8em;
+            opacity: 0;
+            transition: opacity 0.2s, background 0.2s;
+        }
+
+        pre:hover .copy-btn {
+            opacity: 1;
         }
 
         .copy-btn:hover {
-            background: #f0f0f0;
-            border-color: #b0b0b0;
+            background: #555;
         }
 
         .copy-btn.copied {
-            background: #28a745;
-            color: white;
-            border-color: #28a745;
+            background: #4caf50;
         }
 
-        .test-section {
-            margin: 40px 0;
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            overflow: hidden;
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
         }
 
-        .test-header {
-            background: #f8f8f8;
-            padding: 15px 20px;
-            border-bottom: 1px solid #e0e0e0;
+        .command {
+            color: #00ff00;
         }
 
-        .test-title {
-            font-size: 1.1em;
-            font-weight: 600;
-            color: #1a1a1a;
+        .comment {
+            color: #888;
         }
 
-        .test-description {
-            margin-top: 8px;
-            color: #666;
-            font-size: 0.95em;
+        .output {
+            color: #87CEEB;
         }
 
-        .test-body {
-            padding: 20px;
-        }
-
-        .info-box {
-            background: #f7f9fc;
-            border-left: 3px solid #4a90e2;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .info-title {
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 5px;
-        }
-
-        ul {
-            margin: 15px 0;
-            padding-left: 25px;
+        ul,
+        ol {
+            margin: 15px 0 15px 30px;
         }
 
         li {
-            margin: 8px 0;
+            margin-bottom: 8px;
             color: #555;
         }
 
-        ol {
-            margin: 15px 0;
-            padding-left: 25px;
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid;
         }
 
-        ol li {
-            margin: 8px 0;
-            color: #555;
+        .alert-info {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            color: #1565c0;
+        }
+
+        .alert-tip {
+            background: #f3e5f5;
+            border-color: #bb86fc;
+            color: #6a1b9a;
+        }
+
+        .alert-warning {
+            background: #fff3e0;
+            border-color: #ff9800;
+            color: #e65100;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+
+        thead {
+            background: #bb86fc;
+            color: white;
+        }
+
+        thead th {
+            background: transparent;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .badge-alias {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .badge-flag {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
+        .test-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e0e0e0;
+        }
+
+        .test-card h4 {
+            margin-top: 0;
+            color: #bb86fc;
+        }
+
+        .load-test-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #bb86fc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+
+        .load-test-btn:hover {
+            background: #9965d4;
+        }
+
+        .load-test-btn:active {
+            background: #7b4eb3;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 240px;
+            }
+
+            .main-content {
+                margin-left: 240px;
+                padding: 40px 40px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 30px 20px;
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="container">
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h1>Simpledit Docs</h1>
+                <h1>Simpledit</h1>
+                <div class="version">Molecular Editor</div>
             </div>
+
             <nav>
                 <div class="nav-section">
-                    <div class="nav-section-title">Overview</div>
-                    <a href="#introduction" class="nav-link active">Introduction</a>
+                    <div class="nav-section-title">Introduction</div>
+                    <a href="#overview" class="nav-link">Overview</a>
+                    <a href="#design-principles" class="nav-link">Design Principles</a>
                     <a href="#getting-started" class="nav-link">Getting Started</a>
                 </div>
+
                 <div class="nav-section">
                     <div class="nav-section-title">Command Reference</div>
-                    <a href="#cmd-basic" class="nav-link">Basic Commands</a>
-                    <a href="#cmd-atoms" class="nav-link">Atom Management</a>
-                    <a href="#cmd-bonds" class="nav-link">Bond Operations</a>
-                    <a href="#cmd-geometry" class="nav-link">Geometry</a>
-                    <a href="#cmd-display" class="nav-link">Display</a>
-                    <a href="#cmd-fragments" class="nav-link">Fragments</a>
-                    <a href="#cmd-molecules" class="nav-link">Molecules</a>
-                    <a href="#cmd-clipboard" class="nav-link">Copy/Paste/Merge</a>
-                    <a href="#cmd-utility" class="nav-link">Utility</a>
+                    <a href="#core-commands" class="nav-link">Core Commands</a>
+                    <a href="#atom-management" class="nav-link">Atom Management</a>
+                    <a href="#bonds" class="nav-link">Bonds</a>
+                    <a href="#geometry" class="nav-link">Geometry</a>
+                    <a href="#molecules" class="nav-link">Molecules</a>
+                    <a href="#clipboard" class="nav-link">Clipboard</a>
+                    <a href="#visualization" class="nav-link">Visualization</a>
+                    <a href="#history" class="nav-link">History</a>
+                    <a href="#utilities" class="nav-link">Utilities</a>
                 </div>
+
                 <div class="nav-section">
-                    <div class="nav-section-title">Test Suites</div>
-                    <a href="#test-basic" class="nav-link">Basic Commands</a>
-                    <a href="#test-atoms" class="nav-link">Atom Management</a>
-                    <a href="#test-bonds" class="nav-link">Bond Operations</a>
-                    <a href="#test-geometry" class="nav-link">Geometry</a>
-                    <a href="#test-multiline" class="nav-link">Multi-line Input</a>
-                    <a href="#test-batch" class="nav-link">Batch Commands</a>
-                    <a href="#test-molecules" class="nav-link">Molecules</a>
-                    <a href="#test-clipboard" class="nav-link">Copy/Paste/Merge</a>
-                    <a href="#test-display" class="nav-link">Display</a>
-                    <a href="#test-fragments" class="nav-link">Fragments</a>
-                    <a href="#test-range" class="nav-link">Range Selection</a>
+                    <div class="nav-section-title">Test Suite</div>
+                    <a href="#tests" class="nav-link">All Tests</a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Best Practices</div>
+                    <a href="#workflows" class="nav-link">Efficient Workflows</a>
+                    <a href="#troubleshooting" class="nav-link">Troubleshooting</a>
                 </div>
             </nav>
         </aside>
 
+        <!-- Main Content -->
         <main class="main-content">
-            <h1 id="introduction">Simpledit Command Documentation</h1>
+            <section id="overview">
+                <h1>Simpledit Documentation</h1>
+                <p>Simpledit is a powerful molecular editor with a command-line interface, designed for efficient
+                    manipulation of molecular structures through an intuitive console.</p>
 
-            <p>Welcome to Simpledit, a console-based molecular editor for building and manipulating molecular structures
-                interactively. This documentation provides comprehensive command references and practical test suites to
-                help you master all features.</p>
-
-            <h2 id="getting-started">Getting Started</h2>
-
-            <p>Simpledit uses a command-line interface for all operations. Commands follow a simple syntax:</p>
-
-            <div class="code-block">
-                <pre>command [arguments]</pre>
-            </div>
-
-            <p>Most commands have shorter aliases for convenience. For example, <code>select</code> can be abbreviated
-                as <code>sel</code>.</p>
-
-            <h2 id="cmd-basic">Basic Commands</h2>
-
-            <p><strong>help</strong> (alias: <code>h</code>)</p>
-            <p>Display available commands or help for specific command.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>help              # Show all commands
-help select       # Show help for select command</pre>
-            </div>
-
-            <p><strong>list</strong> (alias: <code>ls</code>)</p>
-            <p>List atoms in current molecule.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>list              # List all atoms
-list selected     # List only selected atoms</pre>
-            </div>
-
-            <p><strong>clear</strong> (alias: <code>cls</code>)</p>
-            <p>Clear console output.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>clear</pre>
-            </div>
-
-            <h2 id="cmd-atoms">Atom Management</h2>
-
-            <p><strong>add</strong> (alias: <code>a</code>)</p>
-            <p>Add atom at specified coordinates or import from file format.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>add C 0 0 0       # Add carbon at origin
-add H 1.09 0 0    # Add hydrogen at position
-add xyz &lt;&lt;EOF     # Import XYZ format
-3
-Water
-O  0.000  0.000  0.000
-H  0.757  0.586  0.000
-H -0.757  0.586  0.000
-EOF</pre>
-            </div>
-
-            <p><strong>select</strong> (alias: <code>sel</code>)</p>
-            <p>Select atoms by index, range, or wildcard.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>select 0 1 2      # Select atoms 0, 1, 2
-select 0:3        # Select atoms 0, 1, 2, 3 (range)
-select 0 2:4 7    # Mix individual and range
-select :          # Select all atoms</pre>
-            </div>
-
-            <p><strong>delete</strong> (alias: <code>del</code>)</p>
-            <p>Delete atoms by index, range, or wildcard.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>delete 0 1        # Delete atoms 0 and 1
-delete 2:5        # Delete atoms 2, 3, 4, 5
-delete :          # Delete all atoms</pre>
-            </div>
-
-            <p><strong>info</strong> (alias: <code>i</code>)</p>
-            <p>Show atom information or geometric measurements.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>info              # Show selected atoms
-info 0            # Show atom 0 details
-info 0 1          # Show distance
-info 0 1 2        # Show angle
-info 0 1 2 3      # Show dihedral</pre>
-            </div>
-
-            <h2 id="cmd-bonds">Bond Operations</h2>
-
-            <p><strong>bond</strong> (alias: <code>b</code>)</p>
-            <p>Create bond between two atoms.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>bond 0 1          # Create bond between atoms 0 and 1</pre>
-            </div>
-
-            <p><strong>unbond</strong> (alias: <code>ub</code>)</p>
-            <p>Remove bond between two atoms.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>unbond 0 1        # Remove bond</pre>
-            </div>
-
-            <p><strong>adjustbond</strong> (alias: <code>ab</code>)</p>
-            <p>Automatically create bonds based on distance threshold.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>adjustbond        # Auto-detect and create bonds</pre>
-            </div>
-
-            <p><strong>setthreshold</strong> (alias: <code>st</code>)</p>
-            <p>Set distance threshold for automatic bonding.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>setthreshold 1.6  # Set threshold to 1.6 Angstroms</pre>
-            </div>
-
-            <h2 id="cmd-geometry">Geometry Adjustments</h2>
-
-            <p><strong>setdist</strong> (alias: <code>sd</code>)</p>
-            <p>Set distance between two atoms.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>setdist 0 1 1.5   # Set bond length to 1.5 Angstroms</pre>
-            </div>
-
-            <p><strong>setangle</strong> (alias: <code>sa</code>)</p>
-            <p>Set angle between three atoms.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>setangle 0 1 2 120  # Set angle to 120 degrees</pre>
-            </div>
-
-            <p><strong>setdihedral</strong> (alias: <code>sdi</code>)</p>
-            <p>Set dihedral angle between four atoms.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>setdihedral 0 1 2 3 180  # Set dihedral to 180 degrees</pre>
-            </div>
-
-            <div class="info-box">
-                <div class="info-title">Important Note</div>
-                <p>Geometry commands move the molecular fragment on the "far side" of the selected atoms. The order of
-                    atom selection is critical for achieving desired results.</p>
-            </div>
-
-            <h2 id="cmd-display">Display Settings</h2>
-
-            <p><strong>label</strong> (alias: <code>lbl</code>)</p>
-            <p>Control atom label display.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>label -s          # Show element symbols
-label -n          # Show atom numbers
-label -a          # Show both
-label off         # Hide labels</pre>
-            </div>
-
-            <p><strong>camera</strong> (alias: <code>cam</code>)</p>
-            <p>Change camera control mode.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>camera orbit      # Orbit camera mode
-camera trackball  # Trackball mode</pre>
-            </div>
-
-            <p><strong>projection</strong> (alias: <code>proj</code>)</p>
-            <p>Change projection method.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>projection perspective   # Perspective projection
-projection orthographic  # Orthographic projection</pre>
-            </div>
-
-            <h2 id="cmd-fragments">Fragment Analysis</h2>
-
-            <p><strong>fragments</strong> (alias: <code>frags</code>)</p>
-            <p>List all disconnected fragments.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>fragments         # Show all fragments</pre>
-            </div>
-
-            <p><strong>fragment</strong> (alias: <code>frag</code>)</p>
-            <p>Select all atoms in fragment containing specified atom.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>fragment 0        # Select fragment containing atom 0</pre>
-            </div>
-
-            <h2 id="cmd-molecules">Molecule Management</h2>
-
-            <p><strong>molecules</strong> (alias: <code>mols</code>)</p>
-            <p>List all molecules.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>molecules         # Show all molecules</pre>
-            </div>
-
-            <p><strong>new</strong></p>
-            <p>Create new molecule.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>new               # Create with auto name
-new "Water"       # Create with custom name</pre>
-            </div>
-
-            <p><strong>switch</strong> (alias: <code>sw</code>)</p>
-            <p>Switch to different molecule.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>switch 0          # Switch by index
-sw "Water"        # Switch by name</pre>
-            </div>
-
-            <p><strong>rename</strong> (alias: <code>rn</code>)</p>
-            <p>Rename current molecule.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>rename "H2O"      # Rename active molecule</pre>
-            </div>
-
-            <p><strong>remove</strong> (alias: <code>rm</code>)</p>
-            <p>Remove molecule.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>remove 1          # Remove by index
-rm "Water"        # Remove by name</pre>
-            </div>
-
-            <div class="info-box">
-                <div class="info-title">Independent State</div>
-                <p>Each molecule maintains its own undo/redo history and visual settings. Switching molecules
-                    automatically saves and restores these states.</p>
-            </div>
-
-            <h2 id="cmd-clipboard">Copy/Paste/Merge</h2>
-
-            <p><strong>copy</strong> (alias: <code>cp</code>)</p>
-            <p>Copy selected atoms to clipboard.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>select 0 1
-copy              # Copy selected atoms</pre>
-            </div>
-
-            <p><strong>paste</strong> (alias: <code>pa</code>)</p>
-            <p>Paste atoms from clipboard.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>paste             # Paste with 5A offset</pre>
-            </div>
-
-            <p><strong>cut</strong> (alias: <code>ct</code>)</p>
-            <p>Cut selected atoms (copy + delete).</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>select 0 1
-cut               # Cut atoms</pre>
-            </div>
-
-            <p><strong>merge</strong> (alias: <code>mg</code>)</p>
-            <p>Merge molecule into active molecule.</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>merge 0           # Merge molecule 0
-merge "Water"     # Merge by name</pre>
-            </div>
-
-            <div class="info-box">
-                <div class="info-title">Spatial Offset</div>
-                <p>Pasted atoms are automatically offset by 5 Angstroms along the x-axis to prevent overlap with
-                    existing structures. Merge operations use the same offset strategy.</p>
-            </div>
-
-            <h2 id="cmd-utility">Utility</h2>
-
-            <p><strong>time</strong> (aliases: <code>sleep</code>, <code>wait</code>)</p>
-            <p>Wait for specified seconds (for test scripts).</p>
-            <div class="code-block">
-                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                <pre>time 2            # Wait 2 seconds
-sleep 1.5         # Wait 1.5 seconds</pre>
-            </div>
-
-            <h2 id="test-basic">Test Suite 1: Basic Commands</h2>
-
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">01_basic_commands.txt</div>
-                    <div class="test-description">Demonstrates fundamental console operations including help system,
-                        listing, and output management.</div>
+                <div class="alert alert-info">
+                    <strong>Quick Start:</strong> Press <code>C</code> to open the console. Type <code>help</code> to
+                    see all available commands.
                 </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Familiarize users with the console interface and basic navigation
-                        commands.</p>
-                    <p><strong>Tests:</strong> <code>help</code>, <code>list</code>, <code>clear</code></p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Basic Commands Test
-# Tests: help, list, clear
-cls 
+            </section>
 
-help
-time 1
+            <section id="design-principles">
+                <h2>Design Principles</h2>
 
-cls
-time 1
+                <h3>1. Verb-Noun Command Structure</h3>
+                <p>All commands follow a consistent <strong>Verb-Noun</strong> pattern for clarity and predictability:
+                </p>
 
-help list 
-time 1
+                <pre><code><span class="command">add atom</span> C 0 0 0      <span class="comment"># Verb: add, Noun: atom</span>
+<span class="command">del bond</span> 0 1         <span class="comment"># Verb: del, Noun: bond</span>
+<span class="command">set dist</span> 0 1 1.5    <span class="comment"># Verb: set, Noun: dist</span></code></pre>
 
-list
-time 1
+                <h3>2. Explicit Subcommands</h3>
+                <p>Operations require explicit targets to avoid ambiguity:</p>
+                <ul>
+                    <li><code>add atom</code> / <code>add bond</code> / <code>add mol</code></li>
+                    <li><code>del atom</code> / <code>del bond</code> / <code>del mol</code></li>
+                    <li><code>list atoms</code> / <code>list mols</code> / <code>list frags</code></li>
+                </ul>
 
-help cls</pre>
-                    </div>
-                </div>
-            </div>
+                <h3>3. Aliases for Efficiency</h3>
+                <p>Common commands have short aliases:</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Full Command</th>
+                            <th>Aliases</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>help</code></td>
+                            <td><code>h</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>list</code></td>
+                            <td><code>ls</code>, <code>l</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>add</code></td>
+                            <td><code>a</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>delete</code></td>
+                            <td><code>del</code>, <code>rm</code>, <code>remove</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>select</code></td>
+                            <td><code>sel</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>trans</code></td>
+                            <td><code>tr</code>, <code>translation</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>rotate</code></td>
+                            <td><code>rot</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>measure</code></td>
+                            <td><code>meas</code>, <code>info</code></td>
+                        </tr>
+                    </tbody>
+                </table>
 
-            <h2 id="test-atoms">Test Suite 2: Atom Management</h2>
+                <h3>4. Powerful Syntax Features</h3>
 
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">02_atom_management.txt</div>
-                    <div class="test-description">Covers creation, selection, and deletion of individual atoms.</div>
-                </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Learn fundamental atom manipulation operations.</p>
-                    <p><strong>Tests:</strong> <code>add</code>, <code>select</code>, <code>delete</code>,
-                        <code>info</code>, wildcard selection (<code>:</code>)
-                    </p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Atom Basic Management Test
-# Tests: add, delete, select
-cls
+                <h4>Range Selection</h4>
+                <pre><code><span class="command">select</span> 0:5         <span class="comment"># Select atoms 0,1,2,3,4,5</span>
+<span class="command">select</span> :           <span class="comment"># Select all atoms</span>
+<span class="command">del atom</span> 2:7       <span class="comment"># Delete atoms 2-7</span></code></pre>
 
-# Add single atoms
-add O 0 0 0
-time 1
+                <h4>Flags and Options</h4>
+                <pre><code><span class="command">paste</span> --offset 5         <span class="comment"># Long form</span>
+<span class="command">paste</span> -o 5               <span class="comment"># Short form</span>
+<span class="command">label</span> --symbol -n        <span class="comment"># Multiple flags</span>
+<span class="command">capture</span> --no-background  <span class="comment"># Boolean flag</span>
+<span class="command">capture</span> -n               <span class="comment"># Boolean flag</span></code></pre>
 
-add H 1.09 0 0
-time 1
-
-add H -0.36 1.03 0
-time 1
-
-# Select atoms
-select 0 1
-time 1
-
-# Delete atom
-delete 2
-time 1
-
-# Select all and delete
-select :
-time 1
-
-del :</pre>
-                    </div>
-                </div>
-            </div>
-
-            <h2 id="test-bonds">Test Suite 3: Bond Operations</h2>
-
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">03_bond_operations.txt</div>
-                    <div class="test-description">Demonstrates bond creation, removal, and automatic bond detection
-                        based on distance.</div>
-                </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Understand bond manipulation and automatic connectivity detection.</p>
-                    <p><strong>Tests:</strong> <code>bond</code>, <code>unbond</code>, <code>adjustbond</code>,
-                        <code>setthreshold</code>
-                    </p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Bond Operations Test
-# Tests: bond, unbond, adjustbond, setthreshold
-cls 
-
-# Create molecule
-add C 0 0 0
-add C 1.5 0 0
-add C 3.0 0 0
-add C 4.5 0 0
-time 1
-
-# list of fragments
-frags
-
-# Create bonds
-bond 0 1
-time 1
-
-bond 1 2
-time 1
-
-bond 2 3
-time 1
-
-frags
-
-# Remove bond
-unbond 1 2
-time 1
-
-frags
-
-# Adjust bonds with threshold
-setthreshold 2.0
-time 1
-
-adjustbond
-time 1
-
-del :</pre>
-                    </div>
-                </div>
-            </div>
-
-            <h2 id="test-geometry">Test Suite 4: Geometry Adjustments</h2>
-
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">04_geometry_adjustments.txt</div>
-                    <div class="test-description">Precise control of molecular geometry through bond lengths, angles,
-                        and dihedral angles.</div>
-                </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Learn to manipulate molecular geometry with precision.</p>
-                    <p><strong>Tests:</strong> <code>setdist</code>, <code>setangle</code>, <code>setdihedral</code></p>
-                    <div class="info-box">
-                        <div class="info-title">Important Note</div>
-                        <p>Geometry commands move the molecular fragment on the "far side" of the selected atoms. The
-                            order of atom selection is critical for achieving desired results.</p>
-                    </div>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Geometry Adjustments Test
-# Tests: setdist, setangle, setdihedral
-cls 
-
-st 1.3
-# adjustbond
-
-# Create test molecule
-add xyz &lt;&lt;DFE
-8
-
-F        1.34840       -0.55490        0.14980
-F       -1.34850       -0.55480       -0.14980
-C        0.69620        0.55490       -0.29020
-C       -0.69610        0.55490        0.29020
-H        0.66790        0.50740       -1.38190
-H        1.26370        1.43390        0.02570
-H       -1.26350        1.43400       -0.02550
-H       -0.66780        0.50730        1.38190
-DFE
-time 1  
-
-
-# just for hightlight
-# Test dihedral adjustment
-select 1 3 2 0
-info 1 3 2 0
-time 1
-
-# adjust dihedral angle
-setdihedral 1 3 2 0 180
-info 1 3 2 0
-time 1
-
-# Test bond length adjustment
-select 3 2
-info  3 2
-time 1
-
-setdist 3 2 3.0
-info  3 2
-time 1
-
-del :
-time 1
-
-add xyz &lt;&lt;WTR
-3
-
-O 0.000000 0.000000  0.000000
-H 0.758602 0.000000  0.504284
-H 0.260455 0.000000 -0.872893
-WTR
-ab
-time 1
-
-
-# Test angle adjustment
-select 2 0 1
-info 2 0 1
-time 1
-
-setangle 2 0 1 120
-time 0.1
-setangle 2 0 1 135
-time 0.1
-setangle 2 0 1 150
-time 0.1
-setangle 2 0 1 165
-time 0.1
-setangle 2 0 1 180
-time 0.1</pre>
-                    </div>
-                </div>
-            </div>
-
-            <h2 id="test-multiline">Test Suite 5: Multi-line Input</h2>
-
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">05_heardoc_add.txt</div>
-                    <div class="test-description">Import molecular structures from XYZ format using heredoc syntax.
-                    </div>
-                </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Learn to import complete molecular structures from coordinate files.
-                    </p>
-                    <p><strong>Tests:</strong> Heredoc syntax, XYZ format import</p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Multi-line Input Test
-# Tests: heredoc syntax, XYZ format
-cls 
-
-# Test heredoc syntax
-add xyz &lt;&lt;EOF
+                <h4>Heredoc Syntax</h4>
+                <pre><code><span class="command">add mol xyz</span> &lt;&lt;EOF
 3
 Water molecule
 O  0.000  0.000  0.000
 H  0.757  0.586  0.000
 H -0.757  0.586  0.000
-EOF
-time 1
+EOF</code></pre>
 
-list
-time 1
+                <h4>Line Continuation</h4>
+                <pre><code><span class="command">add atom</span> C 0 0 0 \
+<span class="command">add atom</span> H 1 0 0 \
+<span class="command">add atom</span> H 0 1 0</code></pre>
 
-del : 
+                <h4>Inline Time Delays</h4>
+                <pre><code><span class="command">rot</span> 10 0 0 \time 0.2    <span class="comment"># Rotate and wait 0.2s</span></code></pre>
 
-# Add more with heredoc
-add xyz &lt;&lt;DATA
-5
-Methane
-C  0.000  0.000  0.000
-H  0.630  0.630  0.630
-H -0.630 -0.630  0.630
-H -0.630  0.630 -0.630
-H  0.630 -0.630 -0.630
-DATA
-time 1
+                <h3>5. Smart Defaults</h3>
+                <p>The system intelligently assists you:</p>
+                <ul>
+                    <li><strong>Auto-offset:</strong> <code>paste</code> and <code>merge</code> automatically shift
+                        atoms to avoid collisions</li>
+                    <li><strong>Bond detection:</strong> Bonds are auto-calculated based on threshold</li>
+                    <li><strong>Per-molecule state:</strong> Each molecule has independent history and settings</li>
+                </ul>
+            </section>
 
-list</pre>
-                    </div>
-                </div>
-            </div>
+            <section id="getting-started">
+                <h2>Getting Started</h2>
 
-            <h2 id="test-batch">Test Suite 6: Batch Commands</h2>
+                <h3>Opening the Console</h3>
+                <ol>
+                    <li>Press <code>C</code> key to toggle the console</li>
+                    <li>The console appears on the right side with green terminal theme</li>
+                    <li>Type commands and press <code>Enter</code> to execute</li>
+                </ol>
 
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">06_batch_commands.txt</div>
-                    <div class="test-description">Execute multiple commands using line continuation and comment syntax.
-                    </div>
-                </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Learn efficient command chaining and documentation through comments.
-                    </p>
-                    <p><strong>Tests:</strong> Backslash line continuation, comment syntax (<code>#</code>)</p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Batch Commands Test
-# Tests: backslash separator, multi-line execution
-cls 
+                <h3>Your First Molecule</h3>
+                <pre><code><span class="comment"># Create a water molecule</span>
+<span class="command">add atom</span> O 0 0 0
+<span class="command">add atom</span> H 0.757 0.586 0
+<span class="command">add atom</span> H -0.757 0.586 0
 
-# Test backslash separator
-add C 0 0 0 \ time 0.5 \ add C 1.5 0 0 \ time 0.5 # multi-line command
-add C 3.0 0 0 \ time 0.5 \ bond 0 1 \ time 0.5 \ bond 1 2 
-time 1
+<span class="comment"># View what you created</span>
+<span class="command">list</span>
 
-list
-time 1
+<span class="comment"># Add bonds</span>
+<span class="command">add bond</span> 0 1
+<span class="command">add bond</span> 0 2</code></pre>
 
-# Test comments
-add H 0 1 0  # Another atom
-time 1
+                <h3>Console Features</h3>
+                <ul>
+                    <li><strong>Command History:</strong> Use <code>↑</code> and <code>↓</code> arrows to navigate
+                        history</li>
+                    <li><strong>Multi-line Input:</strong> Use <code>\</code> at end of line to continue</li>
+                    <li><strong>Comments:</strong> Lines starting with <code>#</code> are ignored</li>
+                    <li><strong>Clear Output:</strong> Type <code>clear</code> or <code>cls</code></li>
+                </ul>
 
-# Clear and rebuild
-del :
-time 1
+                <h3>Visual Elements</h3>
+                <p>Simpledit includes helpful visual aids:</p>
+                <ul>
+                    <li><strong>Axis Helper:</strong> Bottom-right corner shows XYZ orientation (X=red, Y=green, Z=blue)
+                    </li>
+                    <li><strong>Atom Labels:</strong> Toggle with <code>label</code> command</li>
+                    <li><strong>Measurements:</strong> Visual feedback when measuring geometry</li>
+                </ul>
+            </section>
 
-add C 0 0 0 \ add C 1.5 0 0
-bond 0 1
-time 3
+            <!-- Command Reference Sections -->
+            <section id="core-commands">
+                <h2>Core Commands</h2>
 
-del :</pre>
-                    </div>
-                </div>
-            </div>
+                <h3><code>help</code> <span class="badge badge-alias">h</span></h3>
+                <p>Display available commands or detailed help for a specific command.</p>
+                <pre><code><span class="command">help</span>           <span class="comment"># List all commands</span>
+<span class="command">help add</span>       <span class="comment"># Show help for 'add' command</span>
+<span class="command">h rotate</span>      <span class="comment"># Using alias</span></code></pre>
 
-            <h2 id="test-molecules">Test Suite 7: Molecule Management</h2>
+                <h3><code>list</code> <span class="badge badge-alias">ls, l</span></h3>
+                <p>List atoms, molecules, or fragments.</p>
+                <pre><code><span class="command">list</span>           <span class="comment"># List all atoms in active molecule</span>
+<span class="command">list -s</span>        <span class="comment"># List only selected atoms</span>
+<span class="command">list mols</span>      <span class="comment"># List all molecules</span>
+<span class="command">list frags</span>     <span class="comment"># List disconnected fragments</span>
+<span class="command">ls</span>             <span class="comment"># Alias for list</span></code></pre>
 
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">07_molecule_management.txt</div>
-                    <div class="test-description">Manage multiple molecules, switching contexts, and independent
-                        history.</div>
-                </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Learn to work with multiple molecular structures simultaneously.</p>
-                    <p><strong>Tests:</strong> <code>new</code>, <code>switch</code>, <code>rename</code>,
-                        <code>remove</code>
-                    </p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Molecule Management Test
-# Tests: new, switch, rename, remove, molecules
-cls 
+                <h3><code>clear</code> <span class="badge badge-alias">cls</span></h3>
+                <p>Clear the console output.</p>
+                <pre><code><span class="command">clear</span>
+<span class="command">cls</span>           <span class="comment"># Alias</span></code></pre>
+            </section>
 
-# Create first molecule
-new "Water"
-add xyz &lt;&lt;EOF
+            <section id="atom-management">
+                <h2>Atom Management</h2>
+
+                <h3><code>add atom</code></h3>
+                <p>Add an atom at specified coordinates.</p>
+                <pre><code><span class="command">add atom</span> C 0 0 0              <span class="comment"># Carbon at origin</span>
+<span class="command">add atom</span> H 1.2 0 0            <span class="comment"># Hydrogen at (1.2, 0, 0)</span>
+<span class="command">a atom</span> O 0 0 1.5              <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>add mol</code></h3>
+                <p>Import molecular data using heredoc syntax.</p>
+                <pre><code><span class="command">add mol xyz</span> &lt;&lt;EOF
 3
-Water
-O  0.000  0.000  0.000
-H  0.757  0.586  0.000
-H -0.757  0.586  0.000
-EOF
-
-molecules
-time 1
-
-# Create second molecule
-new "Methane"
-add xyz &lt;&lt;EOF
-5
 Methane
 C  0.000  0.000  0.000
-H  0.630  0.630  0.630
-H -0.630 -0.630  0.630
-H -0.630  0.630 -0.630
-H  0.630 -0.630 -0.630
+H  0.629  0.629  0.629
+H -0.629 -0.629  0.629
+EOF</code></pre>
+
+                <h3><code>select</code> <span class="badge badge-alias">sel</span></h3>
+                <p>Select atoms for operations.</p>
+                <pre><code><span class="command">select</span> 0 1 2                 <span class="comment"># Select specific atoms</span>
+<span class="command">select</span> 0:5                   <span class="comment"># Select range 0-5</span>
+<span class="command">select</span> :                     <span class="comment"># Select all atoms</span>
+<span class="command">sel</span> 0 3 5                    <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>del atom</code> <span class="badge badge-alias">delete, rm, remove</span></h3>
+                <p>Delete atoms by index.</p>
+                <pre><code><span class="command">del atom</span> 0 1 5               <span class="comment"># Delete specific atoms</span>
+<span class="command">del atom</span> 0:5                 <span class="comment"># Delete range</span>
+<span class="command">del atom</span> :                   <span class="comment"># Delete all atoms</span>
+<span class="command">rm atom</span> 3                    <span class="comment"># Using alias</span></code></pre>
+            </section>
+
+            <section id="bonds">
+                <h2>Bonds</h2>
+
+                <h3><code>add bond</code></h3>
+                <p>Create a bond between two atoms.</p>
+                <pre><code><span class="command">add bond</span> 0 1                 <span class="comment"># Bond between atoms 0 and 1</span>
+<span class="command">a bond</span> 2 3                   <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>del bond</code></h3>
+                <p>Remove a bond between two atoms.</p>
+                <pre><code><span class="command">del bond</span> 0 1                 <span class="comment"># Remove bond</span>
+<span class="command">rm bond</span> 2 3                  <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>rebond</code> <span class="badge badge-alias">rb</span></h3>
+                <p>Recalculate all bonds based on current threshold.</p>
+                <pre><code><span class="command">set threshold</span> 1.8            <span class="comment"># Set bond detection distance</span>
+<span class="command">rebond</span>                        <span class="comment"># Recalculate bonds</span>
+<span class="command">rb</span>                            <span class="comment"># Using alias</span></code></pre>
+            </section>
+
+            <section id="geometry">
+                <h2>Geometry</h2>
+
+                <h3><code>set dist</code> <span class="badge badge-alias">distance</span></h3>
+                <p>Set distance between two atoms.</p>
+                <pre><code><span class="command">set dist</span> 0 1 1.5             <span class="comment"># Set distance to 1.5 Å</span>
+<span class="command">set distance</span> 0 1 1.5       <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>set angle</code></h3>
+                <p>Set angle between three atoms.</p>
+                <pre><code><span class="command">set angle</span> 0 1 2 109.5       <span class="comment"># Set angle to 109.5°</span></code></pre>
+
+                <h3><code>set dihedral</code></h3>
+                <p>Set dihedral angle between four atoms.</p>
+                <pre><code><span class="command">set dihedral</span> 0 1 2 3 180    <span class="comment"># Set dihedral to 180°</span></code></pre>
+
+                <h3><code>measure</code> <span class="badge badge-alias">meas, info</span></h3>
+                <p>Measure distances, angles, or dihedrals.</p>
+                <pre><code><span class="command">measure</span> 0 1                  <span class="comment"># Measure distance</span>
+<span class="command">measure</span> 0 1 2                <span class="comment"># Measure angle</span>
+<span class="command">measure</span> 0 1 2 3              <span class="comment"># Measure dihedral</span>
+<span class="command">measure</span>                       <span class="comment"># Info on selected atoms</span>
+<span class="command">meas</span> 0 1                     <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>rotate</code> <span class="badge badge-alias">rot</span></h3>
+                <p>Rotate molecule around origin.</p>
+                <pre><code><span class="command">rotate</span> 90 0 0                <span class="comment"># Rotate 90° around X-axis</span>
+<span class="command">rotate</span> 0 45 0                <span class="comment"># Rotate 45° around Y-axis</span>
+<span class="command">rot</span> 0 0 30                   <span class="comment"># Rotate 30° around Z-axis</span></code></pre>
+
+                <h3><code>trans</code> <span class="badge badge-alias">tr, translation</span></h3>
+                <p>Translate (move) the molecule.</p>
+                <pre><code><span class="command">trans</span> 5 0 0                  <span class="comment"># Move 5 units on X-axis</span>
+<span class="command">trans</span> 0 -2 0                 <span class="comment"># Move -2 units on Y-axis</span>
+<span class="command">tr</span> 1 1 1                     <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>center</code> <span class="badge badge-alias">cen</span></h3>
+                <p>Move molecule's center of mass to origin (0,0,0).</p>
+                <pre><code><span class="command">center</span>
+<span class="command">cen</span>                           <span class="comment"># Using alias</span></code></pre>
+            </section>
+
+            <section id="molecules">
+                <h2>Molecule Management</h2>
+
+                <h3><code>new</code></h3>
+                <p>Create a new empty molecule.</p>
+                <pre><code><span class="command">new</span>                           <span class="comment"># Create unnamed molecule</span>
+<span class="command">new</span> "Benzene"                 <span class="comment"># Create with name</span></code></pre>
+
+                <h3><code>switch</code> <span class="badge badge-alias">sw</span></h3>
+                <p>Switch between molecules.</p>
+                <pre><code><span class="command">switch</span> 1                      <span class="comment"># Switch by index</span>
+<span class="command">switch</span> "Benzene"              <span class="comment"># Switch by name</span>
+<span class="command">sw</span> 2                          <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>rename</code> <span class="badge badge-alias">rn</span></h3>
+                <p>Rename the active molecule.</p>
+                <pre><code><span class="command">rename</span> "New Name"
+<span class="command">rn</span> "Molecule 1"              <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>del mol</code></h3>
+                <p>Delete a molecule.</p>
+                <pre><code><span class="command">del mol</span>                       <span class="comment"># Delete active molecule</span>
+<span class="command">del mol</span> 2                    <span class="comment"># Delete by index</span>
+<span class="command">del mol</span> "Benzene"            <span class="comment"># Delete by name</span></code></pre>
+
+                <h3><code>merge</code> <span class="badge badge-alias">mg</span></h3>
+                <p>Merge another molecule into the active one.</p>
+                <pre><code><span class="command">merge</span> 1                       <span class="comment"># Merge molecule 1</span>
+<span class="command">merge</span> "Water"                 <span class="comment"># Merge by name</span>
+<span class="command">mg</span> 2                          <span class="comment"># Using alias</span></code></pre>
+
+                <div class="alert alert-tip">
+                    <strong>Smart Offset:</strong> The <code>merge</code> command automatically applies spatial offset
+                    to prevent atom collisions.
+                </div>
+            </section>
+
+            <section id="clipboard">
+                <h2>Clipboard Operations</h2>
+
+                <h3><code>copy</code> <span class="badge badge-alias">cp</span></h3>
+                <p>Copy selected atoms to clipboard.</p>
+                <pre><code><span class="command">select</span> 0:3
+<span class="command">copy</span>
+<span class="command">cp</span>                            <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>paste</code> <span class="badge badge-alias">pa</span></h3>
+                <p>Paste atoms from clipboard.</p>
+                <pre><code><span class="command">paste</span>                         <span class="comment"># Paste with smart offset</span>
+<span class="command">paste</span> --offset 5             <span class="comment"># Explicit offset</span>
+<span class="command">paste</span> -o 3                   <span class="comment"># Short flag form</span>
+<span class="command">pa</span>                            <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>cut</code> <span class="badge badge-alias">ct</span></h3>
+                <p>Cut selected atoms to clipboard (copy + delete).</p>
+                <pre><code><span class="command">select</span> 5:8
+<span class="command">cut</span>
+<span class="command">ct</span>                            <span class="comment"># Using alias</span></code></pre>
+            </section>
+
+            <section id="visualization">
+                <h2>Visualization</h2>
+
+                <h3><code>label</code> <span class="badge badge-alias">lbl</span></h3>
+                <p>Control atom labels display.</p>
+                <pre><code><span class="command">label</span> -s                      <span class="comment"># Show element symbols</span>
+<span class="command">label</span> --symbol                <span class="comment"># Long form</span>
+<span class="command">label</span> -n                      <span class="comment"># Show atom numbers</span>
+<span class="command">label</span> --number                <span class="comment"># Long form</span>
+<span class="command">label</span> -a                      <span class="comment"># Show both</span>
+<span class="command">label</span> --all                   <span class="comment"># Long form</span>
+<span class="command">label</span> -o                      <span class="comment"># Turn off labels</span>
+<span class="command">label</span> --off                   <span class="comment"># Long form</span>
+<span class="command">lbl</span> -s                        <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>camera</code> <span class="badge badge-alias">cam</span></h3>
+                <p>Set camera control mode.</p>
+                <pre><code><span class="command">camera</span> orbit                 <span class="comment"># Orbit controls (constrained)</span>
+<span class="command">camera</span> trackball             <span class="comment"># Trackball controls (free rotation)</span>
+<span class="command">cam</span> orbit                    <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>projection</code> <span class="badge badge-alias">proj</span></h3>
+                <p>Set camera projection type.</p>
+                <pre><code><span class="command">projection</span> persp             <span class="comment"># Perspective projection</span>
+<span class="command">projection</span> ps                <span class="comment"># Short form</span>
+<span class="command">projection</span> ortho             <span class="comment"># Orthographic projection</span>
+<span class="command">projection</span> ot                <span class="comment"># Short form</span>
+<span class="command">proj</span> persp                    <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>capture</code> <span class="badge badge-alias">cap</span></h3>
+                <p>Capture a snapshot of the viewport.</p>
+                <pre><code><span class="command">capture</span>                       <span class="comment"># Capture with background</span>
+<span class="command">capture</span> --no-background      <span class="comment"># Transparent background</span>
+<span class="command">capture</span> -n                   <span class="comment"># Short flag form</span>
+<span class="command">cap</span>                           <span class="comment"># Using alias</span></code></pre>
+            </section>
+
+            <section id="history">
+                <h2>History Management</h2>
+
+                <h3><code>undo</code> <span class="badge badge-alias">u</span></h3>
+                <p>Undo the last destructive operation.</p>
+                <pre><code><span class="command">undo</span>
+<span class="command">u</span>                             <span class="comment"># Using alias</span></code></pre>
+
+                <h3><code>redo</code> <span class="badge badge-alias">r, y</span></h3>
+                <p>Redo the last undone operation.</p>
+                <pre><code><span class="command">redo</span>
+<span class="command">r</span>                             <span class="comment"># Using alias</span>
+<span class="command">y</span>                             <span class="comment"># Alternative alias</span></code></pre>
+
+                <div class="alert alert-info">
+                    <strong>Per-Molecule History:</strong> Each molecule maintains its own independent undo/redo stack.
+                </div>
+            </section>
+
+            <section id="utilities">
+                <h2>Utilities</h2>
+
+                <h3><code>time</code> <span class="badge badge-alias">sleep</span></h3>
+                <p>Pause execution for specified duration (useful in scripts and animations).</p>
+                <pre><code><span class="command">time</span> 1                        <span class="comment"># Wait 1 second</span>
+<span class="command">time</span> 0.5                      <span class="comment"># Wait 0.5 seconds</span>
+<span class="command">sleep</span> 2                       <span class="comment"># Using alias</span>
+
+<span class="comment"># Inline usage for animations</span>
+<span class="command">rot</span> 10 0 0 \time 0.2         <span class="comment"># Rotate and wait</span></code></pre>
+            </section>
+
+            <!-- Test Suite Section -->
+            <section id="tests">
+                <h2>Test Suite</h2>
+                <p>Simpledit includes 14 comprehensive test files covering all features. Each test can be copied and
+                    pasted directly into the console.</p>
+
+                <div class="test-card">
+                    <h4>01_basic_commands.txt</h4>
+                    <p><strong>Purpose:</strong> Introduction to console interface and basic navigation</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>help</code> - Command discovery</li>
+                        <li><code>list</code> - Viewing atoms</li>
+                        <li><code>clear</code> - Console management</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>02_atom_management.txt</h4>
+                    <p><strong>Purpose:</strong> Fundamental atom manipulation operations</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>add atom</code> - Creating atoms</li>
+                        <li><code>select</code> - Selection (individual, range, all)</li>
+                        <li><code>del atom</code> - Deletion operations</li>
+                        <li><code>info</code> - Atom information</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>03_bond_operations.txt</h4>
+                    <p><strong>Purpose:</strong> Bond creation and automatic connectivity</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>add bond</code> - Manual bond creation</li>
+                        <li><code>del bond</code> - Bond removal</li>
+                        <li><code>rebond</code> - Automatic bond detection</li>
+                        <li><code>set threshold</code> - Bond distance threshold</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>04_geometry_adjustments.txt</h4>
+                    <p><strong>Purpose:</strong> Precise molecular geometry control</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>set dist</code> - Distance adjustment</li>
+                        <li><code>set angle</code> - Angle adjustment</li>
+                        <li><code>set dihedral</code> - Dihedral angle adjustment</li>
+                        <li><code>measure</code> - Geometry measurements</li>
+                    </ul>
+                    <div class="alert alert-tip">
+                        Tests the sophisticated fragment-based geometry engine that moves only necessary atoms.
+                    </div>
+                </div>
+
+                <div class="test-card">
+                    <h4>05_heredoc_add.txt</h4>
+                    <p><strong>Purpose:</strong> Import complete molecular structures</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li>Heredoc syntax (<code>&lt;&lt;EOF</code>)</li>
+                        <li>XYZ format import</li>
+                        <li>Multi-line input handling</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>06_batch_commands.txt</h4>
+                    <p><strong>Purpose:</strong> Efficient command chaining</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li>Backslash (<code>\</code>) line continuation</li>
+                        <li>Comment syntax (<code>#</code>)</li>
+                        <li>Multi-line command execution</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>07_molecule_management.txt</h4>
+                    <p><strong>Purpose:</strong> Multi-molecule workflows</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>new</code> - Creating molecules</li>
+                        <li><code>switch</code> - Switching between molecules</li>
+                        <li><code>rename</code> - Renaming molecules</li>
+                        <li><code>del mol</code> - Molecule deletion</li>
+                        <li>Independent history per molecule</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>08_copy_paste_merge.txt</h4>
+                    <p><strong>Purpose:</strong> Transfer and combine molecular structures</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>copy</code> / <code>cut</code> - Clipboard operations</li>
+                        <li><code>paste</code> - With smart offset</li>
+                        <li><code>merge</code> - Molecule combination</li>
+                        <li><code>--offset</code> flag - Manual offset control</li>
+                    </ul>
+                    <div class="alert alert-tip">
+                        Demonstrates the smart collision avoidance system for paste/merge operations.
+                    </div>
+                </div>
+
+                <div class="test-card">
+                    <h4>09_display_labels.txt</h4>
+                    <p><strong>Purpose:</strong> Visual customization</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>label</code> - Different label modes (symbol, number, all, off)</li>
+                        <li><code>camera</code> - Camera control modes</li>
+                        <li><code>projection</code> - Perspective vs orthographic</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>10_fragment_analysis.txt</h4>
+                    <p><strong>Purpose:</strong> Connectivity analysis</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <li><code>list frags</code> - Fragment detection</li>
+                    <li><code>unbond</code> - Breaking connectivity</li>
+                    <li>Fragment-based selection</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>11_range_selection.txt</h4>
+                    <p><strong>Purpose:</strong> Efficient atom selection patterns</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li>Range syntax (<code>0:3</code>)</li>
+                        <li>All selection (<code>:</code>)</li>
+                        <li>Mixed selection modes</li>
+                        <li>Range deletion</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>12_aliases.txt</h4>
+                    <p><strong>Purpose:</strong> Command aliases and shortcuts</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>tr</code> for <code>trans</code></li>
+                        <li>Flag shortcuts (<code>-o</code>, <code>-s</code>, <code>-n</code>)</li>
+                        <li><code>paste -o</code> - Offset flag</li>
+                        <li><code>label -o</code> - Label flags</li>
+                        <li><code>ps</code> / <code>ot</code> - Projection shortcuts</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>13_undo_redo.txt</h4>
+                    <p><strong>Purpose:</strong> History management and state recovery</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>undo</code> - Reverting changes</li>
+                        <li><code>redo</code> - Reapplying changes</li>
+                        <li>Visual verification with <code>time</code> delays</li>
+                        <li>Per-molecule history independence</li>
+                    </ul>
+                </div>
+
+                <div class="test-card">
+                    <h4>14_transformations.txt</h4>
+                    <p><strong>Purpose:</strong> Molecular transformations and positioning</p>
+                    <p><strong>Features Tested:</strong></p>
+                    <ul>
+                        <li><code>rotate</code> - Incremental rotations (10° steps)</li>
+                        <li><code>trans</code> - Incremental translations (0.5 unit steps)</li>
+                        <li><code>center</code> - Center of mass repositioning</li>
+                        <li>Inline <code>\time</code> for smooth animations</li>
+                        <li>Combined transformations</li>
+                    </ul>
+                    <div class="alert alert-tip">
+                        Uses small incremental steps with timing to create smooth visual animations of molecular
+                        movements.
+                    </div>
+                </div>
+
+                <h3>Running Tests</h3>
+                <ol>
+                    <li>Navigate to the <code>tests/</code> directory</li>
+                    <li>Open any test file in a text editor</li>
+                    <li>Copy the entire content</li>
+                    <li>Paste into the Simpledit console</li>
+                    <li>Watch the automated execution with time delays</li>
+                </ol>
+            </section>
+
+            <!-- Best Practices Section -->
+            <section id="workflows">
+                <h2>Efficient Workflows</h2>
+
+                <h3>Building Molecules</h3>
+                <p>Use heredoc for complex structures:</p>
+                <pre><code><span class="command">add mol xyz</span> &lt;&lt;EOF
+6
+Benzene
+C  1.40  0.00  0.00
+C  0.70  1.21  0.00
+C -0.70  1.21  0.00
+C -1.40  0.00  0.00
+C -0.70 -1.21  0.00
+C  0.70 -1.21  0.00
 EOF
+<span class="command">rebond</span>                        <span class="comment"># Auto-detect bonds</span></code></pre>
 
-molecules
-time 1
+                <h3>Incremental Adjustments</h3>
+                <p>Use small steps with timing for visual feedback:</p>
+                <pre><code><span class="command">rot</span> 10 0 0 \time 0.1
+<span class="command">rot</span> 10 0 0 \time 0.1
+<span class="command">rot</span> 10 0 0 \time 0.1</code></pre>
 
-# Switch between molecules
-sw 0
-time 1
+                <h3>Working with Multiple Molecules</h3>
+                <pre><code><span class="command">new</span> "Reactant"
+<span class="comment"># Build first molecule...</span>
 
-molecules
-time 1
+<span class="command">new</span> "Product"
+<span class="comment"># Build second molecule...</span>
 
-sw 1
-time 1
-molecules
+<span class="command">sw</span> 1                          <span class="comment"># Switch back</span>
+<span class="command">list mols</span>                     <span class="comment"># View all molecules</span></code></pre>
 
-# Rename molecule
-rename "CH4 Molecule"
-time 1
+                <h3>Clipboard Workflows</h3>
+                <pre><code><span class="command">select</span> 0:5                    <span class="comment"># Select fragment</span>
+<span class="command">copy</span>                          <span class="comment"># Copy to clipboard</span>
+<span class="command">sw</span> 2                          <span class="comment"># Switch molecule</span>
+<span class="command">paste</span> -o 5                    <span class="comment"># Paste with offset</span></code></pre>
+            </section>
 
-molecules
-time 1
+            <section id="troubleshooting">
+                <h2>Troubleshooting</h2>
 
-# Create and remove molecule
-new "Temp"
-add H 0 0 0
-add H 0 0 0.7
-time 1
-
-molecules
-time 1
-
-remove 2
-time 1
-
-remove "CH4 Molecule"
-remove "Temp"
-
-molecules
-
-time 3
-del :</pre>
-                    </div>
+                <h3>Atoms Not Bonding</h3>
+                <div class="alert alert-warning">
+                    <strong>Solution:</strong> Adjust the bond threshold and recalculate.
                 </div>
-            </div>
+                <pre><code><span class="command">set threshold</span> 1.8            <span class="comment"># Increase threshold</span>
+<span class="command">rebond</span>                        <span class="comment"># Recalculate</span></code></pre>
 
-            <h2 id="test-clipboard">Test Suite 8: Copy/Paste/Merge</h2>
-
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">08_copy_paste_merge.txt</div>
-                    <div class="test-description">Advanced operations for combining molecules: Copy, Paste, Merge, and
-                        Smart Offset.</div>
+                <h3>Molecule Off-Center</h3>
+                <div class="alert alert-warning">
+                    <strong>Solution:</strong> Use the center command.
                 </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Demonstrate how to build complex structures from smaller components
-                        using clipboard and merge operations.</p>
-                    <p><strong>Scenario:</strong>
-                    <ol>
-                        <li>Create Borane (BH3) and Ammonia (NH3).</li>
-                        <li>Create copies and merge them into a new "Complex_merged" molecule.</li>
-                        <li>Cut Ammonia and Paste into Borane to create "Complex_pasted".</li>
-                        <li>Demonstrate <strong>Smart Offset</strong> by pasting "Complex_merged" into Methane with
-                            collision avoidance.</li>
-                    </ol>
-                    </p>
-                    <p><strong>Tests:</strong> <code>copy</code>, <code>paste</code>, <code>cut</code>,
-                        <code>merge</code>, <code>-offset</code>
-                    </p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Copy/Paste/Merge Test
-# Tests: copy, paste, merge, smart offset
-cls 
+                <pre><code><span class="command">center</span>                        <span class="comment"># Move to origin</span></code></pre>
 
-# 1. Create Borane (BH3)
-new Borane
-add xyz &lt;&lt;BOR
-4
-
-B        0.0000000       0.0000000      -1.2778648
-H        0.9419139       0.0000000      -1.6172590
-H       -0.4709570       0.8163013      -1.6172590
-H       -0.4709570      -0.8163013      -1.6172590
-BOR
-
-# 2. Create Ammonia (NH3)
-new Ammonia
-add xyz &lt;&lt;AMM
-4
-
-N        0.0000000       0.0000000       0.2878648
-H        0.9419139       0.0000000       0.6272589
-H       -0.4709570       0.8163013       0.6272589
-H       -0.4709570      -0.8163013       0.6272589
-AMM
-
-molecules
-time 1
-
-# 3. Create Copies for Merge
-# Copy Borane
-sw Borane
-select :
-copy
-new Borane_Copy
-paste
-time 0.5
-
-# Copy Ammonia
-sw Ammonia
-select :
-copy
-new Ammonia_Copy
-paste
-time 0.5
-
-# 4. Merge Copies
-new Complex_merged
-# Merge Borane_Copy
-merge Borane_Copy
-# Merge Ammonia_Copy
-merge Ammonia_Copy
-time 1
-
-list
-time 1
-
-# 5. Cut & Paste Originals
-# Cut from Ammonia
-sw Ammonia
-select :
-cut
-time 0.5
-
-# Paste into Borane
-sw Borane
-paste
-rename Complex_pasted
-time 1
-
-list
-time 1
-
-# 6. Smart Offset Test
-# Create Methane
-new Methane
-add xyz &lt;&lt;MET
-5
-
-C        0.0000000       0.0000000       0.0000000
-H        0.6300000       0.6300000       0.6300000
-H       -0.6300000      -0.6300000       0.6300000
-H       -0.6300000       0.6300000      -0.6300000
-H        0.6300000      -0.6300000      -0.6300000
-MET
-time 1
-
-# Copy from Complex_merged
-sw Complex_merged
-select :
-copy
-
-# Paste into Methane with offset
-sw Methane
-paste -offset 3
-time 1
-
-list
-time 1
-molecules
-
-rm Ammonia
-rm Borane
-rm Methane
-rm Complex_merged
-rm Complex_pasted</pre>
-                    </div>
+                <h3>Accidental Deletion</h3>
+                <div class="alert alert-warning">
+                    <strong>Solution:</strong> Use undo to revert.
                 </div>
-            </div>
+                <pre><code><span class="command">undo</span>                          <span class="comment"># Undo last action</span></code></pre>
 
-            <h2 id="test-display">Test Suite 9: Display Settings</h2>
-
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">09_display_labels.txt</div>
-                    <div class="test-description">Customize visualization with labels, camera modes, and projections.
-                    </div>
+                <h3>Paste Collision</h3>
+                <div class="alert alert-warning">
+                    <strong>Solution:</strong> The system auto-applies offset, or specify manually.
                 </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Explore visualization options.</p>
-                    <p><strong>Tests:</strong> <code>label</code>, <code>camera</code>, <code>projection</code></p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Display & Labels Test
-# Tests: label modes, camera, projection
+                <pre><code><span class="command">paste</span> -o 10                   <span class="comment"># Larger offset</span></code></pre>
 
-# Create test molecule
-add xyz &lt;&lt;EOF
-8
-
-F        1.34840       -0.55490        0.14980
-F       -1.34850       -0.55480       -0.14980
-C        0.69620        0.55490       -0.29020
-C       -0.69610        0.55490        0.29020
-H        0.66790        0.50740       -1.38190
-H        1.26370        1.43390        0.02570
-H       -1.26350        1.43400       -0.02550
-H       -0.66780        0.50730        1.38190
-EOF
-time 1
-
-# Test label modes
-label -s
-time 1
-
-label -n
-time 1
-
-label -a
-time 1
-
-label off
-time 1
-
-# Test camera modes
-camera orbit
-time 1
-
-camera trackball
-time 1
-
-# Test projection modes
-projection perspective
-time 1
-
-projection orthographic
-time 1
-
-projection perspective
-
-del :</pre>
-                    </div>
+                <h3>Command Not Found</h3>
+                <div class="alert alert-warning">
+                    <strong>Solution:</strong> Check subcommands and syntax.
                 </div>
-            </div>
+                <pre><code><span class="command">help</span> add                     <span class="comment"># View command help</span>
+<span class="comment"># Use explicit subcommands:</span>
+<span class="command">add atom</span> C 0 0 0              <span class="comment"># Not just 'add C 0 0 0'</span></code></pre>
+            </section>
 
-            <h2 id="test-fragments">Test Suite 10: Fragment Analysis</h2>
+            <section>
+                <h2>Additional Resources</h2>
+                <ul>
+                    <li><strong>Quick Reference:</strong> <code>usage.md</code> - Command syntax cheat sheet</li>
+                    <li><strong>Test README:</strong> <code>tests/README.md</code> - Test file descriptions</li>
+                    <li><strong>Source Code:</strong> <code>src/commandRegistry.js</code> - Full command implementations
+                    </li>
+                </ul>
 
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">10_fragment_analysis.txt</div>
-                    <div class="test-description">Analyze and select disconnected molecular fragments.</div>
+                <div class="alert alert-info">
+                    <strong>Pro Tip:</strong> Use <code>help &lt;command&gt;</code> extensively to learn command syntax
+                    and options.
                 </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Identify and manipulate separate parts of a molecular system.</p>
-                    <p><strong>Tests:</strong> <code>fragments</code>, <code>fragment</code>, <code>unbond</code></p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Fragment Analysis Test
-# Tests: fragments, fragment
-cls 
-
-# Create disconnected fragments
-add xyz &lt;&lt;EOF
-8
-
-F        1.34840       -0.55490        0.14980
-F       -1.34850       -0.55480       -0.14980
-C        0.69620        0.55490       -0.29020
-C       -0.69610        0.55490        0.29020
-H        0.66790        0.50740       -1.38190
-H        1.26370        1.43390        0.02570
-H       -1.26350        1.43400       -0.02550
-H       -0.66780        0.50730        1.38190
-EOF
-time 1
-
-add O 10 0 0
-time 2
-
-# Analyze fragments
-fragments
-time 2
-
-# Select first fragment
-fragment 0
-time 2
-
-info
-time 2
-
-# Select second fragment
-fragment 2
-time 2
-
-info
-time 2
-
-# Select single atom fragment
-fragment 4
-time 2
-
-info</pre>
-                    </div>
-                </div>
-            </div>
-
-            <h2 id="test-range">Test Suite 11: Range Selection</h2>
-
-            <div class="test-section">
-                <div class="test-header">
-                    <div class="test-title">11_range_selection.txt</div>
-                    <div class="test-description">Efficiently select and manipulate groups of atoms using range syntax.
-                    </div>
-                </div>
-                <div class="test-body">
-                    <p><strong>Purpose:</strong> Master the range selection syntax for handling large numbers of atoms.
-                    </p>
-                    <p><strong>Tests:</strong> <code>select start:end</code>, <code>delete start:end</code>, mixed
-                        selection</p>
-                    <div class="code-block">
-                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        <pre># Range Selection Test
-# Tests: range syntax for select and delete
-cls 
-
-# Create test molecule
-add xyz &lt;&lt;EOF
-30
-
-O   -1.3726747  -0.1552490   2.4000752
-H   -1.5225698   0.6430745   1.8936733
-H   -1.8927283  -0.0364901   3.1948536
-O    0.1006113   0.8761179  -2.6670173
-H    0.7362920   0.2268962  -2.3659307
-H    0.2618820   0.9516930  -3.6075024
-O   -1.8195048  -1.8868228   0.2782001
-H   -2.0644814  -1.2422095  -0.3856463
-H   -1.7711378  -1.3861331   1.0925726
-O   -1.7639423   2.0188032   0.7720364
-H   -0.9076391   2.2250180   0.3972668
-H   -2.2268131   2.8564890   0.7883164
-O    0.5868449   2.4518037  -0.4466459
-H    1.3420653   1.9964944  -0.0743993
-H    0.4521329   2.0364701  -1.2984573
-O    1.9140885  -0.8032225  -1.6098292
-H    2.2977630  -0.2531253  -0.9268805
-H    1.5313918  -1.5418165  -1.1362744
-O   -2.2512316   0.2688588  -1.3371564
-H   -2.1976819   0.9230125  -0.6404158
-H   -1.4950439   0.4502556  -1.8952849
-O    2.6083833   0.8285405   0.5195594
-H    3.4598644   0.9974440   0.9229001
-H    2.1638626   0.2437857   1.1333144
-O    1.2670215  -0.9296743   2.0460502
-H    0.3793360  -0.6546975   2.2754716
-H    1.1429372  -1.6500684   1.4280960
-O    0.7176653  -2.7097787  -0.0031831
-H    0.7227966  -3.6649391  -0.0654267
-H   -0.2100590  -2.4764337   0.0301288
-EOF
-
-list
-time 1
-
-# Test range selection: select atoms 0 through 2
-select 0:2
-info
-time 1
-
-# Test range selection: select atoms 9 through 14 
-select 9:14
-info 
-time 1
-
-# Test mixed selection: individual + range
-select 3 4 5 6:8 
-info
-time 1
-cut # alternative for removing selected atoms
-time 1
-
-# Create more atoms for delete test
-del :
-time 1
-
-add C 0 0 0
-add C 1 0 0
-add C 2 0 0
-add C 3 0 0
-add C 4 0 0
-add C 5 0 0
-add C 6 0 0
-add C 7 0 0
-time 1
-
-list
-time 1
-
-# Delete range 2:4
-delete 2:4
-time 1
-
-list
-time 1
-
-# Delete mixed: individual + range
-delete 0 2:3
-time 1
-
-list
-del :</pre>
-                    </div>
-                </div>
-            </div>
-
+            </section>
         </main>
     </div>
 
     <script>
-        function copyCode(btn) {
-            const pre = btn.nextElementSibling;
-            const code = pre.textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                btn.textContent = 'Copied!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = 'Copy';
-                    btn.classList.remove('copied');
-                }, 2000);
+        // Simple smooth scrolling for navigation links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(e.target.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    // Update active link
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    e.target.classList.add('active');
+                }
             });
-        }
+        });
 
         // Highlight active section on scroll
-        const sections = document.querySelectorAll('h2[id]');
-        const navLinks = document.querySelectorAll('.nav-link');
-
-        window.addEventListener('scroll', () => {
-            let current = '';
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop;
-                if (pageYOffset >= sectionTop - 100) {
-                    current = section.getAttribute('id');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+                    const link = document.querySelector(`.nav-link[href="#${id}"]`);
+                    if (link) {
+                        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                        link.classList.add('active');
+                    }
                 }
             });
+        }, { threshold: 0.5 });
 
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('href').includes(current)) {
-                    link.classList.add('active');
+        document.querySelectorAll('section[id]').forEach(section => {
+            observer.observe(section);
+        });
+
+        // Add copy buttons to all code blocks
+        document.querySelectorAll('pre code').forEach(codeBlock => {
+            const pre = codeBlock.parentElement;
+            const button = document.createElement('button');
+            button.className = 'copy-btn';
+            button.textContent = 'Copy';
+            button.addEventListener('click', async () => {
+                // Extract text content, removing HTML tags
+                const text = codeBlock.textContent;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    button.textContent = 'Copied!';
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.textContent = 'Copy';
+                        button.classList.remove('copied');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                    button.textContent = 'Failed';
+                    setTimeout(() => {
+                        button.textContent = 'Copy';
+                    }, 2000);
                 }
             });
+            pre.appendChild(button);
+        });
+
+        // Add "Load Test" buttons to test cards
+        const testFiles = {
+            '01': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/01_basic_commands.txt',
+            '02': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/02_atom_management.txt',
+            '03': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/03_bond_operations.txt',
+            '04': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/04_geometry_adjustments.txt',
+            '05': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/05_heardoc_add.txt',
+            '06': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/06_batch_commands.txt',
+            '07': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/07_molecule_management.txt',
+            '08': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/08_copy_paste_merge.txt',
+            '09': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/09_display_labels.txt',
+            '10': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/10_fragment_analysis.txt',
+            '11': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/11_range_selection.txt',
+            '12': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/12_aliases.txt',
+            '13': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/13_undo_redo.txt',
+            '14': 'https://raw.githubusercontent.com/kangmg/simpledit/refs/heads/refactor/tests/14_transformations.txt'
+        };
+
+        document.querySelectorAll('.test-card').forEach((card, index) => {
+            const testNum = String(index + 1).padStart(2, '0');
+            const url = testFiles[testNum];
+            if (url) {
+                const button = document.createElement('button');
+                button.className = 'load-test-btn';
+                button.textContent = '📋 Copy Test to Clipboard';
+                button.addEventListener('click', async () => {
+                    button.textContent = 'Loading...';
+                    try {
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error('Failed to fetch');
+                        const text = await response.text();
+                        await navigator.clipboard.writeText(text);
+                        button.textContent = '✓ Copied! Paste in console';
+                        button.style.background = '#4caf50';
+                        setTimeout(() => {
+                            button.textContent = '📋 Copy Test to Clipboard';
+                            button.style.background = '';
+                        }, 3000);
+                    } catch (err) {
+                        console.error('Failed to load test:', err);
+                        button.textContent = '✗ Failed to load';
+                        button.style.background = '#f44336';
+                        setTimeout(() => {
+                            button.textContent = '📋 Copy Test to Clipboard';
+                            button.style.background = '';
+                        }, 3000);
+                    }
+                });
+                card.appendChild(button);
+            }
         });
     </script>
 </body>

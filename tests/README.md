@@ -57,6 +57,18 @@ To run any test:
 **Purpose**: Efficient atom selection and deletion  
 **Features**: Range syntax (`0:3`), mixed selection modes
 
+### 12_aliases.txt
+**Purpose**: Command aliases and shortcuts  
+**Features**: `tr` (translate), flag shortcuts, `paste -o`, `label -o`
+
+### 13_undo_redo.txt
+**Purpose**: History management and state recovery  
+**Features**: `undo`, `redo` commands with visual verification
+
+### 14_transformations.txt
+**Purpose**: Molecular transformations and positioning  
+**Features**: `rotate`, `trans` (translate), `center` commands with incremental animations
+
 ## Notes
 
 - Comments begin with `#`

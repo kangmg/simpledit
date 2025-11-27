@@ -59,6 +59,60 @@ export class Renderer {
     directionalLight.position.set(10, 10, 10);
     this.scene.add(directionalLight);
 
+    // Axis Helper Scene (bottom-right corner)
+    this.axisScene = new THREE.Scene();
+    this.axisScene.background = new THREE.Color(0xffffff); // White background
+
+    // Use orthographic camera to prevent perspective distortion
+    const axisSize = 2.5;
+    this.axisCamera = new THREE.OrthographicCamera(
+      -axisSize, axisSize,  // left, right
+      axisSize, -axisSize,  // top, bottom
+      0.1, 100              // near, far
+    );
+    this.axisCamera.position.set(0, 0, 5);
+
+    // Create custom thick axis arrows (X=red, Y=green, Z=blue)
+    const axisLength = 2.0;      // Increased from 1.5
+    const axisRadius = 0.08;     // Increased from 0.03 (much thicker)
+    const arrowLength = 0.5;     // Increased from 0.3
+    const arrowRadius = 0.15;    // Increased from 0.08
+
+    // Helper function to create thick arrow
+    const createArrow = (color) => {
+      const group = new THREE.Group();
+
+      // Arrow shaft (cylinder)
+      const shaftGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 16);
+      const shaftMaterial = new THREE.MeshBasicMaterial({ color });
+      const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+      shaft.position.y = axisLength / 2;
+      group.add(shaft);
+
+      // Arrow head (cone)
+      const headGeometry = new THREE.ConeGeometry(arrowRadius, arrowLength, 16);
+      const headMaterial = new THREE.MeshBasicMaterial({ color });
+      const head = new THREE.Mesh(headGeometry, headMaterial);
+      head.position.y = axisLength + arrowLength / 2;
+      group.add(head);
+
+      return group;
+    };
+
+    // X axis (red) - rotate to point right
+    const xAxis = createArrow(0xff0000);
+    xAxis.rotation.z = -Math.PI / 2;
+    this.axisScene.add(xAxis);
+
+    // Y axis (green) - already points up
+    const yAxis = createArrow(0x00ff00);
+    this.axisScene.add(yAxis);
+
+    // Z axis (blue) - rotate to point forward
+    const zAxis = createArrow(0x0000ff);
+    zAxis.rotation.x = Math.PI / 2;
+    this.axisScene.add(zAxis);
+
     window.addEventListener('resize', this.onWindowResize.bind(this));
   }
 
@@ -121,7 +175,39 @@ export class Renderer {
 
   render() {
     this.controls.update();
+
+    // Render main scene
     this.renderer.render(this.scene, this.activeCamera);
+
+    // Render axis helper in bottom-right (relative to sidebar)
+    const size = 180; // Increased size for better visibility
+    const margin = 30;
+    const sidebarWidth = 240;
+
+    // Position just to the right of sidebar (around 20% from left edge)
+    const x = sidebarWidth + margin;
+    const y = margin;
+
+    // Clear depth buffer for overlay
+    this.renderer.clearDepth();
+
+    // Set viewport to bottom-right corner
+    this.renderer.setViewport(x, y, size, size);
+    this.renderer.setScissor(x, y, size, size);
+    this.renderer.setScissorTest(true);
+
+    // Sync axis camera rotation with main camera
+    this.axisCamera.position.copy(this.activeCamera.position);
+    this.axisCamera.position.sub(this.controls.target || new THREE.Vector3());
+    this.axisCamera.position.setLength(5);
+    this.axisCamera.lookAt(this.axisScene.position);
+
+    // Render axis scene
+    this.renderer.render(this.axisScene, this.axisCamera);
+
+    // Reset viewport and scissor
+    this.renderer.setScissorTest(false);
+    this.renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
   }
 
   /**
