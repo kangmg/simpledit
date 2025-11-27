@@ -293,6 +293,183 @@ export class MoleculeManager {
         return { success: `Merged ${sourceAtomCount} atoms from "${sourceMol.name}" into "${targetMol.name}"` };
     }
 
+    substituteGroup(args) {
+        // Parse arguments: <TargetSpec> -n <SourceMolName> <SourceSpec>
+        // TargetSpec: 1 or 2 indices
+        // SourceSpec: 1 or 2 indices
+
+        const targetIndices = [];
+        let sourceMolName = null;
+        let sourceMolIndex = -1;
+        const sourceIndices = [];
+
+        let parsingTarget = true;
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (arg === '-n' || arg === '--name') {
+                if (i + 1 >= args.length) return { error: 'Missing molecule name after -n' };
+                sourceMolName = args[i + 1];
+                parsingTarget = false;
+                i++;
+            } else if (arg === '-i' || arg === '--index') {
+                if (i + 1 >= args.length) return { error: 'Missing molecule index after -i' };
+                sourceMolIndex = parseInt(args[i + 1]); // 0-based
+                parsingTarget = false;
+                i++;
+            } else {
+                const val = parseInt(arg);
+                if (isNaN(val)) return { error: `Invalid index: ${arg}` };
+                if (parsingTarget) targetIndices.push(val); // 0-based
+                else sourceIndices.push(val); // 0-based
+            }
+        }
+
+        // Validate Source Molecule
+        let sourceMolEntry = null;
+        if (sourceMolName) {
+            sourceMolEntry = this.molecules.find(m => m.name === sourceMolName);
+        } else if (sourceMolIndex >= 0) {
+            if (sourceMolIndex >= this.molecules.length) return { error: `Invalid source index: ${sourceMolIndex + 1}` };
+            sourceMolEntry = this.molecules[sourceMolIndex];
+        }
+
+        if (!sourceMolEntry) return { error: 'Source molecule not found' };
+        if (sourceMolEntry === this.getActive()) return { error: 'Cannot substitute with self' };
+
+        // Resolve Target Atoms (Leaving, Anchor)
+        const targetRes = this.resolveSubstitutionIndices(this.getActive().molecule, targetIndices);
+        if (targetRes.error) return targetRes;
+        const { leaving: targetLeaving, anchor: targetAnchor } = targetRes;
+
+        // Resolve Source Atoms (Leaving, Anchor)
+        const sourceRes = this.resolveSubstitutionIndices(sourceMolEntry.molecule, sourceIndices);
+        if (sourceRes.error) return sourceRes;
+        const { leaving: sourceLeaving, anchor: sourceAnchor } = sourceRes;
+
+        this.editor.saveState();
+
+        // Perform Alignment and Merge
+        // 1. Calculate alignment transform for Source Molecule
+        //    Target Vector: Anchor -> Leaving
+        //    Source Vector: Anchor -> Leaving
+        //    Goal: Align Source Vector to be Anti-Parallel to Target Vector
+
+
+
+        // 2. Copy atoms from Source to Target (applying transform)
+        const atomMap = new Map();
+        sourceMolEntry.molecule.atoms.forEach(sourceAtom => {
+            if (sourceAtom === sourceLeaving) return; // Skip leaving atom
+
+            // Position is already updated in alignMolecules (it modifies in-place? No, better to return transform or clone)
+            // Wait, alignMolecules should probably NOT modify the source molecule directly if we want to keep it intact?
+            // But here we are merging, so we copy.
+            // Let's assume alignMolecules returns a translation vector and rotation quaternion, OR it modifies a cloned list of positions.
+
+            // Actually, simpler: Clone source atoms, apply transform, then add to scene.
+            // But we need to know the transform.
+            // Let's make alignMolecules return the rotation and translation needed for the source anchor.
+        });
+
+        // REVISIT: alignMolecules needs to be carefully designed.
+        // Let's implement it to return { rotation: Quaternion, translation: Vector3 }
+        // And we apply it here.
+
+        const transform = GeometryEngine.getAlignmentTransform(
+            targetAnchor.position, targetLeaving.position,
+            sourceAnchor.position, sourceLeaving.position
+        );
+
+        // Calculate bond distance (sum of radii)
+        const r1 = this.getElementRadius(targetAnchor.element);
+        const r2 = this.getElementRadius(sourceAnchor.element);
+        const bondDist = (r1 + r2) * 1.1; // Slight overlap factor? Or just sum. Let's use sum.
+
+        // Apply Transform and Add to Scene
+        sourceMolEntry.molecule.atoms.forEach(sourceAtom => {
+            if (sourceAtom === sourceLeaving) return; // Skip leaving atom
+
+            // 1. Translate to center Source Anchor at Origin
+            const pos = sourceAtom.position.clone().sub(sourceAnchor.position);
+
+            // 2. Rotate
+            pos.applyQuaternion(transform.rotation);
+
+            // 3. Translate to Target Anchor
+            pos.add(targetAnchor.position);
+
+            // 4. Move along Target Vector (Target Anchor -> Target Leaving) by Bond Distance
+            // Target Vector direction:
+            const dir = targetLeaving.position.clone().sub(targetAnchor.position).normalize();
+            pos.add(dir.multiplyScalar(bondDist));
+
+            const newAtom = this.editor.addAtomToScene(sourceAtom.element, pos);
+            atomMap.set(sourceAtom, newAtom);
+        });
+
+        // Copy Bonds
+        sourceMolEntry.molecule.bonds.forEach(bond => {
+            // Skip if connected to leaving atom
+            if (bond.atom1 === sourceLeaving || bond.atom2 === sourceLeaving) return;
+
+            const newAtom1 = atomMap.get(bond.atom1);
+            const newAtom2 = atomMap.get(bond.atom2);
+
+            if (newAtom1 && newAtom2) {
+                this.getActive().molecule.addBond(newAtom1, newAtom2, bond.order);
+            }
+        });
+
+        // Create New Bond between Anchors
+        const newSourceAnchor = atomMap.get(sourceAnchor);
+        if (newSourceAnchor) {
+            this.getActive().molecule.addBond(targetAnchor, newSourceAnchor, 1);
+        }
+
+        // Remove Target Leaving Atom
+        this.editor.molecule.removeAtom(targetLeaving);
+        // Also remove its mesh? rebuildScene handles it.
+
+        this.editor.rebuildScene();
+
+        // Remove Source Molecule
+        const sourceIndex = this.molecules.indexOf(sourceMolEntry);
+        if (sourceIndex >= 0) {
+            this.removeMolecule(sourceIndex);
+        }
+
+        return { success: `Substituted group from ${sourceMolEntry.name}` };
+    }
+
+    resolveSubstitutionIndices(molecule, indices) {
+        if (indices.length === 2) {
+            // Explicit: Leaving, Anchor
+            const leaving = molecule.atoms[indices[0]];
+            const anchor = molecule.atoms[indices[1]];
+            if (!leaving || !anchor) return { error: 'Invalid indices' };
+
+            // Verify bond
+            if (!molecule.getBond(leaving, anchor)) return { error: `Atoms ${indices[0] + 1} and ${indices[1] + 1} are not bonded` };
+
+            return { leaving, anchor };
+        } else if (indices.length === 1) {
+            // Implicit: Anchor (Find Dummy)
+            const anchor = molecule.atoms[indices[0]];
+            if (!anchor) return { error: 'Invalid anchor index' };
+
+            // Find 'X' neighbor with 1 bond
+            const neighbors = anchor.bonds.map(b => b.atom1 === anchor ? b.atom2 : b.atom1);
+            const dummies = neighbors.filter(a => a.element === 'X' && a.bonds.length === 1);
+
+            if (dummies.length === 0) return { error: `No terminal 'X' atom found attached to atom ${indices[0] + 1}` };
+            if (dummies.length > 1) return { error: `Ambiguous: Multiple 'X' atoms attached to atom ${indices[0] + 1}` };
+
+            return { leaving: dummies[0], anchor };
+        } else {
+            return { error: 'Invalid number of indices (must be 1 or 2)' };
+        }
+    }
+
     getActive() {
         return this.molecules[this.activeMoleculeIndex];
     }

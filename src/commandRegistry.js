@@ -691,5 +691,45 @@ export class CommandRegistry {
 
             return { info: info.join('\n') };
         });
+
+        // Substitute Command
+        this.register('substitute', ['sub'], 'sub atom <idx> <elem> | sub grp ...', (args) => {
+            if (args.length < 2) return { error: 'Usage: sub atom <idx> <elem> OR sub grp ...' };
+
+            const subCmd = args[0].toLowerCase();
+
+            if (subCmd === 'atom') {
+                // sub atom <idx> <elem>
+                if (args.length < 3) return { error: 'Usage: sub atom <index> <element>' };
+
+                const idx = parseInt(args[1]); // 0-based
+                const element = args[2];
+
+                if (isNaN(idx) || idx < 0 || idx >= this.editor.molecule.atoms.length) {
+                    return { error: `Invalid atom index: ${args[1]}` };
+                }
+
+                // Validate element (simple check)
+                if (!element || element.length > 2) {
+                    return { error: `Invalid element: ${element}` };
+                }
+
+                this.editor.saveState();
+
+                const atom = this.editor.molecule.atoms[idx];
+                atom.element = element;
+
+                // Update visuals
+                this.editor.rebuildScene();
+
+                return { success: `Changed atom ${args[1]} to ${element}` };
+            } else if (subCmd === 'grp' || subCmd === 'group') {
+                // Delegate to MoleculeManager for complex group substitution
+                return this.editor.moleculeManager.substituteGroup(args.slice(1));
+            }
+
+            return { error: `Unknown subcommand: ${subCmd}` };
+        });
     }
 }
+

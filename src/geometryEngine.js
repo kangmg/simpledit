@@ -221,4 +221,25 @@ export class GeometryEngine {
 
         return new THREE.Vector3(0, 0, offsetZ);
     }
+    /**
+     * Calculate alignment transform (Rotation only)
+     * Aligns Source Vector (Anchor -> Leaving) to be Anti-Parallel to Target Vector (Anchor -> Leaving)
+     * @param {THREE.Vector3} targetAnchor 
+     * @param {THREE.Vector3} targetLeaving 
+     * @param {THREE.Vector3} sourceAnchor 
+     * @param {THREE.Vector3} sourceLeaving 
+     * @returns {{rotation: THREE.Quaternion}}
+     */
+    static getAlignmentTransform(targetAnchor, targetLeaving, sourceAnchor, sourceLeaving) {
+        const targetVec = targetLeaving.clone().sub(targetAnchor).normalize();
+        const sourceVec = sourceLeaving.clone().sub(sourceAnchor).normalize();
+
+        // We want sourceVec to point in the OPPOSITE direction of targetVec
+        // So we rotate sourceVec to -targetVec
+        const desiredDir = targetVec.clone().negate();
+
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(sourceVec, desiredDir);
+
+        return { rotation: quaternion };
+    }
 }
