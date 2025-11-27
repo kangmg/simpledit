@@ -1390,7 +1390,7 @@ export class Editor {
         this.ghostBond.rotateX(Math.PI / 2);
     }
 
-    addAtomToScene(element, position, existingAtom = null) {
+    addAtom(element, position, existingAtom = null) {
         if (!existingAtom) this.saveState(); // Save before adding new atom
 
         const atom = existingAtom || this.molecule.addAtom(element, position);
