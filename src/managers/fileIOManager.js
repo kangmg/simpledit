@@ -541,7 +541,7 @@ export class FileIOManager {
                 mol.inventCoordinates();
 
                 // 4. Scale Coordinates (User Request)
-                mol.scaleCoords(10.0);
+                // mol.scaleCoords(1);
 
                 // 5. Generate SVG
                 let svg = mol.toSVG(1200, 900);
