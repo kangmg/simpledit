@@ -489,27 +489,18 @@ export class FileIOManager {
                     }
                 }
 
-                // 2. Apply Labels (for non-H atoms)
+                // 2. Apply Labels and Track Selected Atoms
                 const atomCount = mol.getAllAtoms();
+                const selectedAtomIndices = []; // Track which atoms are selected
+
                 for (let i = 0; i < atomCount; i++) {
                     // Determine if this is an original atom (from fragment)
                     let isOriginal = i < frag.length;
                     let atom = isOriginal ? frag[i] : null;
 
-                    // Apply highlighting
-                    // Strategy: We want a "Yellow Background". OCL doesn't support this directly.
-                    // We will set highlighted atoms to a specific "Marker Color" (e.g. Red/Orange),
-                    // then in post-processing, we find these colored atoms, draw a yellow circle behind them,
-                    // and restore their color to black.
-                    let isHighlighted = false;
+                    // Track selected atoms (but DON'T change their color)
                     if (isOriginal && atom && atom.selected) {
-                        isHighlighted = true;
-                        mol.setAtomSelection(i, true);
-                        // Set to a distinct color we can find in SVG (e.g. Red = 2 or similar)
-                        // We'll use a color that is unlikely to be used by default for C/H/N/O.
-                        // OCL Colors: 0=Black, 1=Blue(N), 2=Red(O), 3=Green, 4=Magenta, 5=Orange, 6=Cyan.
-                        // Let's use Magenta (4) as our "Highlight Marker".
-                        mol.setAtomColor(i, 4);
+                        selectedAtomIndices.push(i);
                     }
 
                     // Label Logic
@@ -529,25 +520,17 @@ export class FileIOManager {
                         if (isOriginal && atom) {
                             labelIdx = this.editor.molecule.atoms.indexOf(atom);
                         } else {
-                            // For new/implicit atoms, use local index
                             labelIdx = i;
                         }
 
-                        // For Hydrogen atoms, user wants to hide mass number.
-                        // CRITICAL: We CANNOT use just "H" as the custom label, because OCL
-                        // strips Hydrogens with label="H" during inventCoordinates().
-                        // We must use "H:" or similar non-standard format to protect them.
+                        // For Hydrogen atoms, use H:Index format
                         if (atomicNo === 1) {
-                            // Use "H:Index" format which OCL preserves
                             mol.setAtomCustomLabel(i, `H:${labelIdx}`);
                         } else {
                             mol.setAtomCustomLabel(i, `${elem}:${labelIdx}`);
                         }
                     } else {
-                        // If labels are OFF, we still need a non-standard label for Hydrogens
-                        // to prevent stripping. We use "H." (H with a dot) which will render
-                        // as just "H." but prevents OCL from removing it.
-                        // Post-processing will remove the dot from the SVG.
+                        // If labels are OFF, only set labels for Hydrogens
                         if (atomicNo === 1) {
                             mol.setAtomCustomLabel(i, "H.");
                         }
@@ -563,35 +546,41 @@ export class FileIOManager {
                 // 5. Generate SVG
                 let svg = mol.toSVG(1200, 900);
 
-                // 6. Post-process: Highlight Injection & Crop
-                // Find "Magenta" atoms (rgb(255,0,255) or similar)
-                // OCL usually uses rgb(r,g,b). Magenta is rgb(255,0,255) or #FF00FF.
-                // We'll look for fill="rgb(255,0,255)" or similar.
-
-                // We need to inject circles BEFORE the molecule paths so they are in background.
-                // SVG structure: <svg ...> <style>...</style> <g>...</g> ... </svg>
-                // We can insert after <svg ...> start tag.
-
+                // 6. Post-process: Highlight Injection
+                // Find text elements for selected atoms and draw yellow circles behind them
                 const highlightCircles = [];
-                // Regex to find text with Magenta color
-                // OCL might output `fill="rgb(255,0,255)"` or `fill="#FF00FF"`
-                // Let's match generic fill color pattern for Magenta
-                const magentaRegex = /<text[^>]*x="([-\d.]+)"[^>]*y="([-\d.]+)"[^>]*fill="rgb\(255,0,255\)"[^>]*>/g;
-                let hMatch;
-                while ((hMatch = magentaRegex.exec(svg)) !== null) {
-                    const x = parseFloat(hMatch[1]);
-                    const y = parseFloat(hMatch[2]);
-                    // Create yellow circle
-                    // Radius 20 seems appropriate for 10px font
-                    highlightCircles.push(`<circle cx="${x}" cy="${y}" r="20" fill="#FFFF00" opacity="0.5" />`);
+
+                if (selectedAtomIndices.length > 0) {
+                    // Parse all text elements to find those corresponding to selected atoms
+                    const textMatches = [...svg.matchAll(/<text[^>]*x="([-\d.]+)"[^>]*y="([-\d.]+)"[^>]*>([^<]+)<\/text>/g)];
+
+                    selectedAtomIndices.forEach(atomIdx => {
+                        // Find the text element for this atom
+                        // The atom index in the molecule corresponds to the order of text elements
+                        // BUT we need to be careful because H atoms might have been added
+
+                        // For now, let's use a simpler approach: highlight ALL Carbon atoms if any are selected
+                        // This is a approximation, but more reliable
+                        textMatches.forEach(match => {
+                            const x = parseFloat(match[1]);
+                            const y = parseFloat(match[2]);
+                            const content = match[3];
+
+                            // Check if this is a selected atom's label
+                            // For atoms in the original fragment, we can check the index in the label
+                            if (atomIdx < frag.length) {
+                                const originalIdx = this.editor.molecule.atoms.indexOf(frag[atomIdx]);
+                                if (content.includes(`:${originalIdx}`)) {
+                                    // This is the selected atom's label
+                                    highlightCircles.push(`<circle cx="${x}" cy="${y}" r="20" fill="#FFFF00" opacity="0.4" />`);
+                                }
+                            }
+                        });
+                    });
                 }
 
-                // Replace Magenta with Black in the SVG text
-                svg = svg.replace(/fill="rgb\(255,0,255\)"/g, 'fill="rgb(0,0,0)"');
-
-                // Inject circles
+                // Inject circles at the beginning (so they appear behind the molecule)
                 if (highlightCircles.length > 0) {
-                    // Insert after first > of svg tag
                     const insertPos = svg.indexOf('>') + 1;
                     svg = svg.slice(0, insertPos) + highlightCircles.join('') + svg.slice(insertPos);
                 }
@@ -676,11 +665,16 @@ export class FileIOManager {
                 }
 
                 // Post-process Styles
+                // Reduce font size and stroke width
                 svg = svg.replace(/font-size="14"/g, 'font-size="10"');
                 svg = svg.replace(/stroke-width="1.44"/g, 'stroke-width="1.2"');
 
-                // Clean up "H." labels (when labels are OFF, we use "H." to prevent stripping)
-                // Replace ">H.</text>" with ">H</text>" to show just "H"
+                // When labels are ON, scale font to 0.7x for better readability
+                if (showLabels) {
+                    svg = svg.replace(/font-size="10"/g, 'font-size="5"');
+                }
+
+                // Clean up H. labels when labels are OFF
                 if (!showLabels) {
                     svg = svg.replace(/>H\.<\/text>/g, '>H</text>');
                 }
@@ -689,7 +683,44 @@ export class FileIOManager {
                 // OCL renders isotopes with two text elements: "H" and a smaller "1" above it
                 // We want to hide the "1" to show just "H"
                 // Pattern: <text ... font-size="9" ...>1</text> (mass number is rendered at font-size 9)
-                svg = svg.replace(/<text[^>]*font-size="9"[^>]*>1<\/text>/g, '');
+                // ALSO: After removing "1", we need to shift the "H" text slightly left to center it
+
+                // Find all mass "1" elements and their positions
+                const massMatches = [...svg.matchAll(/<text[^>]*x="([-\d.]+)"[^>]*y="([-\d.]+)"[^>]*font-size="9"[^>]*>1<\/text>/g)];
+
+                // For each mass "1", find the corresponding "H" text that comes after it
+                // and adjust its x coordinate
+                massMatches.forEach(match => {
+                    const massX = parseFloat(match[1]);
+                    const massY = parseFloat(match[2]);
+
+                    // The "H" text is usually at similar Y (around massY + 5-6) and X (around massX + 5)
+                    // We'll search for text near this position
+                    const hPattern = new RegExp(
+                        `<text x="(${massX + 3},${massX + 7})" y="(${massY + 4},${massY + 7})"[^>]*font-size="14"[^>]*>H[.:]*</text>`.replace(/,/g, '|')
+                    );
+
+                    // Actually, let's use a simpler approach: find H text that appears shortly after the mass "1"
+                    // in the SVG string, and shift it left by ~5 pixels
+                });
+
+                // Remove mass number elements
+                svg = svg.replace(/<text[^>]*font-size="9"[^>]*>1<\/text>\s*/g, (match) => {
+                    // After removing, we need to shift the next H text
+                    // This is complex with regex, so let's do it differently:
+                    // We'll do a two-pass approach
+                    return '<!--REMOVED_MASS-->';
+                });
+
+                // Now find H texts that come right after REMOVED_MASS markers and shift them
+                svg = svg.replace(/<!--REMOVED_MASS-->\s*<text x="([-\d.]+)"([^>]*font-size="1[04]"[^>]*)>(H[.:]*)<\/text>/g,
+                    (match, xVal, attrs, content) => {
+                        const newX = parseFloat(xVal) + 3; // Shift 3 pixels right to center
+                        return `<text x="${newX}"${attrs}>${content}</text>`;
+                    });
+
+                // Remove markers
+                svg = svg.replace(/<!--REMOVED_MASS-->/g, '');
 
                 svgs.push(svg);
             } catch (e) {
