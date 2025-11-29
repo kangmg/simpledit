@@ -317,7 +317,6 @@ export class FileIOManager {
                     if (elem === 'X') elem = '*'; // Dummy
 
                     // OCL expects atomic number or label
-                    // We use addAtom with label for simplicity
                     const idx = mol.addAtom(OCL.Molecule.getAtomicNoFromLabel(elem));
                     mol.setAtomX(idx, atom.position.x);
                     mol.setAtomY(idx, atom.position.y);
@@ -325,8 +324,13 @@ export class FileIOManager {
                     atomIndexMap.set(atom, idx);
                 });
 
-                // Add bonds with manual inference first
+                // Pre-process bonds to identify types
+                const bondList = [];
+                const aromaticBonds = []; // List of {atom1, atom2, bondObj}
+                const atomAromaticBonds = new Map(); // atom -> [bondEntry]
+
                 const processedBonds = new Set();
+
                 atoms.forEach(atom => {
                     if (!atom.bonds) return;
                     atom.bonds.forEach(bond => {
@@ -335,41 +339,95 @@ export class FileIOManager {
                             const idx2 = atomIndexMap.get(bond.atom2);
 
                             if (idx1 !== undefined && idx2 !== undefined) {
-                                let order = OCL.Molecule.cBondTypeSingle; // Default to Single
+                                let order = 1;
+                                let isAromaticCandidate = false;
 
-                                // Manual inference as pre-processing
-                                // Use OCL constants for bond types
-                                const dist = bond.atom1.position.distanceTo(bond.atom2.position);
-                                const el1 = bond.atom1.element;
-                                const el2 = bond.atom2.element;
                                 const originalOrder = bond.order || 1;
-
                                 if (originalOrder > 1) {
-                                    // Map explicit orders if they exist
-                                    if (originalOrder === 2) order = OCL.Molecule.cBondTypeDouble;
-                                    else if (originalOrder === 3) order = OCL.Molecule.cBondTypeTriple;
-                                    else if (originalOrder === 4) order = OCL.Molecule.cBondTypeDelocalized;
+                                    order = originalOrder; // Trust explicit high order
                                 } else {
-                                    // Inference for Single bonds (or unspecified)
+                                    // Geometry inference
+                                    const dist = bond.atom1.position.distanceTo(bond.atom2.position);
+                                    const el1 = bond.atom1.element;
+                                    const el2 = bond.atom2.element;
+
                                     if ((el1 === 'C' && el2 === 'C')) {
-                                        if (dist < 1.25) order = OCL.Molecule.cBondTypeTriple;
-                                        else if (dist < 1.38) order = OCL.Molecule.cBondTypeDouble;
-                                        else if (dist < 1.45) order = OCL.Molecule.cBondTypeDelocalized;
+                                        if (dist < 1.25) order = 3;
+                                        else if (dist < 1.38) order = 2;
+                                        else if (dist < 1.45) isAromaticCandidate = true;
                                     } else if ((el1 === 'C' && el2 === 'N') || (el1 === 'N' && el2 === 'C')) {
-                                        if (dist < 1.22) order = OCL.Molecule.cBondTypeTriple;
-                                        else if (dist < 1.35) order = OCL.Molecule.cBondTypeDouble;
+                                        if (dist < 1.22) order = 3;
+                                        else if (dist < 1.35) order = 2;
+                                        // C-N aromatic? Pyridine C-N is ~1.34 (Double-like) or 1.37.
+                                        // Let's treat < 1.38 as Double/Aromatic candidate?
+                                        // For now, stick to explicit thresholds.
                                     } else if ((el1 === 'C' && el2 === 'O') || (el1 === 'O' && el2 === 'C')) {
-                                        if (dist < 1.30) order = OCL.Molecule.cBondTypeDouble;
+                                        if (dist < 1.30) order = 2;
                                     } else if ((el1 === 'N' && el2 === 'N')) {
-                                        if (dist < 1.15) order = OCL.Molecule.cBondTypeTriple;
-                                        else if (dist < 1.30) order = OCL.Molecule.cBondTypeDouble;
+                                        if (dist < 1.15) order = 3;
+                                        else if (dist < 1.30) order = 2;
                                     }
                                 }
-                                mol.addBond(idx1, idx2, order);
+
+                                if (isAromaticCandidate) {
+                                    const bondEntry = { idx1, idx2, assignedOrder: 0 }; // 0 means pending
+                                    aromaticBonds.push(bondEntry);
+
+                                    if (!atomAromaticBonds.has(idx1)) atomAromaticBonds.set(idx1, []);
+                                    if (!atomAromaticBonds.has(idx2)) atomAromaticBonds.set(idx2, []);
+                                    atomAromaticBonds.get(idx1).push(bondEntry);
+                                    atomAromaticBonds.get(idx2).push(bondEntry);
+                                } else {
+                                    bondList.push({ idx1, idx2, order });
+                                }
                                 processedBonds.add(bond);
                             }
                         }
                     });
+                });
+
+                // Greedy Kekulization for Aromatic Candidates
+                // Assign alternating Double (2) and Single (1)
+                const visitedAtoms = new Set();
+
+                // Helper to get neighbor in bond
+                const getNeighbor = (bond, atomIdx) => bond.idx1 === atomIdx ? bond.idx2 : bond.idx1;
+
+                // Sort atoms by connectivity (degree) to start with less ambiguous ones? 
+                // Or just iterate.
+
+                for (let i = 0; i < atoms.length; i++) {
+                    const idx = i; // OCL index matches loop since we added in order
+                    if (atomAromaticBonds.has(idx)) {
+                        // Check if atom already has a Double bond assigned in aromatic set
+                        const bonds = atomAromaticBonds.get(idx);
+                        let hasDouble = bonds.some(b => b.assignedOrder === 2);
+
+                        // Assign remaining undefined bonds
+                        bonds.forEach(bond => {
+                            if (bond.assignedOrder === 0) {
+                                if (!hasDouble) {
+                                    bond.assignedOrder = 2;
+                                    hasDouble = true;
+                                } else {
+                                    bond.assignedOrder = 1;
+                                }
+                            }
+                        });
+                    }
+                }
+
+                // Add standard bonds
+                bondList.forEach(b => {
+                    const bondIdx = mol.addBond(b.idx1, b.idx2);
+                    mol.setBondOrder(bondIdx, b.order);
+                });
+
+                // Add kekulized aromatic bonds
+                aromaticBonds.forEach(b => {
+                    const order = b.assignedOrder || 1; // Default to 1 if missed
+                    const bondIdx = mol.addBond(b.idx1, b.idx2);
+                    mol.setBondOrder(bondIdx, order);
                 });
 
                 // FALLBACK AUTO-BOND for OCL
@@ -379,14 +437,14 @@ export class FileIOManager {
                         for (let j = i + 1; j < atoms.length; j++) {
                             const dist = atoms[i].position.distanceTo(atoms[j].position);
                             if (dist < 1.9) {
-                                mol.addBond(i, j, 1);
+                                const bIdx = mol.addBond(i, j);
+                                mol.setBondOrder(bIdx, 1);
                             }
                         }
                     }
                 }
 
                 // Use OCL to ensure validity and perceive properties
-                // cHelperCIP triggers chirality and other perceptions
                 mol.ensureHelperArrays(OCL.Molecule.cHelperCIP);
 
                 return mol.toMolfile();
