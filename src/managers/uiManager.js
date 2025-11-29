@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { ErrorHandler } from '../utils/errorHandler.js';
 import { ELEMENTS } from '../constants.js';
+import { jsmeManager } from './jsmeManager.js';
+import { oclEditorManager } from './oclEditorManager.js';
 
 /**
  * Manages UI interactions, modals, and labels
@@ -26,6 +28,7 @@ export class UIManager {
         this.bindPeriodicTableEvents();
         this.bindAutoBondButton();
         this.bindCoordinateEditorButton();
+        this.bindJSMEButton();
         this.bindBondThresholdSlider();
         console.log('UIManager: Toolbar events bound');
     }
@@ -261,6 +264,16 @@ export class UIManager {
     }
 
     /**
+     * Bind JSME button
+     */
+    bindJSMEButton() {
+        const btnJSME = document.getElementById('btn-edit-2d');
+        if (btnJSME) {
+            btnJSME.onclick = () => this.openJSME();
+        }
+    }
+
+    /**
      * Bind bond threshold slider
      */
     bindBondThresholdSlider() {
@@ -399,18 +412,30 @@ export class UIManager {
         const btnCopy = document.getElementById('btn-coord-copy');
         const btnImport = document.getElementById('btn-coord-import');
         const btnClose = document.getElementById('coord-close');
+        const splitFragmentsCheckbox = document.getElementById('chk-split-fragments');
 
         if (!modal || !input) return;
 
         // Load current data
-        const loadCurrentData = () => {
+        const loadCurrentData = async () => {
             const format = formatSelect.value;
+            const splitFragments = splitFragmentsCheckbox ? splitFragmentsCheckbox.checked : false;
+
             if (format === 'xyz') {
-                const xyz = this.editor.fileIOManager.exportXYZ();
+                const xyz = this.editor.fileIOManager.exportXYZ({ splitFragments });
                 input.value = xyz || '';
+            } else if (format === 'smi' || format === 'smiles') {
+                const smiles = await this.editor.fileIOManager.exportSMILES({ splitFragments });
+                input.value = smiles || '';
+            } else if (format === 'sdf') {
+                const sdf = await this.editor.fileIOManager.exportSDF({ splitFragments });
+                input.value = sdf || '';
             } else if (format === 'json') {
                 const json = this.editor.fileIOManager.atomsToJSON(this.editor.molecule.atoms);
                 input.value = json;
+            } else if (format === 'smi' || format === 'smiles') {
+                const smiles = this.editor.fileIOManager.exportSMILES({ splitFragments });
+                input.value = smiles || '';
             } else {
                 input.value = '';
             }
@@ -438,7 +463,7 @@ export class UIManager {
                     setTimeout(() => btnCopy.innerText = originalText, 1000);
                 }).catch(err => console.error('Failed to copy:', err));
             },
-            import: () => {
+            import: async () => {
                 const text = input.value;
                 const format = formatSelect.value;
 
@@ -447,19 +472,48 @@ export class UIManager {
                         this.editor.saveState(); // Save before importing
 
                         if (format === 'xyz') {
-                            const result = this.editor.fileIOManager.importXYZ(text);
+                            // Multi-frame XYZ automatically creates separate molecules
+                            const result = this.editor.fileIOManager.importXYZ(text, {
+                                shouldClear: true,
+                                autoBond: true
+                            });
                             if (result.error) {
                                 this.showError(result.error);
                             } else {
                                 this.editor.renderManager.rebuildScene();
-                                this.showSuccess(result.success);
+                                this.showSuccess(result.success || 'Imported XYZ');
+                                this.closeCoordinateEditor();
+                            }
+                        } else if (format === 'smi' || format === 'smiles') {
+                            const result = await this.editor.fileIOManager.importSMILES(text, {
+                                shouldClear: true,
+                                autoBond: false,
+                                generate3D: true, // Default to 3D for Coordinate Editor
+                                addHydrogens: true
+                            });
+                            if (result.error) {
+                                this.showError(result.error);
+                            } else {
+                                this.editor.renderManager.rebuildScene();
+                                this.showSuccess('Imported SMILES');
+                                this.closeCoordinateEditor();
+                            }
+                        } else if (format === 'sdf') {
+                            const result = this.editor.fileIOManager.importSDF(text, {
+                                shouldClear: true,
+                                autoBond: false
+                            });
+                            if (result.error) {
+                                this.showError(result.error);
+                            } else {
+                                this.editor.renderManager.rebuildScene();
+                                this.showSuccess('Imported SDF');
                                 this.closeCoordinateEditor();
                             }
                         }
-                        // Future formats here
                     } catch (error) {
                         console.error('Error importing coordinates:', error);
-                        this.showError('Error importing coordinates');
+                        this.showError('Error importing coordinates: ' + error.message);
                     }
                 }
             },
@@ -468,6 +522,7 @@ export class UIManager {
 
         // Bind events
         if (formatSelect) formatSelect.onchange = this._coordHandlers.formatChange;
+        if (splitFragmentsCheckbox) splitFragmentsCheckbox.onchange = this._coordHandlers.formatChange;
         if (btnCopy) btnCopy.onclick = this._coordHandlers.copy;
         if (btnImport) btnImport.onclick = this._coordHandlers.import;
         if (btnClose) btnClose.onclick = this._coordHandlers.close;
@@ -500,13 +555,243 @@ export class UIManager {
         const btnCopy = document.getElementById('btn-coord-copy');
         const btnImport = document.getElementById('btn-coord-import');
         const btnClose = document.getElementById('coord-close');
+        const splitFragmentsCheckbox = document.getElementById('chk-split-fragments');
 
         if (formatSelect) formatSelect.onchange = null;
+        if (splitFragmentsCheckbox) splitFragmentsCheckbox.onchange = null;
         if (btnCopy) btnCopy.onclick = null;
         if (btnImport) btnImport.onclick = null;
         if (btnClose) btnClose.onclick = null;
 
         this._coordHandlers = null;
+    }
+
+    /**
+     * Toggle maximize state of JSME modal
+     */
+    toggleJSMEMaximize() {
+        const modal = document.getElementById('jsme-modal');
+        if (!modal) return;
+        modal.classList.toggle('maximized');
+    }
+
+
+
+    /**
+     * Open 2D Editor modal (JSME or OCL)
+     */
+    openJSME() {
+        const modal = document.getElementById('jsme-modal');
+        const backdrop = document.getElementById('modal-backdrop');
+
+        if (!modal) return;
+
+        // Show modal first
+        modal.style.display = 'flex';
+        if (backdrop) backdrop.style.display = 'block';
+
+        // Default to JSME if not set
+        if (!this.activeEditor) this.activeEditor = 'jsme';
+        this.updateEditorVisibility();
+
+        // Initialize editors
+        setTimeout(() => {
+            // Always init both if possible, or just the active one
+            // Init JSME
+            jsmeManager.init('jsme-container');
+
+            // Init OCL
+            oclEditorManager.init('ocl-editor-container');
+
+            // IMPORTANT: Clear both editors by setting empty molecule
+            // (clear() method doesn't always work reliably)
+            setTimeout(() => {
+                jsmeManager.setMol("");
+                oclEditorManager.setMol("");
+
+                // Load current molecule (selected atoms or all if none selected)
+                const selectedAtoms = this.editor.selectionManager.getSelectedAtoms();
+                const atomsToLoad = selectedAtoms.length > 0 ? selectedAtoms : this.editor.molecule.atoms;
+
+                console.log('[2D Editor] Loading molecule:', {
+                    selectedCount: selectedAtoms.length,
+                    totalCount: this.editor.molecule.atoms.length,
+                    loadingAtoms: atomsToLoad.length
+                });
+
+                if (atomsToLoad.length === 0) {
+                    // Explicitly clear if no atoms
+                    jsmeManager.setMol("");
+                    oclEditorManager.setMol("");
+                } else {
+                    const molBlock = this.editor.fileIOManager.atomsToMolBlock(atomsToLoad);
+                    if (this.activeEditor === 'jsme') {
+                        jsmeManager.setMol(molBlock);
+                    } else {
+                        oclEditorManager.setMol(molBlock);
+                    }
+                }
+            }, 100); // Delay to ensure editors are fully initialized
+        }, 50);
+
+        // Disable editor controls
+        if (this.editor.renderer.controls) {
+            this.editor.renderer.controls.enabled = false;
+        }
+
+        // Bind modal buttons
+        const btnImport = document.getElementById('btn-jsme-import');
+        const btnClose = document.getElementById('btn-jsme-close');
+        const btnMinimize = document.getElementById('btn-jsme-minimize');
+        const btnMaximize = document.getElementById('btn-jsme-maximize');
+
+        // Toggle buttons
+        const btnToggleJSME = document.getElementById('btn-editor-jsme');
+        const btnToggleOCL = document.getElementById('btn-editor-ocl');
+
+        if (btnToggleJSME) btnToggleJSME.onclick = () => this.switchEditor('jsme');
+        if (btnToggleOCL) btnToggleOCL.onclick = () => this.switchEditor('ocl');
+
+        if (btnImport) {
+            btnImport.onclick = async () => {
+                let molBlock;
+
+                if (this.activeEditor === 'jsme') {
+                    molBlock = jsmeManager.getMol();
+                } else {
+                    molBlock = oclEditorManager.getMol();
+                }
+
+                if (molBlock) {
+                    const result = await this.editor.fileIOManager.updateFromMolBlock(molBlock);
+
+                    if (result && result.error) {
+                        this.showError(result.error);
+                    } else {
+                        // Rebuild 3D scene
+                        this.editor.renderManager.rebuildScene();
+
+                        // Force update side panel
+                        this.editor.updateSelectionInfo();
+                        this.editor.moleculeManager.updateUI();
+
+                        // Close modal and show success
+                        this.showSuccess('Updated molecule from 2D editor');
+                        console.log('[2D Editor] Molecule updated successfully');
+                        this.closeJSME();
+                    }
+                }
+            };
+        }
+
+        if (btnClose) btnClose.onclick = () => this.closeJSME();
+        if (btnMinimize) btnMinimize.onclick = () => this.closeJSME();
+        if (btnMaximize) btnMaximize.onclick = () => this.toggleJSMEMaximize();
+    }
+
+    /**
+     * Switch active editor
+     * @param {'jsme'|'ocl'} editorType 
+     */
+    switchEditor(editorType) {
+        if (this.activeEditor === editorType) return;
+
+        // Sync data before switching
+        let currentMolBlock;
+        if (this.activeEditor === 'jsme') {
+            currentMolBlock = jsmeManager.getMol();
+        } else {
+            currentMolBlock = oclEditorManager.getMol();
+        }
+
+        this.activeEditor = editorType;
+        this.updateEditorVisibility();
+
+        // Set data to new editor
+        if (currentMolBlock) {
+            if (this.activeEditor === 'jsme') {
+                jsmeManager.setMol(currentMolBlock);
+            } else {
+                oclEditorManager.setMol(currentMolBlock);
+            }
+        } else {
+            // If current editor was empty or failed, clear the new editor too
+            if (this.activeEditor === 'jsme') {
+                jsmeManager.setMol('');
+            } else {
+                oclEditorManager.setMol('');
+            }
+        }
+    }
+
+    /**
+     * Update editor visibility based on active state
+     */
+    updateEditorVisibility() {
+        const jsmeContainer = document.getElementById('jsme-container');
+        const oclContainer = document.getElementById('ocl-editor-container');
+        const btnJSME = document.getElementById('btn-editor-jsme');
+        const btnOCL = document.getElementById('btn-editor-ocl');
+
+        if (this.activeEditor === 'jsme') {
+            if (jsmeContainer) jsmeContainer.style.display = 'block';
+            if (oclContainer) oclContainer.style.display = 'none';
+
+            if (btnJSME) {
+                btnJSME.style.background = '#555';
+                btnJSME.style.color = 'white';
+            }
+            if (btnOCL) {
+                btnOCL.style.background = 'transparent';
+                btnOCL.style.color = '#aaa';
+            }
+        } else {
+            if (jsmeContainer) jsmeContainer.style.display = 'none';
+            if (oclContainer) oclContainer.style.display = 'block';
+
+            if (btnJSME) {
+                btnJSME.style.background = 'transparent';
+                btnJSME.style.color = '#aaa';
+            }
+            if (btnOCL) {
+                btnOCL.style.background = '#555';
+                btnOCL.style.color = 'white';
+            }
+        }
+    }
+
+    /**
+     * Close JSME modal
+     */
+    closeJSME() {
+        const modal = document.getElementById('jsme-modal');
+        const backdrop = document.getElementById('modal-backdrop');
+
+        if (!modal) return;
+
+        // Reset maximize state
+        if (modal.classList.contains('maximized')) {
+            this.toggleJSMEMaximize();
+        }
+
+        modal.style.display = 'none';
+        if (backdrop) backdrop.style.display = 'none';
+
+        // Re-enable editor controls
+        if (this.editor.renderer.controls) {
+            this.editor.renderer.controls.enabled = true;
+        }
+
+        // Cleanup events
+        const btnImport = document.getElementById('btn-jsme-import');
+        const btnClose = document.getElementById('btn-jsme-close');
+        const btnMinimize = document.getElementById('btn-jsme-minimize');
+        const btnMaximize = document.getElementById('btn-jsme-maximize');
+
+        if (btnImport) btnImport.onclick = null;
+        if (btnClose) btnClose.onclick = null;
+        if (btnMinimize) btnMinimize.onclick = null;
+        if (btnMaximize) btnMaximize.onclick = null;
     }
 
     /**
@@ -522,8 +807,6 @@ export class UIManager {
             element.classList.add('maximized');
         }
     }
-
-
 
     /**
      * Export current view as PNG
@@ -649,9 +932,6 @@ export class UIManager {
         }
     }
 
-    /**
-     * Update label positions (2D screen coordinates)
-     */
     /**
      * Update label positions (2D screen coordinates)
      */

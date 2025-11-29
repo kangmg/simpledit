@@ -26,7 +26,7 @@ export class Renderer {
 
     this.activeCamera = this.orthoCamera; // Start with Orthographic
 
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -59,12 +59,12 @@ export class Renderer {
     directionalLight.position.set(10, 10, 10);
     this.scene.add(directionalLight);
 
-    // Axis Helper Scene (bottom-right corner)
+    // Axis Helper Scene (bottom-left corner)
     this.axisScene = new THREE.Scene();
-    this.axisScene.background = new THREE.Color(0xffffff); // White background
+    this.axisScene.background = null; // Transparent background
 
     // Use orthographic camera to prevent perspective distortion
-    const axisSize = 2.5;
+    const axisSize = 3.5; // Increased from 2.5 to prevent arrow clipping
     this.axisCamera = new THREE.OrthographicCamera(
       -axisSize, axisSize,  // left, right
       axisSize, -axisSize,  // top, bottom
@@ -73,10 +73,10 @@ export class Renderer {
     this.axisCamera.position.set(0, 0, 5);
 
     // Create custom thick axis arrows (X=red, Y=green, Z=blue)
-    const axisLength = 2.0;      // Increased from 1.5
-    const axisRadius = 0.08;     // Increased from 0.03 (much thicker)
-    const arrowLength = 0.5;     // Increased from 0.3
-    const arrowRadius = 0.15;    // Increased from 0.08
+    const axisLength = 2.0;
+    const axisRadius = 0.12;     // Increased from 0.08 for thicker shafts
+    const arrowLength = 0.5;
+    const arrowRadius = 0.20;    // Increased from 0.15 for thicker heads
 
     // Helper function to create thick arrow
     const createArrow = (color) => {
@@ -84,14 +84,22 @@ export class Renderer {
 
       // Arrow shaft (cylinder)
       const shaftGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 16);
-      const shaftMaterial = new THREE.MeshBasicMaterial({ color });
+      const shaftMaterial = new THREE.MeshBasicMaterial({
+        color,
+        depthTest: false,  // Disable depth test so atoms render on top
+        depthWrite: false
+      });
       const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
       shaft.position.y = axisLength / 2;
       group.add(shaft);
 
       // Arrow head (cone)
       const headGeometry = new THREE.ConeGeometry(arrowRadius, arrowLength, 16);
-      const headMaterial = new THREE.MeshBasicMaterial({ color });
+      const headMaterial = new THREE.MeshBasicMaterial({
+        color,
+        depthTest: false,  // Disable depth test so atoms render on top
+        depthWrite: false
+      });
       const head = new THREE.Mesh(headGeometry, headMaterial);
       head.position.y = axisLength + arrowLength / 2;
       group.add(head);
@@ -113,7 +121,35 @@ export class Renderer {
     zAxis.rotation.x = Math.PI / 2;
     this.axisScene.add(zAxis);
 
+    // Add X, Y, Z labels at arrow tips
+    this.addAxisLabel('X', 2.8, 0, 0, 0xff0000);  // Right
+    this.addAxisLabel('Y', 0, 2.8, 0, 0x00ff00);  // Up
+    this.addAxisLabel('Z', 0, 0, 2.8, 0x0000ff);  // Forward (not at Y!)
+
     window.addEventListener('resize', this.onWindowResize.bind(this));
+  }
+
+  addAxisLabel(text, x, y, z, color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    context.font = 'Bold 48px Arial';
+    context.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(text, 32, 32);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      depthTest: false,  // Disable depth test so atoms render on top
+      depthWrite: false
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.position.set(x, y, z);
+    sprite.scale.set(0.8, 0.8, 1);
+    this.axisScene.add(sprite);
   }
 
   setProjection(type) {
@@ -181,38 +217,33 @@ export class Renderer {
   render() {
     this.controls.update();
 
-    // Render main scene
+    // STEP 1: Render main scene with white background
+    this.renderer.autoClear = true;
     this.renderer.render(this.scene, this.activeCamera);
 
-    // Render axis helper in bottom-right (relative to sidebar)
-    const size = 180; // Increased size for better visibility
-    const margin = 30;
-    const sidebarWidth = 240;
+    // STEP 2: Render axis helper on top in bottom-left corner
+    const size = 200;
+    const padding = 10;
 
-    // Position just to the right of sidebar (around 20% from left edge)
-    const x = sidebarWidth + margin;
-    const y = margin;
-
-    // Clear depth buffer for overlay
-    this.renderer.clearDepth();
-
-    // Set viewport to bottom-right corner
-    this.renderer.setViewport(x, y, size, size);
-    this.renderer.setScissor(x, y, size, size);
+    this.renderer.setViewport(padding, padding, size, size);
+    this.renderer.setScissor(padding, padding, size, size);
     this.renderer.setScissorTest(true);
 
-    // Sync axis camera rotation with main camera
+    // Clear ONLY the axis area (color + depth) to make it transparent
+    this.renderer.autoClear = false;
+    this.renderer.clear(true, true, false);
+
+    // Render axis ONLY (atoms render on top automatically due to depthTest=false)
     this.axisCamera.position.copy(this.activeCamera.position);
     this.axisCamera.position.sub(this.controls.target || new THREE.Vector3());
     this.axisCamera.position.setLength(5);
     this.axisCamera.lookAt(this.axisScene.position);
-
-    // Render axis scene
     this.renderer.render(this.axisScene, this.axisCamera);
 
-    // Reset viewport and scissor
+    // Reset
     this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    this.renderer.autoClear = true;
   }
 
   /**

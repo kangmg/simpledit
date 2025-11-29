@@ -11,6 +11,11 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png" />
   <link rel="manifest" href="./assets/site.webmanifest" />
   <meta name="msapplication-config" content="./assets/browserconfig.xml" />
+
+  <!-- RDKit WASM Library -->
+  <script src="./lib/rdkit/RDKit_minimal.js"></script>
+  <!-- JSME Editor -->
+  <script src="./lib/jsme/jsme.nocache.js"></script>
 </head>
 
 <body>
@@ -125,6 +130,7 @@
           <button id="btn-auto-bond" class="action-btn">Adjust Bond</button>
           <button id="btn-coord-editor" class="action-btn" style="margin-top: 10px;">Atomic Coordinate
             Editor</button>
+          <button id="btn-edit-2d" class="action-btn" style="margin-top: 10px;">Edit 2D</button>
         </div>
 
         <div id="geometry-controls" class="tool-section" style="display: none;">
@@ -183,13 +189,23 @@
         </div>
         <h3 style="margin: 0; color: white;">Atomic Coordinate Editor</h3>
       </div>
-      <div style="margin-bottom: 15px;">
-        <label for="coord-format" style="color: #aaa; margin-right: 10px;">Format:</label>
-        <select id="coord-format" style="width: auto; background: #333; color: white; border: none; padding: 5px;">
-          <option value="xyz">XYZ</option>
-          <option value="smi">SMILES (Coming Soon)</option>
-          <option value="mol2">Mol2 (Coming Soon)</option>
-        </select>
+      <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <label for="coord-format" style="color: #aaa;">Format:</label>
+          <select id="coord-format" style="width: auto; background: #333; color: white; border: none; padding: 5px;">
+            <option value="xyz">XYZ</option>
+            <option value="smi">SMILES</option>
+            <option value="sdf">SDF</option>
+            <option value="json">JSON</option>
+          </select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #aaa; font-size: 13px;">Split Fragments</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="chk-split-fragments">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
       <textarea id="coord-input" rows="15"
         style="width: 100%; color: #e0e0e0; padding: 15px; font-family: 'JetBrains Mono', monospace; box-sizing: border-box; resize: vertical;"></textarea>
@@ -218,6 +234,40 @@
       <div id="periodic-table"
         style="display: grid; grid-template-columns: repeat(18, 36px); gap: 4px; margin-top: 10px;"></div>
 
+    </div>
+
+    <!-- JSME Editor Modal -->
+    <div id="jsme-modal" class="modal-content"
+      style="display: none; width: 600px; height: 500px; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: #1e1e1e; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #333; flex-direction: column;">
+      <div class="modal-header"
+        style="padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+        <div class="mac-window-controls">
+          <button id="btn-jsme-close" class="mac-btn mac-close-btn"></button>
+          <button id="btn-jsme-minimize" class="mac-btn mac-minimize-btn"></button>
+          <button id="btn-jsme-maximize" class="mac-btn mac-maximize-btn"></button>
+        </div>
+        <span style="color: #e0e0e0; font-weight: 600;">2D Molecular Editor</span>
+        <div style="width: 50px;"></div>
+      </div>
+      <div style="flex: 1; background: white; position: relative; overflow: hidden; margin: 10px;">
+        <div id="jsme-container"
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block;"></div>
+        <div id="ocl-editor-container"
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;"></div>
+      </div>
+      <div
+        style="padding: 15px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1e1e1e;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="color: #aaa; font-size: 13px;">Editor:</span>
+          <div style="display: flex; background: #333; border-radius: 6px; padding: 2px;">
+            <button id="btn-editor-jsme" class="editor-toggle-btn active"
+              style="padding: 4px 12px; border: none; background: #555; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;">JSME</button>
+            <button id="btn-editor-ocl" class="editor-toggle-btn"
+              style="padding: 4px 12px; border: none; background: transparent; color: #aaa; border-radius: 4px; cursor: pointer; font-size: 12px;">OCL</button>
+          </div>
+        </div>
+        <button id="btn-jsme-import" class="action-btn primary-btn">Update 3D</button>
+      </div>
     </div>
 
     <!-- Console Panel -->

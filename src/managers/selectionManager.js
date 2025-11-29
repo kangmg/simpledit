@@ -21,6 +21,8 @@ export class SelectionManager {
         // Clear state
         this.state.clearSelection();
 
+        if (!this.editor.molecule) return;
+
         // Clear visual highlights
         this.editor.molecule.atoms.forEach(atom => {
             atom.selected = false;

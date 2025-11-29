@@ -131,8 +131,7 @@ export class CommandRegistry {
                 const format = args[1].toLowerCase();
                 try {
                     if (format === 'xyz') {
-                        this.editor.molecule.fromXYZ(heredocData, false);
-                        this.editor.rebuildScene();
+                        this.editor.fileIOManager.importXYZ(heredocData, { shouldClear: false, autoBond: true });
                         return { success: 'Atoms added from XYZ data' };
                     }
                     return { warning: `${format} format not implemented` };
@@ -178,19 +177,62 @@ export class CommandRegistry {
 
             // add mol <format>
             if (subCmd === 'mol' || subCmd === 'molecule') {
-                if (args.length < 2) return { error: 'Usage: add mol <format>' };
-                const format = args[1].toLowerCase();
+                // Parse flags
+                const generate3D = args.includes('-3d');
+                const addHydrogens = args.includes('-h');
+                const cleanArgs = args.filter(a => a !== '-3d' && a !== '-h');
 
-                if (['xyz', 'smi', 'mol2'].includes(format)) {
+                if (cleanArgs.length < 2) return { error: 'Usage: add mol <format> [data] [-3d] [-h]' };
+                const format = cleanArgs[1].toLowerCase();
+
+                // Check for inline data (e.g. add mol smi "C1CCCCC1")
+                if (cleanArgs.length > 2) {
+                    const data = cleanArgs.slice(2).join(' ').replace(/^"|"$/g, ''); // Remove quotes
+                    try {
+                        if (format === 'smi' || format === 'smiles') {
+                            this.editor.fileIOManager.importSMILES(data, {
+                                shouldClear: false,
+                                autoBond: false,
+                                generate3D,
+                                addHydrogens
+                            }).then(() => this.editor.rebuildScene());
+                            return { success: 'Importing SMILES...' };
+                        } else if (format === 'xyz') {
+                            this.editor.fileIOManager.importXYZ(data, { shouldClear: false, autoBond: true });
+                            return { success: 'Imported XYZ data' };
+                        }
+                        return { error: `Inline data not supported for ${format}` };
+                    } catch (e) {
+                        return { error: e.message };
+                    }
+                }
+
+                if (['xyz', 'smi', 'smiles', 'sdf', 'mol'].includes(format)) {
                     // Interactive format mode
-                    this.editor.console.startInputMode(`${format.toUpperCase()}> `, (data) => {
+                    this.editor.console.startInputMode(`${format.toUpperCase()}> `, async (data) => {
                         try {
+                            let result;
                             if (format === 'xyz') {
-                                this.editor.molecule.fromXYZ(data, false);
-                                this.editor.rebuildScene();
-                                this.editor.console.print('Atoms added from XYZ data.', 'success');
+                                result = this.editor.fileIOManager.importXYZ(data, { shouldClear: false, autoBond: true });
+                            } else if (format === 'smi' || format === 'smiles') {
+                                result = await this.editor.fileIOManager.importSMILES(data, {
+                                    shouldClear: false,
+                                    autoBond: false,
+                                    generate3D,
+                                    addHydrogens
+                                });
+                            } else if (format === 'sdf' || format === 'mol') {
+                                result = this.editor.fileIOManager.importSDF(data, { shouldClear: false, autoBond: false });
                             } else {
                                 this.editor.console.print('Format not implemented', 'warning');
+                                return;
+                            }
+
+                            if (result && result.error) {
+                                this.editor.console.print(result.error, 'error');
+                            } else if (result && result.success) {
+                                this.editor.rebuildScene();
+                                this.editor.console.print(result.success, 'success');
                             }
                         } catch (e) {
                             this.editor.console.print(e.message, 'error');
@@ -445,28 +487,6 @@ export class CommandRegistry {
         this.register('center', ['cen'], 'center - Move molecule center to (0,0,0)', { isDestructive: true }, (args) => {
             const atoms = this.editor.molecule.atoms;
             if (atoms.length === 0) return { info: 'No atoms' };
-
-            // Import GeometryEngine dynamically or assume it's available via Editor if attached
-            // Since we didn't attach it to Editor yet, we'll import it at top of file or use it if available
-            // For now, let's assume we need to import it. But we can't easily add import here.
-            // We will rely on Editor having it or adding it to Editor.
-            // Let's assume Editor has a helper or we implement logic here using GeometryEngine if imported.
-            // Wait, we need to import GeometryEngine in CommandRegistry.js first.
-
-            // Actually, let's implement the logic using the GeometryEngine we just created.
-            // We need to add the import to the top of this file first.
-            // For this step, I will add the commands assuming GeometryEngine is imported.
-            // I will add the import in a separate step or if I can edit the whole file.
-            // Since I am replacing a chunk, I will assume I can't add import here easily without replacing top.
-            // I will use a temporary workaround or just implement the logic if simple, but better to use GeometryEngine.
-
-            // Let's use the editor's method if we add it there, OR just use the logic here if we can't import.
-            // But the plan was to use GeometryEngine.
-            // I will add the import in the next step. For now, let's write the command logic assuming GeometryEngine is available.
-
-            // Actually, I should probably add the import first.
-            // But I am already in this tool call.
-            // I'll write the commands and then add the import.
 
             const com = GeometryEngine.getCenterOfMass(atoms);
             const offset = com.clone().negate();
@@ -732,4 +752,3 @@ export class CommandRegistry {
         });
     }
 }
-

@@ -84,7 +84,7 @@ export class Editor {
         // Initialize console
         this.console = new Console(this);
 
-        this.axisHelper = new AxisHelper(this.renderer.renderer);
+        this.axisHelper = new AxisHelper(this);
 
         // Start animation loop
         this.animate = this.animate.bind(this);
@@ -129,24 +129,26 @@ export class Editor {
     }
 
     animate() {
-        requestAnimationFrame(this.animate.bind(this));
+        requestAnimationFrame(this.animate);
 
-        // Update controls
-        this.renderer.controls.update();
+        this.renderer.controls.update(); // Update controls
+        this.renderer.render(); // Renders main scene (including axes)
 
-        // Update axis helper
+        // AxisHelper is disabled, using Renderer's built-in axis instead
+        /*
         if (this.axisHelper) {
-            this.axisHelper.update(this.renderer.camera);
+            this.axisHelper.render(this.renderer.renderer);
         }
+        */
 
-        // Render scene
-        this.renderer.render();
+        // Update label positions if visible
+        if (this.labelMode !== 'none') {
+            this.updateLabelPositions();
+        }
     }
 
     init() {
         console.log('Editor initialized');
-        // Add a test atom to verify rendering
-        // this.addAtomToScene('C', new THREE.Vector3(0, 0, 0));
     }
 
     bindEvents() {
@@ -1019,19 +1021,10 @@ export class Editor {
 
     // createBondMesh moved to RenderManager
 
-    animate() {
-        requestAnimationFrame(this.animate);
-        this.renderer.render();
 
-        // Update label positions if visible
-        if (this.labelMode !== 'none') {
-            this.updateLabelPositions();
-        }
-    }
 
     updateMeasurements() {
         // Measurements are now displayed in the top-left corner via updateSelectionInfo
-        // This function is kept for compatibility but does nothing
     }
 
     toggleMaximize(element) {

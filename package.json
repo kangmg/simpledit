@@ -31,6 +31,9 @@
         "vite": "^5.0.0"
     },
     "dependencies": {
+        "@rdkit/rdkit": "^2025.3.4-1.0.0",
+        "jsme-editor": "^2024.4.29",
+        "openchemlib": "^9.18.2",
         "three": "^0.160.1"
     }
 }

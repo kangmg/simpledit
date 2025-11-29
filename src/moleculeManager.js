@@ -99,6 +99,11 @@ export class MoleculeManager {
             this.saveSettingsToActive();
         }
 
+        // Clear selection to prevent ghost selection in new molecule
+        if (this.editor.molecule) {
+            this.editor.selectionManager.clearSelection();
+        }
+
         // Switch to new molecule
         this.activeMoleculeIndex = index;
         const entry = this.molecules[index];
