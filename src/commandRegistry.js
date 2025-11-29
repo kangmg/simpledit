@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ELEMENTS } from './constants.js';
 import { GeometryEngine } from './geometryEngine.js';
+import { rdkitManager } from './managers/rdkitManager.js';
 
 export class CommandRegistry {
     constructor(editor) {
@@ -662,16 +663,7 @@ export class CommandRegistry {
             return res.error ? { error: res.error } : { success: res.success };
         });
 
-        this.register('capture', ['cap'], 'capture [--no-bg]', (args) => {
-            const noBg = args.includes('--no-background') || args.includes('-n');
-            // Mock capture logic for now as it depends on renderer
-            const objects = [];
-            this.editor.renderer.scene.traverse(obj => {
-                if (obj.userData && obj.userData.type === 'atom') objects.push(obj);
-            });
-            const dataURL = this.editor.renderer.captureSnapshot(objects, noBg);
-            return { info: dataURL, type: 'image' };
-        });
+
 
         // Label command
         this.register('label', ['lbl'], 'label [-s|-n|-a|-o]', (args) => {
@@ -746,6 +738,100 @@ export class CommandRegistry {
             } else if (subCmd === 'grp' || subCmd === 'group') {
                 // Delegate to MoleculeManager for complex group substitution
                 return this.editor.moleculeManager.substituteGroup(args.slice(1));
+            }
+
+            return { error: `Unknown subcommand: ${subCmd}` };
+        });
+
+
+        // Export Command
+        this.register('export', ['exp'], 'export <format> [-s] - Export molecule', (args) => {
+            if (args.length === 0) return { error: 'Usage: export <format> [-s|--split]' };
+
+            const format = args[0].toLowerCase();
+            const splitFragments = args.includes('-s') || args.includes('--split');
+
+            try {
+                if (format === 'xyz') {
+                    const data = this.editor.fileIOManager.exportXYZ({ splitFragments });
+                    if (!data) return { warning: 'No atoms to export' };
+                    return { info: data };
+                } else if (format === 'smi' || format === 'smiles') {
+                    return this.editor.fileIOManager.exportSMILES({ splitFragments }).then(data => {
+                        return { info: data };
+                    });
+                } else if (format === 'sdf' || format === 'mol') {
+                    const data = this.editor.fileIOManager.exportSDF({ splitFragments });
+                    return { info: data };
+                } else {
+                    return { error: `Unknown format: ${format}. Supported: xyz, smi, sdf` };
+                }
+            } catch (e) {
+                return { error: e.message };
+            }
+        });
+
+        // Show Command (Unified 2D/3D)
+        this.register('show', [], 'show <2d|3d> [options] - Show visualization', (args) => {
+            if (args.length === 0) return { error: 'Usage: show <2d|3d> [options]' };
+
+            const subCmd = args[0].toLowerCase();
+
+            // show 3d [-n|--no-bg]
+            if (subCmd === '3d') {
+                const noBg = args.includes('--no-background') || args.includes('-n');
+                const objects = [];
+                this.editor.renderer.scene.traverse(obj => {
+                    if (obj.userData && obj.userData.type === 'atom') objects.push(obj);
+                });
+                try {
+                    const dataURL = this.editor.renderer.captureSnapshot(objects, noBg);
+                    return { info: dataURL, type: 'image' };
+                } catch (e) {
+                    return { error: `Capture failed: ${e.message}` };
+                }
+            }
+
+            // show 2d [-s|--split]
+            if (subCmd === '2d') {
+                const splitFragments = args.includes('-s') || args.includes('--split');
+
+                return (async () => {
+                    try {
+                        if (splitFragments) {
+                            // Get all SMILES strings
+                            const smilesStr = await this.editor.fileIOManager.exportSMILES({ splitFragments: true });
+                            if (!smilesStr) return { warning: 'No molecule to show' };
+
+                            const smilesList = smilesStr.split('\n');
+                            let count = 0;
+
+                            for (const smi of smilesList) {
+                                if (!smi.trim()) continue;
+                                const svg = await rdkitManager.getSVG(smi);
+                                if (svg) {
+                                    const blob = new Blob([svg], { type: 'image/svg+xml' });
+                                    const url = URL.createObjectURL(blob);
+                                    this.editor.console.print(url, 'image');
+                                    count++;
+                                }
+                            }
+                            return { success: `Shown ${count} fragments` };
+                        } else {
+                            const smiles = await this.editor.fileIOManager.exportSMILES({ splitFragments: false });
+                            if (!smiles) return { warning: 'No molecule to show' };
+
+                            const svg = await rdkitManager.getSVG(smiles);
+                            if (!svg) return { error: 'Failed to generate SVG' };
+
+                            const blob = new Blob([svg], { type: 'image/svg+xml' });
+                            const url = URL.createObjectURL(blob);
+                            return { info: url, type: 'image' };
+                        }
+                    } catch (e) {
+                        return { error: `Show 2D failed: ${e.message}` };
+                    }
+                })();
             }
 
             return { error: `Unknown subcommand: ${subCmd}` };
