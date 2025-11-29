@@ -295,6 +295,463 @@ export class FileIOManager {
     }
 
     /**
+     * Helper: Convert atoms to OCL Molecule
+     * @param {Array<Object>} atoms
+     * @param {Object} options
+     * @returns {OCL.Molecule} OCL Molecule
+     */
+    atomsToOCL(atoms, options = {}) {
+        const mol = new OCL.Molecule(atoms.length, atoms.length); // Estimate capacity
+        const atomIndexMap = new Map();
+
+        // Add atoms
+        atoms.forEach((atom, i) => {
+            // Sanitize element
+            let elem = atom.element || 'C';
+            elem = elem.replace(/[^a-zA-Z]/g, '');
+            if (elem.length === 0) elem = 'C';
+            if (elem === 'X') elem = '*'; // Dummy
+
+            // OCL expects atomic number or label
+            const idx = mol.addAtom(OCL.Molecule.getAtomicNoFromLabel(elem));
+            mol.setAtomX(idx, atom.position.x);
+            mol.setAtomY(idx, atom.position.y);
+            mol.setAtomZ(idx, atom.position.z);
+            atomIndexMap.set(atom, idx);
+        });
+
+        // Pre-process bonds to identify types
+        const bondList = [];
+        const aromaticBonds = []; // List of {atom1, atom2, bondObj}
+        const atomAromaticBonds = new Map(); // atom -> [bondEntry]
+
+        const processedBonds = new Set();
+
+        atoms.forEach(atom => {
+            if (!atom.bonds) return;
+            atom.bonds.forEach(bond => {
+                if (!processedBonds.has(bond)) {
+                    const idx1 = atomIndexMap.get(bond.atom1);
+                    const idx2 = atomIndexMap.get(bond.atom2);
+
+                    if (idx1 !== undefined && idx2 !== undefined) {
+                        let order = 1;
+                        let isAromaticCandidate = false;
+
+                        const originalOrder = bond.order || 1;
+                        if (originalOrder > 1) {
+                            order = originalOrder; // Trust explicit high order
+                        } else {
+                            // Geometry inference
+                            const dist = bond.atom1.position.distanceTo(bond.atom2.position);
+                            const el1 = bond.atom1.element;
+                            const el2 = bond.atom2.element;
+
+                            if ((el1 === 'C' && el2 === 'C')) {
+                                if (dist < 1.25) order = 3;
+                                else if (dist < 1.38) order = 2;
+                                else if (dist < 1.45) isAromaticCandidate = true;
+                            } else if ((el1 === 'C' && el2 === 'N') || (el1 === 'N' && el2 === 'C')) {
+                                if (dist < 1.22) order = 3;
+                                else if (dist < 1.35) order = 2;
+                                // C-N aromatic? Pyridine C-N is ~1.34 (Double-like) or 1.37.
+                                // Let's treat < 1.38 as Double/Aromatic candidate?
+                                // For now, stick to explicit thresholds.
+                            } else if ((el1 === 'C' && el2 === 'O') || (el1 === 'O' && el2 === 'C')) {
+                                if (dist < 1.30) order = 2;
+                            } else if ((el1 === 'N' && el2 === 'N')) {
+                                if (dist < 1.15) order = 3;
+                                else if (dist < 1.30) order = 2;
+                            }
+                        }
+
+                        if (isAromaticCandidate) {
+                            const bondEntry = { idx1, idx2, assignedOrder: 0 }; // 0 means pending
+                            aromaticBonds.push(bondEntry);
+
+                            if (!atomAromaticBonds.has(idx1)) atomAromaticBonds.set(idx1, []);
+                            if (!atomAromaticBonds.has(idx2)) atomAromaticBonds.set(idx2, []);
+                            atomAromaticBonds.get(idx1).push(bondEntry);
+                            atomAromaticBonds.get(idx2).push(bondEntry);
+                        } else {
+                            bondList.push({ idx1, idx2, order });
+                        }
+                        processedBonds.add(bond);
+                    }
+                }
+            });
+        });
+
+        // Greedy Kekulization for Aromatic Candidates
+        // Assign alternating Double (2) and Single (1)
+
+        for (let i = 0; i < atoms.length; i++) {
+            const idx = i; // OCL index matches loop since we added in order
+            if (atomAromaticBonds.has(idx)) {
+                // Check if atom already has a Double bond assigned in aromatic set
+                const bonds = atomAromaticBonds.get(idx);
+                let hasDouble = bonds.some(b => b.assignedOrder === 2);
+
+                // Assign remaining undefined bonds
+                bonds.forEach(bond => {
+                    if (bond.assignedOrder === 0) {
+                        if (!hasDouble) {
+                            bond.assignedOrder = 2;
+                            hasDouble = true;
+                        } else {
+                            bond.assignedOrder = 1;
+                        }
+                    }
+                });
+            }
+        }
+
+        // Add standard bonds
+        bondList.forEach(b => {
+            const bondIdx = mol.addBond(b.idx1, b.idx2);
+            mol.setBondOrder(bondIdx, b.order);
+        });
+
+        // Add kekulized aromatic bonds
+        aromaticBonds.forEach(b => {
+            const order = b.assignedOrder || 1; // Default to 1 if missed
+            const bondIdx = mol.addBond(b.idx1, b.idx2);
+            mol.setBondOrder(bondIdx, order);
+        });
+
+        // FALLBACK AUTO-BOND for OCL
+        if (mol.getAllBonds() === 0 && atoms.length > 1) {
+            console.log('[FileIO] No bonds found, applying fallback auto-bond for OCL');
+            for (let i = 0; i < atoms.length; i++) {
+                for (let j = i + 1; j < atoms.length; j++) {
+                    const dist = atoms[i].position.distanceTo(atoms[j].position);
+                    if (dist < 1.9) {
+                        const bIdx = mol.addBond(i, j);
+                        mol.setBondOrder(bIdx, 1);
+                    }
+                }
+            }
+        }
+
+        // Use OCL to ensure validity and perceive properties
+        mol.ensureHelperArrays(OCL.Molecule.cHelperCIP);
+
+        return mol;
+    }
+
+    /**
+     * Export molecule as SVG using OCL
+     * @param {Object} options
+     * @param {boolean} [options.splitFragments=false]
+     * @param {boolean} [options.showLabels=false]
+     * @param {boolean} [options.showHydrogens=false]
+     * @returns {string|string[]} SVG string or array of strings
+     */
+    exportSVG(options = {}) {
+        const { splitFragments = false, showLabels = false, showHydrogens = false } = options;
+        const fragments = splitFragments ? this.getFragments() : [this.editor.molecule.atoms];
+
+        const svgs = [];
+
+        fragments.forEach(frag => {
+            try {
+                const mol = this.atomsToOCL(frag);
+
+                // 1. Hydrogen Persistence Logic
+                // OCL's inventCoordinates() aggressively strips standard Hydrogens (AtomicNo 1).
+                // To prevent this, we set the atom mass to 1 (Protium).
+                // This marks the Hydrogen as "explicit isotope" which OCL preserves,
+                // but it still renders as "H" (not "1H") and draws the bond correctly.
+                // This is the clean, direct method requested by the user.
+
+                if (showHydrogens) {
+                    // A. Convert EXISTING Hydrogens to Explicit Mass 1
+                    const currentAtomCount = mol.getAllAtoms();
+                    for (let i = 0; i < currentAtomCount; i++) {
+                        if (mol.getAtomicNo(i) === 1) {
+                            mol.setAtomMass(i, 1); // Explicit Mass 1
+                        }
+                    }
+
+                    // B. Add IMPLICIT Hydrogens as Explicit Mass 1
+                    const originalCount = currentAtomCount;
+                    for (let i = 0; i < originalCount; i++) {
+                        // Only check implicit H for non-H atoms
+                        const atomicNo = mol.getAtomicNo(i);
+                        if (atomicNo !== 1) {
+                            const implicitH = mol.getImplicitHydrogens(i);
+                            for (let h = 0; h < implicitH; h++) {
+                                const hIdx = mol.addAtom(1); // Add Hydrogen
+                                mol.addBond(i, hIdx, 1); // Single bond
+                                mol.setAtomMass(hIdx, 1); // Explicit Mass 1
+                            }
+                        }
+                    }
+                }
+
+                // 2. Apply Labels (for non-H atoms)
+                const atomCount = mol.getAllAtoms();
+                for (let i = 0; i < atomCount; i++) {
+                    // Determine if this is an original atom (from fragment)
+                    let isOriginal = i < frag.length;
+                    let atom = isOriginal ? frag[i] : null;
+
+                    // Apply highlighting
+                    // Strategy: We want a "Yellow Background". OCL doesn't support this directly.
+                    // We will set highlighted atoms to a specific "Marker Color" (e.g. Red/Orange),
+                    // then in post-processing, we find these colored atoms, draw a yellow circle behind them,
+                    // and restore their color to black.
+                    let isHighlighted = false;
+                    if (isOriginal && atom && atom.selected) {
+                        isHighlighted = true;
+                        mol.setAtomSelection(i, true);
+                        // Set to a distinct color we can find in SVG (e.g. Red = 2 or similar)
+                        // We'll use a color that is unlikely to be used by default for C/H/N/O.
+                        // OCL Colors: 0=Black, 1=Blue(N), 2=Red(O), 3=Green, 4=Magenta, 5=Orange, 6=Cyan.
+                        // Let's use Magenta (4) as our "Highlight Marker".
+                        mol.setAtomColor(i, 4);
+                    }
+
+                    // Label Logic
+                    const atomicNo = mol.getAtomicNo(i);
+
+                    if (showLabels) {
+                        // Get element symbol
+                        let elem = mol.getAtomLabel(i);
+                        if (!elem) {
+                            if (atomicNo === 1) elem = 'H';
+                            else if (atomicNo === 6) elem = 'C';
+                            else elem = '?';
+                        }
+
+                        // Construct label
+                        let labelIdx;
+                        if (isOriginal && atom) {
+                            labelIdx = this.editor.molecule.atoms.indexOf(atom);
+                        } else {
+                            // For new/implicit atoms, use local index
+                            labelIdx = i;
+                        }
+
+                        // For Hydrogen atoms, user wants to hide mass number.
+                        // CRITICAL: We CANNOT use just "H" as the custom label, because OCL
+                        // strips Hydrogens with label="H" during inventCoordinates().
+                        // We must use "H:" or similar non-standard format to protect them.
+                        if (atomicNo === 1) {
+                            // Use "H:Index" format which OCL preserves
+                            mol.setAtomCustomLabel(i, `H:${labelIdx}`);
+                        } else {
+                            mol.setAtomCustomLabel(i, `${elem}:${labelIdx}`);
+                        }
+                    } else {
+                        // If labels are OFF, we still need a non-standard label for Hydrogens
+                        // to prevent stripping. We use "H." (H with a dot) which will render
+                        // as just "H." but prevents OCL from removing it.
+                        // Post-processing will remove the dot from the SVG.
+                        if (atomicNo === 1) {
+                            mol.setAtomCustomLabel(i, "H.");
+                        }
+                    }
+                }
+
+                // 3. Generate clean 2D coordinates
+                mol.inventCoordinates();
+
+                // 4. Scale Coordinates (User Request)
+                mol.scaleCoords(10.0);
+
+                // 5. Generate SVG
+                let svg = mol.toSVG(1200, 900);
+
+                // 6. Post-process: Highlight Injection & Crop
+                // Find "Magenta" atoms (rgb(255,0,255) or similar)
+                // OCL usually uses rgb(r,g,b). Magenta is rgb(255,0,255) or #FF00FF.
+                // We'll look for fill="rgb(255,0,255)" or similar.
+
+                // We need to inject circles BEFORE the molecule paths so they are in background.
+                // SVG structure: <svg ...> <style>...</style> <g>...</g> ... </svg>
+                // We can insert after <svg ...> start tag.
+
+                const highlightCircles = [];
+                // Regex to find text with Magenta color
+                // OCL might output `fill="rgb(255,0,255)"` or `fill="#FF00FF"`
+                // Let's match generic fill color pattern for Magenta
+                const magentaRegex = /<text[^>]*x="([-\d.]+)"[^>]*y="([-\d.]+)"[^>]*fill="rgb\(255,0,255\)"[^>]*>/g;
+                let hMatch;
+                while ((hMatch = magentaRegex.exec(svg)) !== null) {
+                    const x = parseFloat(hMatch[1]);
+                    const y = parseFloat(hMatch[2]);
+                    // Create yellow circle
+                    // Radius 20 seems appropriate for 10px font
+                    highlightCircles.push(`<circle cx="${x}" cy="${y}" r="20" fill="#FFFF00" opacity="0.5" />`);
+                }
+
+                // Replace Magenta with Black in the SVG text
+                svg = svg.replace(/fill="rgb\(255,0,255\)"/g, 'fill="rgb(0,0,0)"');
+
+                // Inject circles
+                if (highlightCircles.length > 0) {
+                    // Insert after first > of svg tag
+                    const insertPos = svg.indexOf('>') + 1;
+                    svg = svg.slice(0, insertPos) + highlightCircles.join('') + svg.slice(insertPos);
+                }
+
+                // Crop Logic
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+                const updateBounds = (x, y) => {
+                    if (!isNaN(x) && !isNaN(y)) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                };
+
+                // Parse <line> (Bonds)
+                const lineRegex = /<line[^>]*x1="([-\d.]+)"[^>]*y1="([-\d.]+)"[^>]*x2="([-\d.]+)"[^>]*y2="([-\d.]+)"/g;
+                let match;
+                while ((match = lineRegex.exec(svg)) !== null) {
+                    updateBounds(parseFloat(match[1]), parseFloat(match[2]));
+                    updateBounds(parseFloat(match[3]), parseFloat(match[4]));
+                }
+
+                // Parse <polygon> (Wedges)
+                const polyRegex = /<polygon[^>]*points="([^"]+)"/g;
+                while ((match = polyRegex.exec(svg)) !== null) {
+                    const points = match[1].split(/\s+/);
+                    points.forEach(p => {
+                        const [x, y] = p.split(',').map(parseFloat);
+                        updateBounds(x, y);
+                    });
+                }
+
+                // Parse <text> (Labels)
+                const textRegex = /<text[^>]*x="([-\d.]+)"[^>]*y="([-\d.]+)"[^>]*>([^<]*)<\/text>/g;
+                while ((match = textRegex.exec(svg)) !== null) {
+                    const x = parseFloat(match[1]);
+                    const y = parseFloat(match[2]);
+                    // Approximate text dimensions
+                    const fontSize = 10;
+                    const textLen = match[3].length * (fontSize * 0.6);
+
+                    updateBounds(x - textLen / 2, y - fontSize);
+                    updateBounds(x + textLen / 2, y + fontSize / 2);
+                }
+
+                // Parse <path> (General)
+                const pathTagRegex = /<path[^>]*d="([^"]+)"[^>]*>/g;
+                while ((match = pathTagRegex.exec(svg)) !== null) {
+                    const d = match[1];
+                    if (d.length < 5 && !d.match(/\d/)) continue;
+
+                    const coords = d.match(/([-\d.]+)[ ,]([-\d.]+)/g);
+                    if (coords) {
+                        coords.forEach(pair => {
+                            const nums = pair.match(/([-\d.]+)/g);
+                            if (nums && nums.length >= 2) {
+                                updateBounds(parseFloat(nums[0]), parseFloat(nums[1]));
+                            }
+                        });
+                    }
+                }
+
+                // Include Highlight Circles in Bounds
+                // We parsed them earlier, but we need to ensure they are inside the viewbox
+                // We don't have their coords handy in a list unless we reused them.
+                // But since they are centered on text, and text is included, we just need to add padding.
+
+                // Update viewBox
+                if (minX < Infinity && maxX > -Infinity) {
+                    // Add padding (generous for highlights)
+                    const padding = 30;
+                    minX -= padding;
+                    minY -= padding;
+                    maxX += padding;
+                    maxY += padding;
+                    const w = maxX - minX;
+                    const h = maxY - minY;
+
+                    svg = svg.replace(/viewBox="[^"]*"/, `viewBox="${minX} ${minY} ${w} ${h}"`);
+                }
+
+                // Post-process Styles
+                svg = svg.replace(/font-size="14"/g, 'font-size="10"');
+                svg = svg.replace(/stroke-width="1.44"/g, 'stroke-width="1.2"');
+
+                // Clean up "H." labels (when labels are OFF, we use "H." to prevent stripping)
+                // Replace ">H.</text>" with ">H</text>" to show just "H"
+                if (!showLabels) {
+                    svg = svg.replace(/>H\.<\/text>/g, '>H</text>');
+                }
+
+                // Remove mass number "1" superscripts from Hydrogens
+                // OCL renders isotopes with two text elements: "H" and a smaller "1" above it
+                // We want to hide the "1" to show just "H"
+                // Pattern: <text ... font-size="9" ...>1</text> (mass number is rendered at font-size 9)
+                svg = svg.replace(/<text[^>]*font-size="9"[^>]*>1<\/text>/g, '');
+
+                svgs.push(svg);
+            } catch (e) {
+                console.error('SVG generation failed for fragment:', e);
+            }
+        });
+
+        if (splitFragments) {
+            return svgs;
+        } else {
+            return svgs.length > 0 ? svgs[0] : '';
+        }
+    }
+
+    /**
+     * Export molecule as PNG Data URL (Async)
+     * @param {Object} options
+     * @returns {Promise<string|string[]>} PNG Data URL or array of them
+     */
+    async exportPNG(options = {}) {
+        const svgs = this.exportSVG({ ...options, splitFragments: true }); // Always get array to simplify
+        const pngs = [];
+
+        for (const svg of svgs) {
+            if (!svg) continue;
+            try {
+                const png = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        // Parse width/height from SVG or use default
+                        const wMatch = svg.match(/width="(\d+)(px)?"/);
+                        const hMatch = svg.match(/height="(\d+)(px)?"/);
+                        canvas.width = wMatch ? parseInt(wMatch[1]) : 1200;
+                        canvas.height = hMatch ? parseInt(hMatch[1]) : 900;
+
+                        const ctx = canvas.getContext('2d');
+                        // White background
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    img.onerror = (e) => reject(new Error('Image load failed'));
+                    // Handle Unicode in SVG for Data URL
+                    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+                });
+                pngs.push(png);
+            } catch (e) {
+                console.error('PNG conversion failed:', e);
+                pngs.push(null);
+            }
+        }
+
+        if (options.splitFragments) {
+            return pngs;
+        } else {
+            return pngs.length > 0 ? pngs[0] : null;
+        }
+    }
+
+    /**
      * Helper: Convert atoms to V2000 MolBlock (for RDKit consumption)
      * @param {Array<Object>} atoms 
      * @returns {string} MolBlock
@@ -305,150 +762,8 @@ export class FileIOManager {
         // Try using OCL for robust generation and perception if sanitize is true
         if (sanitize) {
             try {
-                const mol = new OCL.Molecule(atoms.length, atoms.length); // Estimate capacity
-                const atomIndexMap = new Map();
-
-                // Add atoms
-                atoms.forEach((atom, i) => {
-                    // Sanitize element
-                    let elem = atom.element || 'C';
-                    elem = elem.replace(/[^a-zA-Z]/g, '');
-                    if (elem.length === 0) elem = 'C';
-                    if (elem === 'X') elem = '*'; // Dummy
-
-                    // OCL expects atomic number or label
-                    const idx = mol.addAtom(OCL.Molecule.getAtomicNoFromLabel(elem));
-                    mol.setAtomX(idx, atom.position.x);
-                    mol.setAtomY(idx, atom.position.y);
-                    mol.setAtomZ(idx, atom.position.z);
-                    atomIndexMap.set(atom, idx);
-                });
-
-                // Pre-process bonds to identify types
-                const bondList = [];
-                const aromaticBonds = []; // List of {atom1, atom2, bondObj}
-                const atomAromaticBonds = new Map(); // atom -> [bondEntry]
-
-                const processedBonds = new Set();
-
-                atoms.forEach(atom => {
-                    if (!atom.bonds) return;
-                    atom.bonds.forEach(bond => {
-                        if (!processedBonds.has(bond)) {
-                            const idx1 = atomIndexMap.get(bond.atom1);
-                            const idx2 = atomIndexMap.get(bond.atom2);
-
-                            if (idx1 !== undefined && idx2 !== undefined) {
-                                let order = 1;
-                                let isAromaticCandidate = false;
-
-                                const originalOrder = bond.order || 1;
-                                if (originalOrder > 1) {
-                                    order = originalOrder; // Trust explicit high order
-                                } else {
-                                    // Geometry inference
-                                    const dist = bond.atom1.position.distanceTo(bond.atom2.position);
-                                    const el1 = bond.atom1.element;
-                                    const el2 = bond.atom2.element;
-
-                                    if ((el1 === 'C' && el2 === 'C')) {
-                                        if (dist < 1.25) order = 3;
-                                        else if (dist < 1.38) order = 2;
-                                        else if (dist < 1.45) isAromaticCandidate = true;
-                                    } else if ((el1 === 'C' && el2 === 'N') || (el1 === 'N' && el2 === 'C')) {
-                                        if (dist < 1.22) order = 3;
-                                        else if (dist < 1.35) order = 2;
-                                        // C-N aromatic? Pyridine C-N is ~1.34 (Double-like) or 1.37.
-                                        // Let's treat < 1.38 as Double/Aromatic candidate?
-                                        // For now, stick to explicit thresholds.
-                                    } else if ((el1 === 'C' && el2 === 'O') || (el1 === 'O' && el2 === 'C')) {
-                                        if (dist < 1.30) order = 2;
-                                    } else if ((el1 === 'N' && el2 === 'N')) {
-                                        if (dist < 1.15) order = 3;
-                                        else if (dist < 1.30) order = 2;
-                                    }
-                                }
-
-                                if (isAromaticCandidate) {
-                                    const bondEntry = { idx1, idx2, assignedOrder: 0 }; // 0 means pending
-                                    aromaticBonds.push(bondEntry);
-
-                                    if (!atomAromaticBonds.has(idx1)) atomAromaticBonds.set(idx1, []);
-                                    if (!atomAromaticBonds.has(idx2)) atomAromaticBonds.set(idx2, []);
-                                    atomAromaticBonds.get(idx1).push(bondEntry);
-                                    atomAromaticBonds.get(idx2).push(bondEntry);
-                                } else {
-                                    bondList.push({ idx1, idx2, order });
-                                }
-                                processedBonds.add(bond);
-                            }
-                        }
-                    });
-                });
-
-                // Greedy Kekulization for Aromatic Candidates
-                // Assign alternating Double (2) and Single (1)
-                const visitedAtoms = new Set();
-
-                // Helper to get neighbor in bond
-                const getNeighbor = (bond, atomIdx) => bond.idx1 === atomIdx ? bond.idx2 : bond.idx1;
-
-                // Sort atoms by connectivity (degree) to start with less ambiguous ones? 
-                // Or just iterate.
-
-                for (let i = 0; i < atoms.length; i++) {
-                    const idx = i; // OCL index matches loop since we added in order
-                    if (atomAromaticBonds.has(idx)) {
-                        // Check if atom already has a Double bond assigned in aromatic set
-                        const bonds = atomAromaticBonds.get(idx);
-                        let hasDouble = bonds.some(b => b.assignedOrder === 2);
-
-                        // Assign remaining undefined bonds
-                        bonds.forEach(bond => {
-                            if (bond.assignedOrder === 0) {
-                                if (!hasDouble) {
-                                    bond.assignedOrder = 2;
-                                    hasDouble = true;
-                                } else {
-                                    bond.assignedOrder = 1;
-                                }
-                            }
-                        });
-                    }
-                }
-
-                // Add standard bonds
-                bondList.forEach(b => {
-                    const bondIdx = mol.addBond(b.idx1, b.idx2);
-                    mol.setBondOrder(bondIdx, b.order);
-                });
-
-                // Add kekulized aromatic bonds
-                aromaticBonds.forEach(b => {
-                    const order = b.assignedOrder || 1; // Default to 1 if missed
-                    const bondIdx = mol.addBond(b.idx1, b.idx2);
-                    mol.setBondOrder(bondIdx, order);
-                });
-
-                // FALLBACK AUTO-BOND for OCL
-                if (mol.getAllBonds() === 0 && atoms.length > 1) {
-                    console.log('[FileIO] No bonds found, applying fallback auto-bond for OCL');
-                    for (let i = 0; i < atoms.length; i++) {
-                        for (let j = i + 1; j < atoms.length; j++) {
-                            const dist = atoms[i].position.distanceTo(atoms[j].position);
-                            if (dist < 1.9) {
-                                const bIdx = mol.addBond(i, j);
-                                mol.setBondOrder(bIdx, 1);
-                            }
-                        }
-                    }
-                }
-
-                // Use OCL to ensure validity and perceive properties
-                mol.ensureHelperArrays(OCL.Molecule.cHelperCIP);
-
+                const mol = this.atomsToOCL(atoms);
                 return mol.toMolfile();
-
             } catch (e) {
                 console.warn('[FileIO] OCL generation failed, falling back to manual generation:', e);
             }

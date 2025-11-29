@@ -772,7 +772,7 @@ export class CommandRegistry {
         });
 
         // Show Command (Unified 2D/3D)
-        this.register('show', [], 'show <2d|3d> [options] - Show visualization', (args) => {
+        this.register('show', [], 'show <2d|3d> [options] - Show visualization', async (args) => {
             if (args.length === 0) return { error: 'Usage: show <2d|3d> [options]' };
 
             const subCmd = args[0].toLowerCase();
@@ -792,46 +792,52 @@ export class CommandRegistry {
                 }
             }
 
-            // show 2d [-s|--split]
+            // show 2d [-s|--split] [-l|--label] [-h|--hydrogen] [-p|--png]
             if (subCmd === '2d') {
                 const splitFragments = args.includes('-s') || args.includes('--split');
+                const showLabels = args.includes('-l') || args.includes('--label');
+                const showHydrogens = args.includes('-h') || args.includes('--hydrogen');
+                const usePng = args.includes('-p') || args.includes('--png');
 
-                return (async () => {
-                    try {
-                        if (splitFragments) {
-                            // Get all SMILES strings
-                            const smilesStr = await this.editor.fileIOManager.exportSMILES({ splitFragments: true });
-                            if (!smilesStr) return { warning: 'No molecule to show' };
-
-                            const smilesList = smilesStr.split('\n');
-                            let count = 0;
-
-                            for (const smi of smilesList) {
-                                if (!smi.trim()) continue;
-                                const svg = await rdkitManager.getSVG(smi);
-                                if (svg) {
-                                    const blob = new Blob([svg], { type: 'image/svg+xml' });
-                                    const url = URL.createObjectURL(blob);
-                                    this.editor.console.print(url, 'image');
-                                    count++;
-                                }
-                            }
-                            return { success: `Shown ${count} fragments` };
-                        } else {
-                            const smiles = await this.editor.fileIOManager.exportSMILES({ splitFragments: false });
-                            if (!smiles) return { warning: 'No molecule to show' };
-
-                            const svg = await rdkitManager.getSVG(smiles);
-                            if (!svg) return { error: 'Failed to generate SVG' };
-
-                            const blob = new Blob([svg], { type: 'image/svg+xml' });
-                            const url = URL.createObjectURL(blob);
-                            return { info: url, type: 'image' };
-                        }
-                    } catch (e) {
-                        return { error: `Show 2D failed: ${e.message}` };
+                try {
+                    let svgs;
+                    if (usePng) {
+                        svgs = await this.editor.fileIOManager.exportPNG({ splitFragments, showLabels, showHydrogens });
+                    } else {
+                        svgs = this.editor.fileIOManager.exportSVG({ splitFragments, showLabels, showHydrogens });
                     }
-                })();
+
+                    if (Array.isArray(svgs)) {
+                        let count = 0;
+                        for (const svg of svgs) {
+                            if (svg) {
+                                let blob;
+                                if (usePng) {
+                                    blob = await (await fetch(svg)).blob();
+                                } else {
+                                    blob = new Blob([svg], { type: 'image/svg+xml' });
+                                }
+                                const url = URL.createObjectURL(blob);
+                                this.editor.console.print(url, 'image');
+                                count++;
+                            }
+                        }
+                        return { success: `Shown ${count} fragments` };
+                    } else {
+                        if (!svgs) return { warning: 'No molecule to show' };
+                        let url;
+                        if (usePng) {
+                            const blob = await (await fetch(svgs)).blob();
+                            url = URL.createObjectURL(blob);
+                        } else {
+                            const blob = new Blob([svgs], { type: 'image/svg+xml' });
+                            url = URL.createObjectURL(blob);
+                        }
+                        return { info: url, type: 'image' };
+                    }
+                } catch (e) {
+                    return { error: `Show 2D failed: ${e.message}` };
+                }
             }
 
             return { error: `Unknown subcommand: ${subCmd}` };
