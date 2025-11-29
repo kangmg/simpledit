@@ -299,7 +299,104 @@ export class FileIOManager {
      * @param {Array<Object>} atoms 
      * @returns {string} MolBlock
      */
-    atomsToMolBlock(atoms) {
+    atomsToMolBlock(atoms, options = {}) {
+        const { sanitize = true } = options;
+
+        // Try using OCL for robust generation and perception if sanitize is true
+        if (sanitize) {
+            try {
+                const mol = new OCL.Molecule(atoms.length, atoms.length); // Estimate capacity
+                const atomIndexMap = new Map();
+
+                // Add atoms
+                atoms.forEach((atom, i) => {
+                    // Sanitize element
+                    let elem = atom.element || 'C';
+                    elem = elem.replace(/[^a-zA-Z]/g, '');
+                    if (elem.length === 0) elem = 'C';
+                    if (elem === 'X') elem = '*'; // Dummy
+
+                    // OCL expects atomic number or label
+                    // We use addAtom with label for simplicity
+                    const idx = mol.addAtom(OCL.Molecule.getAtomicNoFromLabel(elem));
+                    mol.setAtomX(idx, atom.position.x);
+                    mol.setAtomY(idx, atom.position.y);
+                    mol.setAtomZ(idx, atom.position.z);
+                    atomIndexMap.set(atom, idx);
+                });
+
+                // Add bonds with manual inference first
+                const processedBonds = new Set();
+                atoms.forEach(atom => {
+                    if (!atom.bonds) return;
+                    atom.bonds.forEach(bond => {
+                        if (!processedBonds.has(bond)) {
+                            const idx1 = atomIndexMap.get(bond.atom1);
+                            const idx2 = atomIndexMap.get(bond.atom2);
+
+                            if (idx1 !== undefined && idx2 !== undefined) {
+                                let order = OCL.Molecule.cBondTypeSingle; // Default to Single
+
+                                // Manual inference as pre-processing
+                                // Use OCL constants for bond types
+                                const dist = bond.atom1.position.distanceTo(bond.atom2.position);
+                                const el1 = bond.atom1.element;
+                                const el2 = bond.atom2.element;
+                                const originalOrder = bond.order || 1;
+
+                                if (originalOrder > 1) {
+                                    // Map explicit orders if they exist
+                                    if (originalOrder === 2) order = OCL.Molecule.cBondTypeDouble;
+                                    else if (originalOrder === 3) order = OCL.Molecule.cBondTypeTriple;
+                                    else if (originalOrder === 4) order = OCL.Molecule.cBondTypeDelocalized;
+                                } else {
+                                    // Inference for Single bonds (or unspecified)
+                                    if ((el1 === 'C' && el2 === 'C')) {
+                                        if (dist < 1.25) order = OCL.Molecule.cBondTypeTriple;
+                                        else if (dist < 1.38) order = OCL.Molecule.cBondTypeDouble;
+                                        else if (dist < 1.45) order = OCL.Molecule.cBondTypeDelocalized;
+                                    } else if ((el1 === 'C' && el2 === 'N') || (el1 === 'N' && el2 === 'C')) {
+                                        if (dist < 1.22) order = OCL.Molecule.cBondTypeTriple;
+                                        else if (dist < 1.35) order = OCL.Molecule.cBondTypeDouble;
+                                    } else if ((el1 === 'C' && el2 === 'O') || (el1 === 'O' && el2 === 'C')) {
+                                        if (dist < 1.30) order = OCL.Molecule.cBondTypeDouble;
+                                    } else if ((el1 === 'N' && el2 === 'N')) {
+                                        if (dist < 1.15) order = OCL.Molecule.cBondTypeTriple;
+                                        else if (dist < 1.30) order = OCL.Molecule.cBondTypeDouble;
+                                    }
+                                }
+                                mol.addBond(idx1, idx2, order);
+                                processedBonds.add(bond);
+                            }
+                        }
+                    });
+                });
+
+                // FALLBACK AUTO-BOND for OCL
+                if (mol.getAllBonds() === 0 && atoms.length > 1) {
+                    console.log('[FileIO] No bonds found, applying fallback auto-bond for OCL');
+                    for (let i = 0; i < atoms.length; i++) {
+                        for (let j = i + 1; j < atoms.length; j++) {
+                            const dist = atoms[i].position.distanceTo(atoms[j].position);
+                            if (dist < 1.9) {
+                                mol.addBond(i, j, 1);
+                            }
+                        }
+                    }
+                }
+
+                // Use OCL to ensure validity and perceive properties
+                // cHelperCIP triggers chirality and other perceptions
+                mol.ensureHelperArrays(OCL.Molecule.cHelperCIP);
+
+                return mol.toMolfile();
+
+            } catch (e) {
+                console.warn('[FileIO] OCL generation failed, falling back to manual generation:', e);
+            }
+        }
+
+        // --- MANUAL GENERATION (Fallback or Sync Mode) ---
         let out = "\n  Simpledit\n\n";
         const atomCount = atoms.length;
 
@@ -322,35 +419,28 @@ export class FileIOManager {
 
                     // Only include if both atoms are in this fragment
                     if (idx1 !== undefined && idx2 !== undefined) {
-                        // Trust connectivity, but re-evaluate bond order if it's 1 (default)
-                        let order = bond.order || 1;
+                        // Trust connectivity
+                        // If sanitize is false (Sync mode), force single bond (1).
+                        let order = sanitize ? (bond.order || 1) : 1;
 
-                        // Only attempt geometry-based inference if the bond order is not explicitly set
-                        // or if it's the default single bond (1).
-                        // This allows for manual setting of bond orders to be preserved.
-                        if (order === 1) {
+                        // Note: If we are here, it means sanitize=false OR OCL failed.
+                        // If sanitize=true but OCL failed, we still try manual inference below.
+
+                        if (sanitize && order === 1) {
                             const dist = bond.atom1.position.distanceTo(bond.atom2.position);
                             const el1 = bond.atom1.element;
                             const el2 = bond.atom2.element;
 
-                            // Geometry-based bond order inference (Canonicalization)
-                            // Thresholds based on typical bond lengths (in Angstroms)
-
                             if ((el1 === 'C' && el2 === 'C')) {
-                                // C-C: Single ~1.54, Aromatic ~1.40, Double ~1.34, Triple ~1.20
-                                if (dist < 1.25) order = 3;       // Triple
-                                else if (dist < 1.38) order = 2;  // Double
-                                else if (dist < 1.45) order = 4;  // Aromatic (V2000 type 4)
-                                // else Single
+                                if (dist < 1.25) order = 3;
+                                else if (dist < 1.38) order = 2;
+                                else if (dist < 1.45) order = 4;
                             } else if ((el1 === 'C' && el2 === 'N') || (el1 === 'N' && el2 === 'C')) {
-                                // C-N: Single ~1.47, Double ~1.28, Triple ~1.16
-                                if (dist < 1.22) order = 3;       // Triple
-                                else if (dist < 1.35) order = 2;  // Double
+                                if (dist < 1.22) order = 3;
+                                else if (dist < 1.35) order = 2;
                             } else if ((el1 === 'C' && el2 === 'O') || (el1 === 'O' && el2 === 'C')) {
-                                // C-O: Single ~1.43, Double ~1.23
-                                if (dist < 1.30) order = 2;       // Double
+                                if (dist < 1.30) order = 2;
                             } else if ((el1 === 'N' && el2 === 'N')) {
-                                // N-N: Single ~1.45, Double ~1.25, Triple ~1.10
                                 if (dist < 1.15) order = 3;
                                 else if (dist < 1.30) order = 2;
                             }

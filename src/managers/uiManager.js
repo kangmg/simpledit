@@ -580,7 +580,7 @@ export class UIManager {
     /**
      * Open 2D Editor modal (JSME or OCL)
      */
-    openJSME() {
+    async openJSME() {
         const modal = document.getElementById('jsme-modal');
         const backdrop = document.getElementById('modal-backdrop');
 
@@ -595,44 +595,23 @@ export class UIManager {
         this.updateEditorVisibility();
 
         // Initialize editors
-        setTimeout(() => {
+        try {
             // Always init both if possible, or just the active one
-            // Init JSME
-            jsmeManager.init('jsme-container');
-
-            // Init OCL
-            oclEditorManager.init('ocl-editor-container');
+            // Init JSME and OCL in parallel
+            await Promise.all([
+                jsmeManager.init('jsme-container'),
+                oclEditorManager.init('ocl-editor-container')
+            ]);
 
             // IMPORTANT: Clear both editors by setting empty molecule
             // (clear() method doesn't always work reliably)
-            setTimeout(() => {
-                jsmeManager.setMol("");
-                oclEditorManager.setMol("");
-
-                // Load current molecule (selected atoms or all if none selected)
-                const selectedAtoms = this.editor.selectionManager.getSelectedAtoms();
-                const atomsToLoad = selectedAtoms.length > 0 ? selectedAtoms : this.editor.molecule.atoms;
-
-                console.log('[2D Editor] Loading molecule:', {
-                    selectedCount: selectedAtoms.length,
-                    totalCount: this.editor.molecule.atoms.length,
-                    loadingAtoms: atomsToLoad.length
-                });
-
-                if (atomsToLoad.length === 0) {
-                    // Explicitly clear if no atoms
-                    jsmeManager.setMol("");
-                    oclEditorManager.setMol("");
-                } else {
-                    const molBlock = this.editor.fileIOManager.atomsToMolBlock(atomsToLoad);
-                    if (this.activeEditor === 'jsme') {
-                        jsmeManager.setMol(molBlock);
-                    } else {
-                        oclEditorManager.setMol(molBlock);
-                    }
-                }
-            }, 100); // Delay to ensure editors are fully initialized
-        }, 50);
+            jsmeManager.setMol("");
+            oclEditorManager.setMol("");
+            // Auto-load removed as per user request
+        } catch (error) {
+            console.error('Failed to initialize 2D editors:', error);
+            this.showError('Failed to initialize 2D editors. Please check console.');
+        }
 
         // Disable editor controls
         if (this.editor.renderer.controls) {
@@ -644,6 +623,13 @@ export class UIManager {
         const btnClose = document.getElementById('btn-jsme-close');
         const btnMinimize = document.getElementById('btn-jsme-minimize');
         const btnMaximize = document.getElementById('btn-jsme-maximize');
+
+        // Sync/Sanitize buttons
+        const btnSync = document.getElementById('btn-sync-mol');
+        const btnSanitize = document.getElementById('btn-sanitize-mol');
+
+        if (btnSync) btnSync.onclick = () => this.loadMoleculeTo2D({ sanitize: false });
+        if (btnSanitize) btnSanitize.onclick = () => this.loadMoleculeTo2D({ sanitize: true });
 
         // Toggle buttons
         const btnToggleJSME = document.getElementById('btn-editor-jsme');
@@ -687,6 +673,40 @@ export class UIManager {
         if (btnClose) btnClose.onclick = () => this.closeJSME();
         if (btnMinimize) btnMinimize.onclick = () => this.closeJSME();
         if (btnMaximize) btnMaximize.onclick = () => this.toggleJSMEMaximize();
+    }
+
+    /**
+     * Load current 3D molecule into 2D editor with options
+     * @param {Object} options - { sanitize: boolean }
+     */
+    loadMoleculeTo2D(options = {}) {
+        // Load current molecule (selected atoms or all if none selected)
+        const selectedAtoms = this.editor.selectionManager.getSelectedAtoms();
+        const atomsToLoad = selectedAtoms.length > 0 ? selectedAtoms : this.editor.molecule.atoms;
+
+        console.log('[2D Editor] Loading molecule:', {
+            selectedCount: selectedAtoms.length,
+            totalCount: this.editor.molecule.atoms.length,
+            loadingAtoms: atomsToLoad.length,
+            options
+        });
+
+        if (atomsToLoad.length === 0) {
+            this.showError("No atoms to load");
+            return;
+        }
+
+        // Generate MolBlock with options
+        const molBlock = this.editor.fileIOManager.atomsToMolBlock(atomsToLoad, options);
+
+        // Load into active editor
+        if (this.activeEditor === 'jsme') {
+            jsmeManager.setMol(molBlock);
+        } else {
+            oclEditorManager.setMol(molBlock);
+        }
+
+        this.showSuccess(options.sanitize ? "Molecule sanitized (inferred bonds)" : "Molecule synced (connectivity only)");
     }
 
     /**

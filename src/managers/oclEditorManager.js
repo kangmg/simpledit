@@ -15,26 +15,29 @@ export class OCLEditorManager {
      * @param {string} containerId 
      */
     init(containerId) {
-        if (this.isInitialized && this.containerId === containerId) return;
+        if (this.isInitialized && this.containerId === containerId) return Promise.resolve();
 
-        const container = document.getElementById(containerId);
-        if (!container) {
-            console.error(`Container ${containerId} not found`);
-            return;
-        }
+        return new Promise((resolve, reject) => {
+            const container = document.getElementById(containerId);
+            if (!container) {
+                console.error(`Container ${containerId} not found`);
+                reject(new Error(`Container ${containerId} not found`));
+                return;
+            }
 
-        this.containerId = containerId;
+            this.containerId = containerId;
 
-        // Initialize OCL CanvasEditor
-        // We need to ensure resources are loaded? 
-        // CanvasEditor usually works without heavy resources, but let's see.
-        try {
-            this.editor = new OCL.CanvasEditor(container);
-            this.isInitialized = true;
-            console.log('OCL Editor initialized');
-        } catch (error) {
-            console.error('Failed to initialize OCL Editor:', error);
-        }
+            // Initialize OCL CanvasEditor
+            try {
+                this.editor = new OCL.CanvasEditor(container);
+                this.isInitialized = true;
+                console.log('OCL Editor initialized');
+                resolve();
+            } catch (error) {
+                console.error('Failed to initialize OCL Editor:', error);
+                reject(error);
+            }
+        });
     }
 
     /**

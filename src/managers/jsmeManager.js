@@ -13,46 +13,42 @@ export class JSMEManager {
      * @param {string} containerId - ID of the container element
      */
     init(containerId) {
-        if (this.isInitialized && this.containerId === containerId) return;
+        if (this.isInitialized && this.containerId === containerId) return Promise.resolve();
 
         this.containerId = containerId;
 
-        // JSME requires a global function to be called when it loads, 
-        // or we can instantiate it if the script is loaded.
-        // Since we installed via npm, we might need to import it or load the script.
-        // The 'jsme-editor' package usually provides a global 'JSME' object or similar.
-        // Let's assume for now we can use the global JSApplet class provided by JSME.
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds timeout
 
-        // Note: JSME is often distributed as a legacy script that puts 'JSApplet' on window.
-        // We might need to handle the script loading if it's not a proper module.
-        // For now, let's try to instantiate it assuming it's available or we load it.
+            const checkAndInit = () => {
+                if (typeof window.JSApplet === 'undefined') {
+                    attempts++;
+                    if (attempts >= maxAttempts) {
+                        console.error('JSME script failed to load after timeout');
+                        reject(new Error('JSME script load timeout'));
+                        return;
+                    }
+                    console.warn(`JSME script not loaded yet, retrying... (${attempts}/${maxAttempts})`);
+                    setTimeout(checkAndInit, 100);
+                    return;
+                }
 
-        // If we use the 'jsme-editor' npm package, it might export a setup function.
-        // Let's check how we import it. 
-        // If it's a script, we might need to add it to index.html or dynamic import.
+                try {
+                    this.jsmeApplet = new window.JSApplet.JSME(containerId, "100%", "100%", {
+                        "options": "newlook,guicolor=#333333,atommovebutton"
+                    });
+                    this.isInitialized = true;
+                    console.log('JSME initialized');
+                    resolve();
+                } catch (e) {
+                    console.error('Failed to initialize JSME:', e);
+                    reject(e);
+                }
+            };
 
-        // For this implementation, we will assume the script is loaded and 'JSApplet' is available.
-        // If not, we might need to adjust.
-
-        const checkAndInit = () => {
-            if (typeof window.JSApplet === 'undefined') {
-                console.warn('JSME script not loaded yet, retrying...');
-                setTimeout(checkAndInit, 100);
-                return;
-            }
-
-            try {
-                this.jsmeApplet = new window.JSApplet.JSME(containerId, "100%", "100%", {
-                    "options": "newlook,guicolor=#333333,atommovebutton"
-                });
-                this.isInitialized = true;
-                console.log('JSME initialized');
-            } catch (e) {
-                console.error('Failed to initialize JSME:', e);
-            }
-        };
-
-        checkAndInit();
+            checkAndInit();
+        });
     }
 
     /**
