@@ -31,7 +31,8 @@ export class FileIOManager {
 
             if (generate3D) {
                 // Use OCL for 3D generation (implies explicit hydrogens)
-                molBlock = await oclManager.generate3D(smiles);
+                const mol3D = await oclManager.generate3D(smiles);
+                molBlock = mol3D.toMolfile();
             } else if (addHydrogens) {
                 // Use OCL for explicit hydrogens (2D)
                 molBlock = await oclManager.addHydrogens(smiles);
@@ -96,6 +97,11 @@ export class FileIOManager {
         const { shouldClear = true, autoBond = false } = options;
 
         try {
+            if (typeof sdfString !== 'string') {
+                console.warn('[importSDF] sdfString is not a string, attempting conversion:', sdfString);
+                sdfString = String(sdfString);
+            }
+
             if (shouldClear) {
                 this.editor.molecule.clear();
             }
@@ -504,8 +510,8 @@ export class FileIOManager {
                         selectedAtomIndices.push(i);
                     }
 
-                    // Set Map No to index (this renders as data-atom-map-no in SVG)
-                    mol.setAtomMapNo(i, i, false);
+                    // Set Map No to index + 1 (to avoid 0 being ignored)
+                    mol.setAtomMapNo(i, i + 1, false);
 
                     // Handle Labels
                     const atomicNo = mol.getAtomicNo(i);
@@ -545,27 +551,52 @@ export class FileIOManager {
                 const mapNoRegex = /<circle[^>]*data-atom-map-no="(\d+)"[^>]*cx="([-\d.]+)"[^>]*cy="([-\d.]+)"/g;
                 let match;
                 while ((match = mapNoRegex.exec(svg)) !== null) {
-                    const idx = parseInt(match[1]);
+                    const idx = parseInt(match[1]) - 1; // Subtract 1 to get back 0-based index
                     const x = parseFloat(match[2]);
                     const y = parseFloat(match[3]);
                     atomCoords[idx] = { x, y };
                 }
 
-                // 7. Inject Highlights (Yellow Circles)
-                const highlightCircles = [];
+                // 7. Inject Highlights (Yellow Atoms AND Bonds)
+                // We use a group with opacity to prevent overlapping artifacts
+                const highlightElements = [];
+
                 if (selectedAtomIndices.length > 0) {
+                    // A. Highlight Bonds
+                    // Check all bonds in the OCL molecule
+                    const bondCount = mol.getAllBonds();
+                    for (let b = 0; b < bondCount; b++) {
+                        const atom1 = mol.getBondAtom(0, b);
+                        const atom2 = mol.getBondAtom(1, b);
+
+                        // If both atoms are selected, highlight the bond
+                        // Note: selectedAtomIndices contains OCL atom indices (since we mapped 1:1)
+                        if (selectedAtomIndices.includes(atom1) && selectedAtomIndices.includes(atom2)) {
+                            const coords1 = atomCoords[atom1];
+                            const coords2 = atomCoords[atom2];
+
+                            if (coords1 && coords2) {
+                                highlightElements.push(
+                                    `<line x1="${coords1.x}" y1="${coords1.y}" x2="${coords2.x}" y2="${coords2.y}" stroke="#FFFF00" stroke-width="12" stroke-linecap="round" />`
+                                );
+                            }
+                        }
+                    }
+
+                    // B. Highlight Atoms
                     selectedAtomIndices.forEach(atomIdx => {
                         const coords = atomCoords[atomIdx];
                         if (coords) {
-                            highlightCircles.push(`<circle cx="${coords.x}" cy="${coords.y}" r="8" fill="#FFFF00" opacity="0.4" />`);
+                            highlightElements.push(`<circle cx="${coords.x}" cy="${coords.y}" r="9" fill="#FFFF00" />`);
                         }
                     });
                 }
 
-                // Inject circles at the beginning
-                if (highlightCircles.length > 0) {
+                // Inject highlight group at the beginning
+                if (highlightElements.length > 0) {
+                    const group = `<g opacity="0.4">${highlightElements.join('')}</g>`;
                     const insertPos = svg.indexOf('>') + 1;
-                    svg = svg.slice(0, insertPos) + highlightCircles.join('') + svg.slice(insertPos);
+                    svg = svg.slice(0, insertPos) + group + svg.slice(insertPos);
                 }
 
                 // 8. Inject Index Labels (Red)
@@ -630,7 +661,8 @@ export class FileIOManager {
 
                 // Parse circles (highlights)
                 // We know highlights are at atomCoords with r=15
-                if (highlightCircles.length > 0) {
+                // We check highlightElements instead of highlightCircles
+                if (highlightElements.length > 0) {
                     Object.values(atomCoords).forEach(coords => {
                         updateBounds(coords.x - 15, coords.y - 15);
                         updateBounds(coords.x + 15, coords.y + 15);
