@@ -87,7 +87,7 @@ export class FileIOManager {
             line = line.trim();
             if (line && !line.startsWith('#')) {
                 console.log(`Executing: ${line}`);
-                await this.editor.commandRegistry.execute(line);
+                await this.editor.console.execute(line);
             }
         }
     }

@@ -285,43 +285,47 @@ export class Console {
                 this.print(heredocData, 'input-data');
             }
 
-            // Parse and execute
-            const parsed = this.parser.parse(commandString);
-            if (!parsed) continue;
+            await this.execute(commandString, heredocData);
+        }
+    }
 
-            const command = this.commandRegistry.get(parsed.command);
-            if (!command) {
-                this.print(`Command '${parsed.command}' not found.`, 'error');
-                continue;
+    async execute(commandString, heredocData = null) {
+        // Parse and execute
+        const parsed = this.parser.parse(commandString);
+        if (!parsed) return;
+
+        const command = this.commandRegistry.get(parsed.command);
+        if (!command) {
+            this.print(`Command '${parsed.command}' not found.`, 'error');
+            return;
+        }
+
+        try {
+            // If heredoc data exists, pass it via special __heredoc__ arg
+            if (heredocData) {
+                parsed.args.push('__heredoc__', heredocData);
             }
 
-            try {
-                // If heredoc data exists, pass it via special __heredoc__ arg
-                if (heredocData) {
-                    parsed.args.push('__heredoc__', heredocData);
-                }
-
-                // Auto-save state for destructive commands
-                if (command.isDestructive) {
-                    this.editor.saveState();
-                }
-
-                // Await the command execution to support async commands like 'time'
-                const result = await command.execute(parsed.args);
-
-                if (result) {
-                    // Check if result has a type property (e.g., 'image')
-                    const displayType = result.type || 'info';
-
-                    if (result.success) this.print(result.success, displayType === 'image' ? displayType : 'success');
-                    if (result.error) this.print(result.error, 'error');
-                    if (result.warning) this.print(result.warning, 'warning');
-                    if (result.info) this.print(result.info, displayType === 'image' ? 'image' : 'info');
-                }
-            } catch (error) {
-                this.print(`Error executing '${commandString}': ${error.message}`, 'error');
-                console.error(error);
+            // Auto-save state for destructive commands
+            if (command.isDestructive) {
+                this.editor.saveState();
             }
+
+            // Await the command execution to support async commands like 'time'
+            const result = await command.execute(parsed.args);
+
+            if (result) {
+                // Check if result has a type property (e.g., 'image')
+                const displayType = result.type || 'info';
+
+                if (result.success) this.print(result.success, displayType === 'image' ? displayType : 'success');
+                if (result.error) this.print(result.error, 'error');
+                if (result.warning) this.print(result.warning, 'warning');
+                if (result.info) this.print(result.info, displayType === 'image' ? 'image' : 'info');
+            }
+        } catch (error) {
+            this.print(`Error executing '${commandString}': ${error.message}`, 'error');
+            console.error(error);
         }
     }
 

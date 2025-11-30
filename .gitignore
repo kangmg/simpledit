@@ -39,6 +39,7 @@ TODO.txt
 
 # Test files
 test_*.js
-test.xyz
-test.sdf
-test.smi
+*.xyz
+*.sdf
+*.smi
+*.inp
