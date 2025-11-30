@@ -2,6 +2,8 @@ import { Molecule } from './molecule.js';
 import { GeometryEngine } from './geometryEngine.js';
 import * as THREE from 'three';
 import { ELEMENTS, DEFAULT_ELEMENT } from './constants.js';
+import OCL from 'openchemlib';
+import { oclManager } from './managers/oclManager.js';
 
 export class MoleculeManager {
     constructor(editor) {
@@ -434,5 +436,42 @@ export class MoleculeManager {
     getElementRadius(element) {
         const data = ELEMENTS[element] || DEFAULT_ELEMENT;
         return data.radius;
+    }
+
+    async addExplicitHydrogens() {
+        try {
+            const molBlock = this.editor.fileIOManager.exportSDF();
+            await oclManager.init();
+            const mol = OCL.Molecule.fromMolfile(molBlock);
+
+            // Generate 3D with hydrogens
+            const newMol = await oclManager.generate3D(mol);
+            const newMolBlock = newMol.toMolfile();
+
+            this.editor.fileIOManager.importSDF(newMolBlock, { shouldClear: true, autoBond: false });
+            return { success: 'Added explicit hydrogens' };
+        } catch (e) {
+            console.error('addExplicitHydrogens failed:', e);
+            return { error: e.message };
+        }
+    }
+
+    async optimizeGeometry() {
+        try {
+            const molBlock = this.editor.fileIOManager.exportSDF();
+            await oclManager.init();
+            const mol = OCL.Molecule.fromMolfile(molBlock);
+
+            // Generate 3D (Optimization)
+            // Note: OCL's generate3D effectively optimizes geometry from scratch based on connectivity
+            const newMol = await oclManager.generate3D(mol);
+            const newMolBlock = newMol.toMolfile();
+
+            this.editor.fileIOManager.importSDF(newMolBlock, { shouldClear: true, autoBond: false });
+            return { success: 'Geometry optimized' };
+        } catch (e) {
+            console.error('optimizeGeometry failed:', e);
+            return { error: e.message };
+        }
     }
 }

@@ -34,10 +34,28 @@ export class FileIOManager {
                 this.loadContent(content, ext);
                 console.log(`Loaded file: ${path}`);
             } else {
-                console.error(`Unsupported file extension: ${ext}`);
+                throw new Error(`Unsupported file extension: ${ext}`);
             }
         } catch (error) {
             console.error(`Error loading file ${path}:`, error);
+            throw error;
+        }
+    }
+
+    loadContent(content, ext) {
+        switch (ext) {
+            case 'xyz':
+                this.importXYZ(content);
+                break;
+            case 'sdf':
+            case 'mol':
+                this.importSDF(content);
+                break;
+            case 'smi':
+                this.importSMILES(content);
+                break;
+            default:
+                throw new Error(`Unsupported file extension: ${ext}`);
         }
     }
 

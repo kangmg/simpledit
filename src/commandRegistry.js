@@ -779,6 +779,19 @@ export class CommandRegistry {
             return { error: `Unknown subcommand: ${subCmd}` };
         });
 
+        // Add Hydrogens Command
+        this.register('addh', ['add_hydrogens'], 'addh - Add explicit hydrogens', { isDestructive: true }, async () => {
+            const res = await this.editor.moleculeManager.addExplicitHydrogens();
+            return res.error ? { error: res.error } : { success: res.success };
+        });
+
+        // Optimize Command
+        this.register('optimize', ['opt', 'minimize'], 'optimize [method] - Optimize geometry (default: ff)', { isDestructive: true }, async (args) => {
+            const method = args.length > 0 ? args[0] : 'ff';
+            const res = await this.editor.moleculeManager.optimizeGeometry(method);
+            return res.error ? { error: res.error } : { success: res.success };
+        });
+
 
         // Export Command
         this.register('export', ['exp'], 'export <format> [-s] - Export molecule', (args) => {
