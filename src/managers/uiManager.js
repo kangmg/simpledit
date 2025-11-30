@@ -700,7 +700,12 @@ export class UIManager {
         }
 
         // Generate MolBlock with options
-        const molBlock = this.editor.fileIOManager.atomsToMolBlock(atomsToLoad, options);
+        // If OCL editor, force 2D generation to avoid <rect> errors with 3D coords
+        const exportOptions = { ...options };
+        if (this.activeEditor === 'ocl') {
+            exportOptions.generate2D = true;
+        }
+        const molBlock = this.editor.fileIOManager.atomsToMolBlock(atomsToLoad, exportOptions);
 
         // Load into active editor
         if (this.activeEditor === 'jsme') {

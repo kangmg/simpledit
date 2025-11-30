@@ -148,23 +148,22 @@ export class FileIOManager {
                 // Check if line is long enough
                 if (line.length >= 34) {
                     const symbol = line.substring(31, 34).trim();
-                    if (symbol === '*') {
+                    // OCL might export '?' (AtomicNo 0) or 'A' (Any) or '*'
+                    if (['*', '?', 'A', 'X', 'Q'].includes(symbol)) {
                         dummyIndices.push(i);
-                        console.log(`[updateFromMolBlock] Found Dummy '*' at index ${i} in MolBlock string. Replacing with 'F'.`);
-                        // Replace with 'F  ' (F + 2 spaces) to maintain alignment
-                        molLines[startIdx + i] = line.substring(0, 31) + 'F  ' + line.substring(34);
+                        console.log(`[updateFromMolBlock] Found Dummy '${symbol}' at index ${i} in MolBlock string. Replacing with 'C'.`);
+                        // Replace with 'C  ' (C + 2 spaces) to maintain alignment. 
+                        // We use Carbon (Valence 4) to support dummies with multiple connections (up to 4).
+                        molLines[startIdx + i] = line.substring(0, 31) + 'C  ' + line.substring(34);
                     }
                 } else {
-                    // Loose format handling (e.g. space separated)
-                    // If the line is short, maybe it's not fixed width. 
-                    // Try regex replacement for the 4th column? Too risky.
-                    // Let's assume standard V2000 for now as OCL generates it.
-                    // Or try to find '*' surrounded by spaces?
+                    // Loose format handling
                     const parts = line.trim().split(/\s+/);
-                    if (parts[3] === '*') {
+                    const symbol = parts[3];
+                    if (['*', '?', 'A', 'X', 'Q'].includes(symbol)) {
                         dummyIndices.push(i);
-                        console.log(`[updateFromMolBlock] Found Dummy '*' (loose format) at index ${i}. Replacing with 'F'.`);
-                        molLines[startIdx + i] = line.replace(/\*/, 'F');
+                        console.log(`[updateFromMolBlock] Found Dummy '${symbol}' (loose format) at index ${i}. Replacing with 'C'.`);
+                        molLines[startIdx + i] = line.replace(symbol, 'C');
                     }
                 }
             }
@@ -177,8 +176,8 @@ export class FileIOManager {
 
             // Verify substitution
             dummyIndices.forEach(idx => {
-                if (mol.getAtomicNo(idx) !== 9) {
-                    console.warn(`[updateFromMolBlock] Warning: Index ${idx} is not Fluorine after parsing! (AtomicNo: ${mol.getAtomicNo(idx)})`);
+                if (mol.getAtomicNo(idx) !== 6) {
+                    console.warn(`[updateFromMolBlock] Warning: Index ${idx} is not Carbon after parsing! (AtomicNo: ${mol.getAtomicNo(idx)})`);
                 }
             });
 
@@ -192,7 +191,7 @@ export class FileIOManager {
                 console.log(`  Atom ${i}: AtomicNo=${mol.getAtomicNo(i)}, Label=${mol.getAtomLabel(i)}`);
             }
 
-            // 3. Generate fresh 3D coordinates
+            // 4. Generate fresh 3D coordinates
             // IMPORTANT: We use ConformerGenerator DIRECTLY instead of oclManager.generate3D()
             // because generate3D() calls addImplicitHydrogens() again, which would duplicate hydrogens!
             console.log('[updateFromMolBlock] Calling ConformerGenerator directly...');
@@ -211,20 +210,43 @@ export class FileIOManager {
                 console.log(`  Atom ${i}: AtomicNo=${mol3D.getAtomicNo(i)}, Label=${mol3D.getAtomLabel(i)}`);
             }
 
-            // 4. Post-process: Restore Dummies by Index
+            // 5. Post-process: Restore Dummies and Remove Excess Hydrogens
             if (dummyIndices.length > 0) {
-                console.log('[updateFromMolBlock] Reverting Fluorine to Dummy...');
+                console.log('[updateFromMolBlock] Reverting Carbon to Dummy and cleaning up hydrogens...');
+                const atomsToDelete = [];
+
                 dummyIndices.forEach(idx => {
-                    if (mol3D.getAtomicNo(idx) === 9) {
+                    // Check if it's likely our substituted Carbon
+                    if (mol3D.getAtomicNo(idx) === 6) {
                         mol3D.setAtomicNo(idx, 0);
+                        // OCL uses '?' for AtomicNo 0.
                         console.log(`[updateFromMolBlock] Reverted index ${idx} to Dummy`);
+
+                        // Find hydrogens attached to this dummy (which were added because we pretended it was Carbon)
+                        // and mark them for deletion.
+                        const connCount = mol3D.getConnAtoms(idx);
+                        for (let k = 0; k < connCount; k++) {
+                            const neighborIdx = mol3D.getConnAtom(idx, k);
+                            if (mol3D.getAtomicNo(neighborIdx) === 1) {
+                                atomsToDelete.push(neighborIdx);
+                            }
+                        }
                     } else {
-                        console.warn(`[updateFromMolBlock] Index ${idx} not Fluorine after 3D (found ${mol3D.getAtomicNo(idx)})`);
+                        console.warn(`[updateFromMolBlock] Index ${idx} not Carbon after 3D (found ${mol3D.getAtomicNo(idx)})`);
                     }
                 });
+
+                // Delete atoms (sort descending to preserve indices during deletion)
+                if (atomsToDelete.length > 0) {
+                    const uniqueToDelete = [...new Set(atomsToDelete)].sort((a, b) => b - a);
+                    console.log(`[updateFromMolBlock] Removing ${uniqueToDelete.length} excess hydrogens attached to dummies...`);
+                    uniqueToDelete.forEach(delIdx => {
+                        mol3D.deleteAtom(delIdx);
+                    });
+                }
             }
 
-            // 5. Import to editor
+            // 6. Import to editor
             let newMolBlock = mol3D.toMolfile();
 
             // Standardize Dummy Atoms (A/? -> *) for export consistency
@@ -465,10 +487,18 @@ export class FileIOManager {
     /**
      * Helper: Convert atoms to MolBlock (V2000)
      * @param {Array<Object>} atoms 
+     * @param {Object} options
+     * @param {boolean} [options.generate2D=false] - Generate 2D coordinates (depiction)
      * @returns {string} MolBlock string
      */
-    atomsToMolBlock(atoms) {
+    atomsToMolBlock(atoms, options = {}) {
         const mol = this.atomsToOCL(atoms);
+
+        if (options.generate2D) {
+            console.log('[atomsToMolBlock] Generating 2D coordinates for export...');
+            mol.inventCoordinates();
+        }
+
         // Set molecule name if available (OCL doesn't have explicit setName in minimal API, 
         // but toMolfile() usually puts "Actelion..." in header. We can replace it.)
         let molBlock = mol.toMolfile();
