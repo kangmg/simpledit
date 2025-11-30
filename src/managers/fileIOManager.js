@@ -190,7 +190,13 @@ export class FileIOManager {
                 const x = parseFloat(parts[0]);
                 const y = parseFloat(parts[1]);
                 const z = parseFloat(parts[2]);
-                const element = parts[3];
+                let element = parts[3];
+
+                // Standardize Dummy Atoms to 'X'
+                // SDF/Molfile might use 'A', '*', '?', 'R#' for dummy/query atoms
+                if (['A', '*', '?', 'X', 'R'].includes(element) || element.startsWith('R')) {
+                    element = 'X';
+                }
 
                 const atom = this.editor.addAtomToScene(element, new THREE.Vector3(x, y, z));
                 newAtoms.push(atom);
@@ -359,6 +365,14 @@ export class FileIOManager {
             molBlock = lines.join('\n');
         }
 
+        // Post-process Dummy Atoms for Export
+        // OCL produces '?' for AtomicNo 0, or 'A' for Query atoms.
+        // User wants '*' for SDF/SMILES export.
+        // Regex matches the atom symbol column (approx col 31-33 in V2000)
+        // Format: xxxxx.xxxx yyyyy.yyyy zzzzz.zzzz aaa ...
+        // We look for " ? " or " A " surrounded by spaces in the atom block
+        molBlock = molBlock.replace(/^(\s+[0-9.-]+\s+[0-9.-]+\s+[0-9.-]+\s+)[?A](\s+)/gm, '$1*$2');
+
         return molBlock;
     }
 
@@ -491,7 +505,8 @@ export class FileIOManager {
             let elem = atom.element || 'C';
             elem = elem.replace(/[^a-zA-Z]/g, '');
             if (elem.length === 0) elem = 'C';
-            if (elem === 'X') elem = '*'; // Dummy
+            if (elem.length === 0) elem = 'C';
+            if (elem === 'X') elem = '*'; // Dummy (will become AtomicNo 0 -> '?' in Molfile)
 
             // OCL expects atomic number or label
             const idx = mol.addAtom(OCL.Molecule.getAtomicNoFromLabel(elem));
