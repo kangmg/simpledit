@@ -425,7 +425,7 @@ export class UIManager {
                 const xyz = this.editor.fileIOManager.exportXYZ({ splitFragments });
                 input.value = xyz || '';
             } else if (format === 'smi' || format === 'smiles') {
-                const smiles = await this.editor.fileIOManager.exportSMILES({ splitFragments });
+                const smiles = await this.editor.fileIOManager.exportSMILES({ splitFragments, includeName: false });
                 input.value = smiles || '';
             } else if (format === 'sdf') {
                 const sdf = await this.editor.fileIOManager.exportSDF({ splitFragments });
@@ -481,6 +481,7 @@ export class UIManager {
                                 this.showError(result.error);
                             } else {
                                 this.editor.renderManager.rebuildScene();
+                                this.updateAtomCount(); // Sync UI
                                 this.showSuccess(result.success || 'Imported XYZ');
                                 this.closeCoordinateEditor();
                             }
@@ -495,6 +496,7 @@ export class UIManager {
                                 this.showError(result.error);
                             } else {
                                 this.editor.renderManager.rebuildScene();
+                                this.updateAtomCount(); // Sync UI
                                 this.showSuccess('Imported SMILES');
                                 this.closeCoordinateEditor();
                             }
@@ -507,6 +509,7 @@ export class UIManager {
                                 this.showError(result.error);
                             } else {
                                 this.editor.renderManager.rebuildScene();
+                                this.updateAtomCount(); // Sync UI
                                 this.showSuccess('Imported SDF');
                                 this.closeCoordinateEditor();
                             }
@@ -1033,5 +1036,16 @@ export class UIManager {
             const zIndex = Math.floor((1 - pos.z) * 1000);
             atom.label.style.zIndex = zIndex;
         });
+    }
+
+    /**
+     * Update atom count display
+     */
+    updateAtomCount() {
+        const countElement = document.getElementById('atom-count');
+        if (countElement) {
+            const count = this.editor.molecule.atoms.length;
+            countElement.textContent = `${count} atoms`;
+        }
     }
 }

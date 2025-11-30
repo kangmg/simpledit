@@ -23,7 +23,8 @@ export class Bond {
 }
 
 export class Molecule {
-    constructor() {
+    constructor(name = 'Molecule') {
+        this.name = name;
         this.atoms = [];
         this.bonds = [];
         this.nextAtomId = 1;

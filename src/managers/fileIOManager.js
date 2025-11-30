@@ -218,11 +218,60 @@ export class FileIOManager {
     }
 
     /**
+     * Helper: Convert atoms to MolBlock (V2000)
+     * @param {Array<Object>} atoms 
+     * @returns {string} MolBlock string
+     */
+    atomsToMolBlock(atoms) {
+        const mol = this.atomsToOCL(atoms);
+        // Set molecule name if available (OCL doesn't have explicit setName in minimal API, 
+        // but toMolfile() usually puts "Actelion..." in header. We can replace it.)
+        let molBlock = mol.toMolfile();
+
+        const name = this.editor.molecule.name || 'Molecule';
+        // Replace first line (Header) with name
+        // Handle potential \r\n from OCL
+        const lines = molBlock.split(/\r?\n/);
+        if (lines.length > 0) {
+            lines[0] = name;
+            if (lines.length > 1) {
+                lines[1] = '  Simpledit (created by Actelion Java MolfileCreator 1.0)'; // Replace Generator line
+            }
+            molBlock = lines.join('\n');
+        }
+
+        return molBlock;
+    }
+
+    /**
+     * Helper: Convert atoms to XYZ string
+     * @param {Array<Object>} atoms 
+     * @returns {string} XYZ string
+     */
+    atomsToXYZ(atoms) {
+        const count = atoms.length;
+        const name = this.editor.molecule.name || 'Molecule';
+        let xyz = `${count}\n${name}\n`;
+
+        atoms.forEach(atom => {
+            const { x, y, z } = atom.position;
+            // Format: Element (3 chars left-aligned) X (12 chars right-aligned) Y (12 chars right-aligned) Z (12 chars right-aligned)
+            const el = atom.element.padEnd(3);
+            const xStr = x.toFixed(6).padStart(12);
+            const yStr = y.toFixed(6).padStart(12);
+            const zStr = z.toFixed(6).padStart(12);
+            xyz += `${el} ${xStr} ${yStr} ${zStr}\n`;
+        });
+
+        return xyz;
+    }
+
+    /**
      * Export current molecule as SMILES
      * @returns {Promise<string>} SMILES string
      */
     async exportSMILES(options = {}) {
-        const { splitFragments = false } = options;
+        const { splitFragments = false, includeName = false } = options;
         const fragments = splitFragments ? this.getFragments() : [this.editor.molecule.atoms];
 
         const smilesList = [];
@@ -230,7 +279,14 @@ export class FileIOManager {
         for (const frag of fragments) {
             const molBlock = this.atomsToMolBlock(frag);
             const smi = await oclManager.molBlockToSmiles(molBlock);
-            if (smi) smilesList.push(smi);
+            if (smi) {
+                if (includeName) {
+                    const name = this.editor.molecule.name || 'Molecule';
+                    smilesList.push(`${smi} ${name}`);
+                } else {
+                    smilesList.push(smi);
+                }
+            }
         }
 
         if (splitFragments) {
@@ -763,154 +819,7 @@ export class FileIOManager {
         }
     }
 
-    /**
-     * Helper: Convert atoms to V2000 MolBlock (for RDKit consumption)
-     * @param {Array<Object>} atoms 
-     * @returns {string} MolBlock
-     */
-    atomsToMolBlock(atoms, options = {}) {
-        const { sanitize = true } = options;
 
-        // Try using OCL for robust generation and perception if sanitize is true
-        if (sanitize) {
-            try {
-                const mol = this.atomsToOCL(atoms);
-                return mol.toMolfile();
-            } catch (e) {
-                console.warn('[FileIO] OCL generation failed, falling back to manual generation:', e);
-            }
-        }
-
-        // --- MANUAL GENERATION (Fallback or Sync Mode) ---
-        let out = "\n  Simpledit\n\n";
-        const atomCount = atoms.length;
-
-        // Collect bonds within this set of atoms
-        const bonds = [];
-        const atomIndexMap = new Map();
-
-        atoms.forEach((atom, i) => {
-            atomIndexMap.set(atom, i + 1); // 1-based
-        });
-
-        const processedBonds = new Set();
-        atoms.forEach(atom => {
-            if (!atom.bonds) return; // Safety check
-
-            atom.bonds.forEach(bond => {
-                if (!processedBonds.has(bond)) {
-                    const idx1 = atomIndexMap.get(bond.atom1);
-                    const idx2 = atomIndexMap.get(bond.atom2);
-
-                    // Only include if both atoms are in this fragment
-                    if (idx1 !== undefined && idx2 !== undefined) {
-                        // Trust connectivity
-                        // If sanitize is false (Sync mode), force single bond (1).
-                        let order = sanitize ? (bond.order || 1) : 1;
-
-                        // Note: If we are here, it means sanitize=false OR OCL failed.
-                        // If sanitize=true but OCL failed, we still try manual inference below.
-
-                        if (sanitize && order === 1) {
-                            const dist = bond.atom1.position.distanceTo(bond.atom2.position);
-                            const el1 = bond.atom1.element;
-                            const el2 = bond.atom2.element;
-
-                            if ((el1 === 'C' && el2 === 'C')) {
-                                if (dist < 1.25) order = 3;
-                                else if (dist < 1.38) order = 2;
-                                else if (dist < 1.45) order = 4;
-                            } else if ((el1 === 'C' && el2 === 'N') || (el1 === 'N' && el2 === 'C')) {
-                                if (dist < 1.22) order = 3;
-                                else if (dist < 1.35) order = 2;
-                            } else if ((el1 === 'C' && el2 === 'O') || (el1 === 'O' && el2 === 'C')) {
-                                if (dist < 1.30) order = 2;
-                            } else if ((el1 === 'N' && el2 === 'N')) {
-                                if (dist < 1.15) order = 3;
-                                else if (dist < 1.30) order = 2;
-                            }
-                        }
-
-                        bonds.push({ idx1, idx2, order: order });
-                        processedBonds.add(bond);
-                    }
-                }
-            });
-        });
-
-        // FALLBACK AUTO-BOND: If no bonds exist at all (e.g. raw XYZ)
-        if (bonds.length === 0 && atomCount > 1) {
-            console.log('[FileIO] No bonds found, applying fallback auto-bond for 2D export');
-            for (let i = 0; i < atomCount; i++) {
-                for (let j = i + 1; j < atomCount; j++) {
-                    const a1 = atoms[i];
-                    const a2 = atoms[j];
-                    const dist = a1.position.distanceTo(a2.position);
-                    // Use a slightly larger threshold for fallback auto-bond to catch more potential bonds
-                    if (dist < 1.9) {
-                        bonds.push({ idx1: i + 1, idx2: j + 1, order: 1 });
-                    }
-                }
-            }
-        }
-
-        // Counts line
-        const counts = `${atomCount.toString().padStart(3)}` +
-            `${bonds.length.toString().padStart(3)}` +
-            "  0  0  0  0  0  0  0  0999 V2000\n";
-        out += counts;
-
-        // Atom block
-        atoms.forEach(atom => {
-            const x = atom.position.x.toFixed(4).padStart(10);
-            const y = atom.position.y.toFixed(4).padStart(10);
-            const z = atom.position.z.toFixed(4).padStart(10);
-
-            let elem = atom.element || 'C'; // Default to C if missing
-            // Sanitize element (remove numbers, whitespace)
-            elem = elem.replace(/[^a-zA-Z]/g, '');
-            if (elem.length === 0) elem = 'C';
-            if (elem.length > 3) elem = elem.substring(0, 3);
-
-            if (elem === 'X') elem = '*'; // Map dummy to *
-
-            out += `${x}${y}${z} ${elem.padEnd(3)} 0  0  0  0  0  0  0  0  0  0  0  0\n`;
-        });
-
-        // Bond block
-        bonds.forEach(b => {
-            const i1 = b.idx1.toString().padStart(3);
-            const i2 = b.idx2.toString().padStart(3);
-            const type = (b.order || 1).toString().padStart(3); // Ensure valid order
-            out += `${i1}${i2}${type}  0  0  0  0\n`;
-        });
-
-        out += "M  END\n";
-        return out;
-    }
-
-    /**
-     * Convert atoms array to XYZ string
-     * @param {Object[]} atoms - Array of atom objects
-     * @returns {string} XYZ format string
-     */
-    atomsToXYZ(atoms) {
-        if (!atoms || atoms.length === 0) {
-            return '';
-        }
-
-        let xyz = `${atoms.length}\n`;
-        xyz += `Exported from Simpledit\n`; // Comment line
-
-        atoms.forEach(atom => {
-            const x = atom.position.x.toFixed(6);
-            const y = atom.position.y.toFixed(6);
-            const z = atom.position.z.toFixed(6);
-            xyz += `${atom.element.padEnd(3)} ${x.padStart(12)} ${y.padStart(12)} ${z.padStart(12)}\n`;
-        });
-
-        return xyz;
-    }
 
     /**
      * Convert atoms to JSON format

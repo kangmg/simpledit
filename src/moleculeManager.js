@@ -38,7 +38,7 @@ export class MoleculeManager {
             }
         }
 
-        const molecule = new Molecule();
+        const molecule = new Molecule(name);
         const entry = {
             id: this.nextId++,
             name: name,
@@ -136,6 +136,7 @@ export class MoleculeManager {
         const entry = this.molecules[index];
         const oldName = entry.name;
         entry.name = newName;
+        entry.molecule.name = newName; // Sync name to Molecule instance
 
         this.updateUI();
         return { success: `Renamed "${oldName}" to "${newName}"` };
