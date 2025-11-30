@@ -557,7 +557,7 @@ export class FileIOManager {
                     selectedAtomIndices.forEach(atomIdx => {
                         const coords = atomCoords[atomIdx];
                         if (coords) {
-                            highlightCircles.push(`<circle cx="${coords.x}" cy="${coords.y}" r="15" fill="#FFFF00" opacity="0.4" />`);
+                            highlightCircles.push(`<circle cx="${coords.x}" cy="${coords.y}" r="8" fill="#FFFF00" opacity="0.4" />`);
                         }
                     });
                 }
@@ -579,8 +579,8 @@ export class FileIOManager {
                                 const atom = frag[i];
                                 const originalIdx = this.editor.molecule.atoms.indexOf(atom);
 
-                                // Position: slightly right and up
-                                const labelX = coords.x + 8;
+                                // Position
+                                const labelX = coords.x + 4;
                                 const labelY = coords.y - 4;
 
                                 indexLabels.push(
@@ -660,7 +660,7 @@ export class FileIOManager {
                 // Removing "." makes "H" look shifted left relative to bond.
                 // We need to shift it RIGHT to re-center.
                 svg = svg.replace(/<text([^>]*x=")([-\d.]+)([^>]*>H)\.<\/text>/g, (match, prefix, xVal, suffix) => {
-                    const newX = parseFloat(xVal) + 2; // Shift 2 pixels right
+                    const newX = parseFloat(xVal) + 3; // Shift 3 pixels right
                     return `<text${prefix}${newX}${suffix}</text>`;
                 });
 
