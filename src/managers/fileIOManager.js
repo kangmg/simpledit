@@ -102,14 +102,134 @@ export class FileIOManager {
             // Ensure OCL resources are initialized
             await oclManager.init();
 
-            // 1. Parse molecule from MolBlock
-            const mol = OCL.Molecule.fromMolfile(molBlock);
+            // Strategy for Dummy Atoms with Hydrogens (Fluorine Placeholder + Index Reversion)
+            // User requested: Replace Dummy with Fluorine (AtomicNo 9) -> Add Hydrogens -> Revert by Index
+            // Fluorine is monovalent (Valence 1) like            // 1. Pre-process MolBlock: Substitute '*' with 'F' in the string directly
+            // This ensures OCL parses them as Fluorine initially, allowing correct implicit hydrogen calculation.
+            const dummyIndices = [];
+            const molLines = molBlock.split('\n');
 
-            // 2. Generate fresh 3D coordinates
-            const mol3D = await oclManager.generate3D(mol);
+            // Find Atom Count Line (V2000)
+            // Look for line ending with V2000 or just the counts line (4th line usually)
+            // But to be safe, we look for the counts line pattern.
+            // Standard: 3 header lines, then counts line.
+            // Counts line: aa bb ... V2000
+            let atomCountLineIdx = -1;
+            for (let i = 0; i < molLines.length; i++) {
+                if (molLines[i].includes('V2000')) {
+                    atomCountLineIdx = i;
+                    break;
+                }
+            }
 
-            // 3. Import to editor
-            const newMolBlock = mol3D.toMolfile();
+            if (atomCountLineIdx === -1) {
+                // Fallback: assume line 3 (0-based) if V2000 tag missing (rare but possible in loose formats)
+                atomCountLineIdx = 3;
+            }
+
+            let atomCount = 0;
+            if (molLines[atomCountLineIdx]) {
+                const parts = molLines[atomCountLineIdx].trim().split(/\s+/);
+                atomCount = parseInt(parts[0]);
+            }
+
+            const startIdx = atomCountLineIdx + 1;
+
+            for (let i = 0; i < atomCount; i++) {
+                const line = molLines[startIdx + i];
+                if (!line) continue;
+
+                // V2000: Symbol is at columns 31-33 (1-based in spec, so 30-33 in 0-based string?)
+                // Spec: x(10)y(10)z(10) (space) symbol(3)
+                // 0-9: x, 10-19: y, 20-29: z, 30: space, 31-33: symbol
+                // Let's be flexible and just check the substring or regex the line.
+                // But replacing by index is safest to avoid touching other fields.
+
+                // Check if line is long enough
+                if (line.length >= 34) {
+                    const symbol = line.substring(31, 34).trim();
+                    if (symbol === '*') {
+                        dummyIndices.push(i);
+                        console.log(`[updateFromMolBlock] Found Dummy '*' at index ${i} in MolBlock string. Replacing with 'F'.`);
+                        // Replace with 'F  ' (F + 2 spaces) to maintain alignment
+                        molLines[startIdx + i] = line.substring(0, 31) + 'F  ' + line.substring(34);
+                    }
+                } else {
+                    // Loose format handling (e.g. space separated)
+                    // If the line is short, maybe it's not fixed width. 
+                    // Try regex replacement for the 4th column? Too risky.
+                    // Let's assume standard V2000 for now as OCL generates it.
+                    // Or try to find '*' surrounded by spaces?
+                    const parts = line.trim().split(/\s+/);
+                    if (parts[3] === '*') {
+                        dummyIndices.push(i);
+                        console.log(`[updateFromMolBlock] Found Dummy '*' (loose format) at index ${i}. Replacing with 'F'.`);
+                        molLines[startIdx + i] = line.replace(/\*/, 'F');
+                    }
+                }
+            }
+
+            const processingMolBlock = molLines.join('\n');
+
+            // 2. Parse the modified MolBlock
+            let mol = OCL.Molecule.fromMolfile(processingMolBlock);
+            console.log(`[updateFromMolBlock] Total atoms after parsing: ${mol.getAllAtoms()}`);
+
+            // Verify substitution
+            dummyIndices.forEach(idx => {
+                if (mol.getAtomicNo(idx) !== 9) {
+                    console.warn(`[updateFromMolBlock] Warning: Index ${idx} is not Fluorine after parsing! (AtomicNo: ${mol.getAtomicNo(idx)})`);
+                }
+            });
+
+            // 3. Add implicit hydrogens BEFORE 3D generation
+            console.log('[updateFromMolBlock] Adding implicit hydrogens BEFORE 3D generation...');
+            mol.addImplicitHydrogens();
+            console.log(`[updateFromMolBlock] After H addition: ${mol.getAllAtoms()} atoms`);
+
+            // Print all atoms for debugging
+            for (let i = 0; i < mol.getAllAtoms(); i++) {
+                console.log(`  Atom ${i}: AtomicNo=${mol.getAtomicNo(i)}, Label=${mol.getAtomLabel(i)}`);
+            }
+
+            // 3. Generate fresh 3D coordinates
+            // IMPORTANT: We use ConformerGenerator DIRECTLY instead of oclManager.generate3D()
+            // because generate3D() calls addImplicitHydrogens() again, which would duplicate hydrogens!
+            console.log('[updateFromMolBlock] Calling ConformerGenerator directly...');
+
+            const generator = new OCL.ConformerGenerator(42);
+            const mol3D = generator.getOneConformerAsMolecule(mol);
+
+            if (!mol3D) {
+                throw new Error('Conformer generation failed');
+            }
+
+            console.log(`[updateFromMolBlock] 3D generation complete. Total atoms: ${mol3D.getAllAtoms()}`);
+
+            // Print all atoms after 3D for debugging
+            for (let i = 0; i < mol3D.getAllAtoms(); i++) {
+                console.log(`  Atom ${i}: AtomicNo=${mol3D.getAtomicNo(i)}, Label=${mol3D.getAtomLabel(i)}`);
+            }
+
+            // 4. Post-process: Restore Dummies by Index
+            if (dummyIndices.length > 0) {
+                console.log('[updateFromMolBlock] Reverting Fluorine to Dummy...');
+                dummyIndices.forEach(idx => {
+                    if (mol3D.getAtomicNo(idx) === 9) {
+                        mol3D.setAtomicNo(idx, 0);
+                        console.log(`[updateFromMolBlock] Reverted index ${idx} to Dummy`);
+                    } else {
+                        console.warn(`[updateFromMolBlock] Index ${idx} not Fluorine after 3D (found ${mol3D.getAtomicNo(idx)})`);
+                    }
+                });
+            }
+
+            // 5. Import to editor
+            let newMolBlock = mol3D.toMolfile();
+
+            // Standardize Dummy Atoms (A/? -> *) for export consistency
+            newMolBlock = newMolBlock.replace(/^(\s+[0-9.-]+\s+[0-9.-]+\s+[0-9.-]+\s+)[?A](\s+)/gm, '$1*$2');
+
             console.log('[updateFromMolBlock] Generated MolBlock:', newMolBlock);
 
             return this.importSDF(newMolBlock, {
