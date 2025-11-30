@@ -489,48 +489,41 @@ export class FileIOManager {
                     }
                 }
 
-                // 2. Apply Labels and Track Selected Atoms
+                // 2. Prepare Labels and Map Numbers
+                // We use setAtomMapNo to get exact SVG coordinates via data attributes.
+                // This is non-intrusive and doesn't break OCL's layout algorithms.
+
                 const atomCount = mol.getAllAtoms();
-                const selectedAtomIndices = []; // Track which atoms are selected
+                const selectedAtomIndices = [];
 
                 for (let i = 0; i < atomCount; i++) {
-                    // Determine if this is an original atom (from fragment)
+                    // Track selected atoms
                     let isOriginal = i < frag.length;
                     let atom = isOriginal ? frag[i] : null;
-
-                    // Track selected atoms (but DON'T change their color)
                     if (isOriginal && atom && atom.selected) {
                         selectedAtomIndices.push(i);
                     }
 
-                    // Label Logic
+                    // Set Map No to index (this renders as data-atom-map-no in SVG)
+                    mol.setAtomMapNo(i, i, false);
+
+                    // Handle Labels
                     const atomicNo = mol.getAtomicNo(i);
 
                     if (showLabels) {
-                        // Get element symbol
-                        let elem = mol.getAtomLabel(i);
-                        if (!elem) {
-                            if (atomicNo === 1) elem = 'H';
-                            else if (atomicNo === 6) elem = 'C';
-                            else elem = '?';
-                        }
+                        // Labels ON:
+                        // OCL will show Element symbol by default.
+                        // We will add Index separately in post-processing.
+                        // For Hydrogen, we want "H" (or "H:idx" style, but we'll do that manually)
 
-                        // Construct label
-                        let labelIdx;
-                        if (isOriginal && atom) {
-                            labelIdx = this.editor.molecule.atoms.indexOf(atom);
-                        } else {
-                            labelIdx = i;
-                        }
-
-                        // For Hydrogen atoms, use H:Index format
+                        // Ensure Hydrogens are labeled "H." (dot trick) to prevent stripping
+                        // We will remove the dot in post-processing
                         if (atomicNo === 1) {
-                            mol.setAtomCustomLabel(i, `H:${labelIdx}`);
-                        } else {
-                            mol.setAtomCustomLabel(i, `${elem}:${labelIdx}`);
+                            mol.setAtomCustomLabel(i, "H.");
                         }
                     } else {
-                        // If labels are OFF, only set labels for Hydrogens
+                        // Labels OFF:
+                        // Hide Carbon (default), Show Hydrogen as "H."
                         if (atomicNo === 1) {
                             mol.setAtomCustomLabel(i, "H.");
                         }
@@ -541,51 +534,69 @@ export class FileIOManager {
                 mol.inventCoordinates();
 
                 // 4. Scale Coordinates (User Request)
-                // mol.scaleCoords(1);
+                // mol.scaleCoords(1.0); // Keep default scaling
 
                 // 5. Generate SVG
                 let svg = mol.toSVG(1200, 900);
 
-                // 6. Post-process: Highlight Injection
-                // Find text elements for selected atoms and draw yellow circles behind them
+                // 6. Parse Coordinates from Map Numbers
+                // OCL renders: <circle ... data-atom-map-no="123" cx="..." cy="..." ... />
+                const atomCoords = {};
+                const mapNoRegex = /<circle[^>]*data-atom-map-no="(\d+)"[^>]*cx="([-\d.]+)"[^>]*cy="([-\d.]+)"/g;
+                let match;
+                while ((match = mapNoRegex.exec(svg)) !== null) {
+                    const idx = parseInt(match[1]);
+                    const x = parseFloat(match[2]);
+                    const y = parseFloat(match[3]);
+                    atomCoords[idx] = { x, y };
+                }
+
+                // 7. Inject Highlights (Yellow Circles)
                 const highlightCircles = [];
-
                 if (selectedAtomIndices.length > 0) {
-                    // Parse all text elements to find those corresponding to selected atoms
-                    const textMatches = [...svg.matchAll(/<text[^>]*x="([-\d.]+)"[^>]*y="([-\d.]+)"[^>]*>([^<]+)<\/text>/g)];
-
                     selectedAtomIndices.forEach(atomIdx => {
-                        // Find the text element for this atom
-                        // The atom index in the molecule corresponds to the order of text elements
-                        // BUT we need to be careful because H atoms might have been added
-
-                        // For now, let's use a simpler approach: highlight ALL Carbon atoms if any are selected
-                        // This is a approximation, but more reliable
-                        textMatches.forEach(match => {
-                            const x = parseFloat(match[1]);
-                            const y = parseFloat(match[2]);
-                            const content = match[3];
-
-                            // Check if this is a selected atom's label
-                            // For atoms in the original fragment, we can check the index in the label
-                            if (atomIdx < frag.length) {
-                                const originalIdx = this.editor.molecule.atoms.indexOf(frag[atomIdx]);
-                                if (content.includes(`:${originalIdx}`)) {
-                                    // This is the selected atom's label
-                                    highlightCircles.push(`<circle cx="${x}" cy="${y}" r="20" fill="#FFFF00" opacity="0.4" />`);
-                                }
-                            }
-                        });
+                        const coords = atomCoords[atomIdx];
+                        if (coords) {
+                            highlightCircles.push(`<circle cx="${coords.x}" cy="${coords.y}" r="15" fill="#FFFF00" opacity="0.4" />`);
+                        }
                     });
                 }
 
-                // Inject circles at the beginning (so they appear behind the molecule)
+                // Inject circles at the beginning
                 if (highlightCircles.length > 0) {
                     const insertPos = svg.indexOf('>') + 1;
                     svg = svg.slice(0, insertPos) + highlightCircles.join('') + svg.slice(insertPos);
                 }
 
-                // Crop Logic
+                // 8. Inject Index Labels (Red)
+                if (showLabels) {
+                    const indexLabels = [];
+                    for (let i = 0; i < atomCount; i++) {
+                        // Only label original atoms
+                        if (i < frag.length) {
+                            const coords = atomCoords[i];
+                            if (coords) {
+                                const atom = frag[i];
+                                const originalIdx = this.editor.molecule.atoms.indexOf(atom);
+
+                                // Position: slightly right and up
+                                const labelX = coords.x + 8;
+                                const labelY = coords.y - 4;
+
+                                indexLabels.push(
+                                    `<text x="${labelX}" y="${labelY}" font-size="7" fill="red" font-weight="bold">${originalIdx}</text>`
+                                );
+                            }
+                        }
+                    }
+
+                    if (indexLabels.length > 0) {
+                        const insertPos = svg.lastIndexOf('</svg>');
+                        svg = svg.slice(0, insertPos) + indexLabels.join('') + svg.slice(insertPos);
+                    }
+                }
+
+                // 9. Crop Logic (Calculate Bounding Box)
                 let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
 
                 const updateBounds = (x, y) => {
@@ -597,25 +608,14 @@ export class FileIOManager {
                     }
                 };
 
-                // Parse <line> (Bonds)
+                // Parse lines
                 const lineRegex = /<line[^>]*x1="([-\d.]+)"[^>]*y1="([-\d.]+)"[^>]*x2="([-\d.]+)"[^>]*y2="([-\d.]+)"/g;
-                let match;
                 while ((match = lineRegex.exec(svg)) !== null) {
                     updateBounds(parseFloat(match[1]), parseFloat(match[2]));
                     updateBounds(parseFloat(match[3]), parseFloat(match[4]));
                 }
 
-                // Parse <polygon> (Wedges)
-                const polyRegex = /<polygon[^>]*points="([^"]+)"/g;
-                while ((match = polyRegex.exec(svg)) !== null) {
-                    const points = match[1].split(/\s+/);
-                    points.forEach(p => {
-                        const [x, y] = p.split(',').map(parseFloat);
-                        updateBounds(x, y);
-                    });
-                }
-
-                // Parse <text> (Labels)
+                // Parse text
                 const textRegex = /<text[^>]*x="([-\d.]+)"[^>]*y="([-\d.]+)"[^>]*>([^<]*)<\/text>/g;
                 while ((match = textRegex.exec(svg)) !== null) {
                     const x = parseFloat(match[1]);
@@ -628,32 +628,18 @@ export class FileIOManager {
                     updateBounds(x + textLen / 2, y + fontSize / 2);
                 }
 
-                // Parse <path> (General)
-                const pathTagRegex = /<path[^>]*d="([^"]+)"[^>]*>/g;
-                while ((match = pathTagRegex.exec(svg)) !== null) {
-                    const d = match[1];
-                    if (d.length < 5 && !d.match(/\d/)) continue;
-
-                    const coords = d.match(/([-\d.]+)[ ,]([-\d.]+)/g);
-                    if (coords) {
-                        coords.forEach(pair => {
-                            const nums = pair.match(/([-\d.]+)/g);
-                            if (nums && nums.length >= 2) {
-                                updateBounds(parseFloat(nums[0]), parseFloat(nums[1]));
-                            }
-                        });
-                    }
+                // Parse circles (highlights)
+                // We know highlights are at atomCoords with r=15
+                if (highlightCircles.length > 0) {
+                    Object.values(atomCoords).forEach(coords => {
+                        updateBounds(coords.x - 15, coords.y - 15);
+                        updateBounds(coords.x + 15, coords.y + 15);
+                    });
                 }
 
-                // Include Highlight Circles in Bounds
-                // We parsed them earlier, but we need to ensure they are inside the viewbox
-                // We don't have their coords handy in a list unless we reused them.
-                // But since they are centered on text, and text is included, we just need to add padding.
-
-                // Update viewBox
                 if (minX < Infinity && maxX > -Infinity) {
-                    // Add padding (generous for highlights)
-                    const padding = 30;
+                    // Add padding
+                    const padding = 20;
                     minX -= padding;
                     minY -= padding;
                     maxX += padding;
@@ -664,62 +650,25 @@ export class FileIOManager {
                     svg = svg.replace(/viewBox="[^"]*"/, `viewBox="${minX} ${minY} ${w} ${h}"`);
                 }
 
-                // Post-process Styles
+                // 10. Post-process Styles
                 // Reduce font size and stroke width
                 svg = svg.replace(/font-size="14"/g, 'font-size="10"');
                 svg = svg.replace(/stroke-width="1.44"/g, 'stroke-width="1.2"');
 
-                // When labels are ON, scale font to 0.7x for better readability
-                if (showLabels) {
-                    svg = svg.replace(/font-size="10"/g, 'font-size="5"');
-                }
-
-                // Clean up H. labels when labels are OFF
-                if (!showLabels) {
-                    svg = svg.replace(/>H\.<\/text>/g, '>H</text>');
-                }
-
-                // Remove mass number "1" superscripts from Hydrogens
-                // OCL renders isotopes with two text elements: "H" and a smaller "1" above it
-                // We want to hide the "1" to show just "H"
-                // Pattern: <text ... font-size="9" ...>1</text> (mass number is rendered at font-size 9)
-                // ALSO: After removing "1", we need to shift the "H" text slightly left to center it
-
-                // Find all mass "1" elements and their positions
-                const massMatches = [...svg.matchAll(/<text[^>]*x="([-\d.]+)"[^>]*y="([-\d.]+)"[^>]*font-size="9"[^>]*>1<\/text>/g)];
-
-                // For each mass "1", find the corresponding "H" text that comes after it
-                // and adjust its x coordinate
-                massMatches.forEach(match => {
-                    const massX = parseFloat(match[1]);
-                    const massY = parseFloat(match[2]);
-
-                    // The "H" text is usually at similar Y (around massY + 5-6) and X (around massX + 5)
-                    // We'll search for text near this position
-                    const hPattern = new RegExp(
-                        `<text x="(${massX + 3},${massX + 7})" y="(${massY + 4},${massY + 7})"[^>]*font-size="14"[^>]*>H[.:]*</text>`.replace(/,/g, '|')
-                    );
-
-                    // Actually, let's use a simpler approach: find H text that appears shortly after the mass "1"
-                    // in the SVG string, and shift it left by ~5 pixels
+                // Clean up H. labels: Remove dot AND shift right to center
+                // "H." is centered by OCL. "H" is narrower.
+                // Removing "." makes "H" look shifted left relative to bond.
+                // We need to shift it RIGHT to re-center.
+                svg = svg.replace(/<text([^>]*x=")([-\d.]+)([^>]*>H)\.<\/text>/g, (match, prefix, xVal, suffix) => {
+                    const newX = parseFloat(xVal) + 2; // Shift 2 pixels right
+                    return `<text${prefix}${newX}${suffix}</text>`;
                 });
 
-                // Remove mass number elements
-                svg = svg.replace(/<text[^>]*font-size="9"[^>]*>1<\/text>\s*/g, (match) => {
-                    // After removing, we need to shift the next H text
-                    // This is complex with regex, so let's do it differently:
-                    // We'll do a two-pass approach
-                    return '<!--REMOVED_MASS-->';
-                });
+                // Remove mass number "1" superscripts from Hydrogens (if any remain)
+                // Pattern: <text ... font-size="9" ...>1</text>
+                svg = svg.replace(/<text[^>]*font-size="9"[^>]*>1<\/text>/g, '');
 
-                // Now find H texts that come right after REMOVED_MASS markers and shift them
-                svg = svg.replace(/<!--REMOVED_MASS-->\s*<text x="([-\d.]+)"([^>]*font-size="1[04]"[^>]*)>(H[.:]*)<\/text>/g,
-                    (match, xVal, attrs, content) => {
-                        const newX = parseFloat(xVal) + 3; // Shift 3 pixels right to center
-                        return `<text x="${newX}"${attrs}>${content}</text>`;
-                    });
-
-                // Remove markers
+                // Clean up any remaining artifacts
                 svg = svg.replace(/<!--REMOVED_MASS-->/g, '');
 
                 svgs.push(svg);
