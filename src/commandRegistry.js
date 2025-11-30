@@ -92,20 +92,24 @@ export class CommandRegistry {
         });
 
         // List command (Consolidated)
-        this.register('list', ['ls', 'l'], 'list [mols|frags|atoms] [options] - List objects', (args) => {
-            const type = args.length > 0 && !args[0].startsWith('-') ? args[0].toLowerCase() : 'atoms';
+        this.register('list', ['ls', 'l'], 'list <mols|atoms|frags> [options] - List objects', (args) => {
+            if (args.length === 0) {
+                return { error: 'Usage: list <mols|atoms|frags>' };
+            }
 
-            if (type === 'mols' || type === 'molecules') {
+            const type = args[0].toLowerCase();
+
+            if (['mols', 'mol', 'molecule', 'molecules'].includes(type)) {
                 const molecules = this.editor.moleculeManager.molecules;
                 const activeIndex = this.editor.moleculeManager.activeMoleculeIndex;
-                let output = '';
+                let output = `Loaded Molecules (${molecules.length}):\n`;
                 molecules.forEach((entry, i) => {
                     const active = i === activeIndex ? '*' : ' ';
                     output += `${active} ${i}: ${entry.name} (${entry.molecule.atoms.length} atoms)\n`;
                 });
                 return { info: output };
             }
-            else if (type === 'frags' || type === 'fragments') {
+            else if (['frags', 'fragments'].includes(type)) {
                 const visited = new Set();
                 const fragments = [];
                 this.editor.molecule.atoms.forEach(atom => {
@@ -123,8 +127,8 @@ export class CommandRegistry {
                 });
                 return { info: output };
             }
-            else { // Default: list atoms
-                const selectedOnly = args.includes('-s') || args.includes('--selected') || (args[0] === 'selected'); // Backward compat
+            else if (['atoms', 'atom'].includes(type)) {
+                const selectedOnly = args.includes('-s') || args.includes('--selected');
                 const atoms = selectedOnly
                     ? this.editor.molecule.atoms.filter(a => a.selected)
                     : this.editor.molecule.atoms;
@@ -138,6 +142,9 @@ export class CommandRegistry {
                     output += `${idx}: ${atom.element} (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})\n`;
                 });
                 return { info: output };
+            }
+            else {
+                return { error: `Unknown list type: ${type}. Use 'mols', 'atoms', or 'frags'.` };
             }
         });
 

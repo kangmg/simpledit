@@ -30,6 +30,7 @@ export class UIManager {
         this.bindCoordinateEditorButton();
         this.bindJSMEButton();
         this.bindBondThresholdSlider();
+        this.bindConsoleButton();
         console.log('UIManager: Toolbar events bound');
     }
 
@@ -114,6 +115,20 @@ export class UIManager {
         const btnExport = document.getElementById('btn-export-png');
         if (btnExport) {
             btnExport.onclick = () => this.exportPNG();
+        }
+    }
+
+    /**
+     * Bind console toggle button
+     */
+    bindConsoleButton() {
+        const btnConsole = document.getElementById('btn-toggle-console');
+        if (btnConsole) {
+            btnConsole.onclick = () => {
+                if (this.editor.console) {
+                    this.editor.console.toggle();
+                }
+            };
         }
     }
 

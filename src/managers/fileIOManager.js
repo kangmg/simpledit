@@ -17,6 +17,18 @@ export class FileIOManager {
         }
     }
 
+    resetMolecules() {
+        const mm = this.editor.moleculeManager;
+        // Remove all molecules starting from the last one, down to index 1
+        while (mm.molecules.length > 1) {
+            mm.removeMolecule(mm.molecules.length - 1);
+        }
+        // Reset the remaining one
+        mm.switchMolecule(0);
+        this.editor.molecule.clear();
+        mm.renameMolecule(0, "Molecule 1");
+    }
+
     async processInitialArgs(args) {
         for (const arg of args) {
             await this.loadLocalFile(arg);
@@ -91,68 +103,100 @@ export class FileIOManager {
      * @param {boolean} [options.generate3D=false] - Use OpenChemLib to generate 3D coordinates
      * @param {boolean} [options.addHydrogens=false] - Use OpenChemLib to add explicit hydrogens
      */
-    async importSMILES(smiles, options = {}) {
+    async importSMILES(content, options = {}) {
         const { shouldClear = true, autoBond = false, generate3D = false, addHydrogens = false } = options;
 
         try {
-            let molBlock;
+            // Split by newline to handle multiple SMILES
+            const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-            // Strategy for Dummy Atoms with Hydrogens:
-            // OCL treats '*' as 'Any' (valence 0/unknown), so it doesn't add hydrogens to neighbors correctly.
-            // We temporarily replace '*' with '[2H]' (Deuterium, valence 1) to force correct valence.
-            // Then we post-process the MolBlock to turn Deuterium back into 'X' (Dummy).
-            let processingSmiles = smiles;
-            let usedDeuteriumTrick = false;
+            if (lines.length === 0) return;
 
-            if (addHydrogens && smiles.includes('*')) {
-                processingSmiles = smiles.replace(/\[\*\]/g, '[2H]').replace(/\*/g, '[2H]');
-                usedDeuteriumTrick = true;
+            if (shouldClear) {
+                this.resetMolecules();
             }
 
-            if (generate3D) {
-                // Use OCL for 3D generation (implies explicit hydrogens)
-                const mol3D = await oclManager.generate3D(processingSmiles);
-                molBlock = mol3D.toMolfile();
-            } else if (addHydrogens) {
-                // Use OCL for explicit hydrogens (2D)
-                molBlock = await oclManager.addHydrogens(processingSmiles);
-            } else {
-                // Use OCL for standard 2D (implicit hydrogens) - Replaces RDKit
-                // This ensures consistent behavior across all SMILES imports
-                // Fallback to RDKit if OCL fails (e.g. aromaticity issues)
-                try {
-                    const mol = OCL.Molecule.fromSmiles(processingSmiles);
-                    molBlock = mol.toMolfile();
-                } catch (e) {
-                    console.warn('[importSMILES] OCL failed, trying RDKit fallback:', e);
-                    try {
-                        molBlock = await rdkitManager.smilesToMolBlock(processingSmiles);
-                    } catch (rdkitError) {
-                        console.error('[importSMILES] RDKit fallback failed:', rdkitError);
-                        throw e; // Throw original OCL error as it's likely more relevant
-                    }
-                }
-            }
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                // Parse SMILES and Name: "SMILES Name" or just "SMILES"
+                const parts = line.split(/\s+/);
+                const smiles = parts[0];
+                const name = parts.length > 1 ? parts.slice(1).join(' ') : `Molecule ${this.editor.moleculeManager.molecules.length + 1}`;
 
-            // Post-process MolBlock
-            if (molBlock) {
-                // 1. Fix Deuterium Trick (convert [2H] back to X)
-                if (usedDeuteriumTrick) {
-                    molBlock = this.convertDeuteriumToDummy(molBlock);
+                if (i > 0 || !shouldClear) {
+                    this.editor.moleculeManager.createMolecule(name);
+                } else {
+                    // First molecule (already reset), just rename
+                    if (parts.length > 1) this.editor.moleculeManager.renameMolecule(0, name);
                 }
 
-                // 2. Standard Dummy Atom Fix (Replace "A" with "X")
-                // OCL converts "*" in SMILES to "A" in Molfile (if we didn't use the trick).
-                molBlock = molBlock.replace(/^(\s+[0-9.-]+\s+[0-9.-]+\s+[0-9.-]+\s+)A(\s+)/gm, '$1X$2');
+                await this.importSingleSMILES(smiles, { shouldClear: true, autoBond, generate3D, addHydrogens });
             }
 
-            // Import the generated MolBlock (SDF/Mol format)
-            return this.importSDF(molBlock, { shouldClear, autoBond });
+            this.editor.moleculeManager.updateUI();
+            return ErrorHandler.success(`Imported ${lines.length} molecules from SMILES`);
 
         } catch (error) {
             ErrorHandler.logError('FileIOManager.importSMILES', error);
             return ErrorHandler.error('Failed to import SMILES', error.message);
         }
+    }
+
+    async importSingleSMILES(smiles, options) {
+        const { shouldClear, autoBond, generate3D, addHydrogens } = options;
+        let molBlock;
+
+        // Strategy for Dummy Atoms with Hydrogens:
+        // OCL treats '*' as 'Any' (valence 0/unknown), so it doesn't add hydrogens to neighbors correctly.
+        // We temporarily replace '*' with '[2H]' (Deuterium, valence 1) to force correct valence.
+        // Then we post-process the MolBlock to turn Deuterium back into 'X' (Dummy).
+        let processingSmiles = smiles;
+        let usedDeuteriumTrick = false;
+
+        if (addHydrogens && smiles.includes('*')) {
+            processingSmiles = smiles.replace(/\[\*\]/g, '[2H]').replace(/\*/g, '[2H]');
+            usedDeuteriumTrick = true;
+        }
+
+        if (generate3D) {
+            // Use OCL for 3D generation (implies explicit hydrogens)
+            const mol3D = await oclManager.generate3D(processingSmiles);
+            molBlock = mol3D.toMolfile();
+        } else if (addHydrogens) {
+            // Use OCL for explicit hydrogens (2D)
+            molBlock = await oclManager.addHydrogens(processingSmiles);
+        } else {
+            // Use OCL for standard 2D (implicit hydrogens) - Replaces RDKit
+            // This ensures consistent behavior across all SMILES imports
+            // Fallback to RDKit if OCL fails (e.g. aromaticity issues)
+            try {
+                const mol = OCL.Molecule.fromSmiles(processingSmiles);
+                molBlock = mol.toMolfile();
+            } catch (e) {
+                console.warn('[importSMILES] OCL failed, trying RDKit fallback:', e);
+                try {
+                    molBlock = await rdkitManager.smilesToMolBlock(processingSmiles);
+                } catch (rdkitError) {
+                    console.error('[importSMILES] RDKit fallback failed:', rdkitError);
+                    throw e; // Throw original OCL error as it's likely more relevant
+                }
+            }
+        }
+
+        // Post-process MolBlock
+        if (molBlock) {
+            // 1. Fix Deuterium Trick (convert [2H] back to X)
+            if (usedDeuteriumTrick) {
+                molBlock = this.convertDeuteriumToDummy(molBlock);
+            }
+
+            // 2. Standard Dummy Atom Fix (Replace "A" with "X")
+            // OCL converts "*" in SMILES to "A" in Molfile (if we didn't use the trick).
+            molBlock = molBlock.replace(/^(\s+[0-9.-]+\s+[0-9.-]+\s+[0-9.-]+\s+)A(\s+)/gm, '$1X$2');
+        }
+
+        // Import the generated MolBlock (SDF/Mol format)
+        return this.importSingleSDF(molBlock, { shouldClear, autoBond });
     }
 
     /**
@@ -346,6 +390,42 @@ export class FileIOManager {
                 sdfString = String(sdfString);
             }
 
+            // Split by $$$$
+            const blocks = sdfString.split('$$$$').filter(b => b.trim().length > 0);
+
+            if (blocks.length === 0) return;
+
+            if (shouldClear) {
+                this.resetMolecules();
+            }
+
+            blocks.forEach((block, i) => {
+                // Extract name from first line
+                const lines = block.split('\n');
+                let name = lines[0].trim() || `Molecule ${this.editor.moleculeManager.molecules.length + 1}`;
+
+                if (i > 0 || !shouldClear) {
+                    this.editor.moleculeManager.createMolecule(name);
+                } else {
+                    this.editor.moleculeManager.renameMolecule(0, name);
+                }
+
+                this.importSingleSDF(block, { shouldClear: true, autoBond });
+            });
+
+            this.editor.moleculeManager.updateUI();
+            return ErrorHandler.success(`Imported ${blocks.length} molecules`);
+
+        } catch (error) {
+            ErrorHandler.logError('FileIOManager.importSDF', error);
+            return ErrorHandler.error('Failed to import SDF', error.message);
+        }
+    }
+
+    importSingleSDF(sdfString, options = {}) {
+        const { shouldClear = true, autoBond = false } = options;
+
+        try {
             if (shouldClear) {
                 this.editor.molecule.clear();
             }
@@ -1233,16 +1313,60 @@ export class FileIOManager {
      */
     importXYZ(xyz, options = {}) {
         const { shouldClear = true, autoBond = false } = options;
+        if (!xyz) return ErrorHandler.error('Empty XYZ data');
+
+        const lines = xyz.trim().split('\n');
+        let currentIndex = 0;
+        let moleculeCount = 0;
+
+        if (shouldClear) {
+            this.resetMolecules();
+        }
+
+        while (currentIndex < lines.length) {
+            const countLine = lines[currentIndex].trim();
+            if (!countLine) {
+                currentIndex++;
+                continue;
+            }
+
+            const atomCount = parseInt(countLine);
+            if (isNaN(atomCount)) {
+                console.warn(`Invalid XYZ atom count at line ${currentIndex}: ${countLine}`);
+                break;
+            }
+
+            const commentLine = (currentIndex + 1 < lines.length) ? lines[currentIndex + 1].trim() : '';
+            const name = commentLine || `Molecule ${this.editor.moleculeManager.molecules.length + 1}`;
+
+            if (moleculeCount > 0 || !shouldClear) {
+                this.editor.moleculeManager.createMolecule(name);
+            } else {
+                this.editor.moleculeManager.renameMolecule(0, name);
+            }
+
+            // Extract block
+            const endIndex = Math.min(currentIndex + 2 + atomCount, lines.length);
+            const blockLines = lines.slice(currentIndex, endIndex);
+            const block = blockLines.join('\n');
+
+            this.importSingleXYZ(block, { shouldClear: true, autoBond });
+
+            currentIndex = endIndex;
+            moleculeCount++;
+        }
+
+        this.editor.moleculeManager.updateUI();
+        return ErrorHandler.success(`Imported ${moleculeCount} molecules from XYZ`);
+    }
+
+    importSingleXYZ(xyz, options = {}) {
+        const { shouldClear = true, autoBond = false } = options;
 
         if (!xyz) return ErrorHandler.error('Empty XYZ data');
 
         const lines = xyz.trim().split('\n');
         if (lines.length < 3) return ErrorHandler.error('Invalid XYZ format (too few lines)');
-
-        // Check for multi-frame XYZ (animation)
-        // If we find multiple count lines, it's a trajectory.
-        // For now, we just take the first frame or split if needed.
-        // But simpledit is single-frame editor mostly.
 
         // Parse atom count
         const atomCount = parseInt(lines[0].trim());

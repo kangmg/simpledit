@@ -366,22 +366,23 @@ select:hover {
 .action-icon-btn {
     width: 44px;
     height: 44px;
-    background: rgba(30, 30, 30, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    border: 1px solid transparent;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #e0e0e0;
+    color: #888;
     transition: all 0.2s;
-    backdrop-filter: blur(10px);
 }
 
 .action-icon-btn:hover {
-    background: rgba(40, 40, 40, 0.95);
-    border-color: rgba(187, 134, 252, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #e0e0e0;
+    color: #e0e0e0;
     transform: translateY(-2px);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
 .action-icon-btn:active {
