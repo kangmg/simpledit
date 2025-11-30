@@ -11,6 +11,55 @@ import OCL from 'openchemlib';
 export class FileIOManager {
     constructor(editor) {
         this.editor = editor;
+        this.fileInput = document.getElementById('file-input');
+        if (this.fileInput) {
+            this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        }
+    }
+
+    async processInitialArgs(args) {
+        for (const arg of args) {
+            await this.loadLocalFile(arg);
+        }
+    }
+
+    async loadLocalFile(path) {
+        try {
+            const content = await this.readLocalFile(path);
+            const ext = path.split('.').pop().toLowerCase();
+
+            if (ext === 'inp') {
+                await this.runScript(content);
+            } else if (['xyz', 'sdf', 'mol', 'smi'].includes(ext)) {
+                this.loadContent(content, ext);
+                console.log(`Loaded file: ${path}`);
+            } else {
+                console.error(`Unsupported file extension: ${ext}`);
+            }
+        } catch (error) {
+            console.error(`Error loading file ${path}:`, error);
+        }
+    }
+
+    async readLocalFile(path) {
+        const response = await fetch(`/api/read?path=${encodeURIComponent(path)}`);
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to read file');
+        }
+        const data = await response.json();
+        return data.content;
+    }
+
+    async runScript(content) {
+        const lines = content.split('\n');
+        for (let line of lines) {
+            line = line.trim();
+            if (line && !line.startsWith('#')) {
+                console.log(`Executing: ${line}`);
+                await this.editor.commandRegistry.execute(line);
+            }
+        }
     }
 
     // ... (skipping unchanged parts)

@@ -50,6 +50,10 @@ export class Editor {
         this.historyIndex = -1;
         this.saveState(); // Initialize with empty state
 
+        // Local Mode
+        this.isLocalMode = false;
+        this.initialArgs = [];
+
         // Flags to track if we're currently adjusting geometry (for undo/redo)
         this.lengthAdjusting = false;
         this.angleAdjusting = false;
@@ -1032,9 +1036,27 @@ export class Editor {
         this.uiManager.updateLabelPositions();
     }
 
+    async checkLocalMode() {
+        try {
+            const response = await fetch('/api/init');
+            if (response.ok) {
+                const data = await response.json();
+                this.isLocalMode = true;
+                this.initialArgs = data.args || [];
+                console.log('Running in Local Mode. Args:', this.initialArgs);
+
+                // Process initial arguments
+                if (this.initialArgs.length > 0) {
+                    this.fileIOManager.processInitialArgs(this.initialArgs);
+                }
+            }
+        } catch (e) {
+            // Not in local mode or server not responding
+            console.log('Running in Web Mode');
+        }
+    }
+
     // createBondMesh moved to RenderManager
-
-
 
     updateMeasurements() {
         // Measurements are now displayed in the top-left corner via updateSelectionInfo
@@ -1043,5 +1065,4 @@ export class Editor {
     toggleMaximize(element) {
         this.uiManager.toggleMaximize(element);
     }
-
 }

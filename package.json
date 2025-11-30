@@ -5,6 +5,9 @@
     "author": "kangmg <kangmg@korea.ac.kr>",
     "license": "MIT",
     "type": "module",
+    "bin": {
+        "simpledit": "./bin/simpledit.js"
+    },
     "keywords": [
         "molecular-editor",
         "chemistry",

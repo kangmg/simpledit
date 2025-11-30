@@ -48,6 +48,30 @@ export class CommandRegistry {
     }
 
     registerDefaultCommands() {
+        this.register('read', [], 'read <filename> - Read a local file', async (args) => {
+            if (!this.editor.isLocalMode) {
+                return { error: 'Command only available in local mode' };
+            }
+            if (args.length < 1) {
+                return { error: 'Usage: read <filename>' };
+            }
+            const filename = args[0];
+            await this.editor.fileIOManager.loadLocalFile(filename);
+            return { success: `Reading ${filename}...` };
+        });
+
+        this.register('run', [], 'run <filename> - Execute commands from a local file', async (args) => {
+            if (!this.editor.isLocalMode) {
+                return { error: 'Command only available in local mode' };
+            }
+            if (args.length < 1) {
+                return { error: 'Usage: run <filename>' };
+            }
+            const filename = args[0];
+            await this.editor.fileIOManager.loadLocalFile(filename);
+            return { success: `Running ${filename}...` };
+        });
+
         // Help command
         this.register('help', ['h'], 'help [command] - Show commands', (args) => {
             if (args.length === 0) {
