@@ -179,9 +179,11 @@ export class CommandRegistry {
             // add mol <format>
             if (subCmd === 'mol' || subCmd === 'molecule') {
                 // Parse flags
-                const generate3D = args.includes('-3d');
+                // Parse flags
+                const generate2D = args.includes('-2d');
+                const generate3D = !generate2D; // Default to 3D unless -2d is specified
                 const addHydrogens = args.includes('-h');
-                const cleanArgs = args.filter(a => a !== '-3d' && a !== '-h');
+                const cleanArgs = args.filter(a => a !== '-3d' && a !== '-2d' && a !== '-h');
 
                 if (cleanArgs.length < 2) return { error: 'Usage: add mol <format> [data] [-3d] [-h]' };
                 const format = cleanArgs[1].toLowerCase();
@@ -196,10 +198,21 @@ export class CommandRegistry {
                                 autoBond: false,
                                 generate3D,
                                 addHydrogens
-                            }).then(() => this.editor.rebuildScene());
+                            }).then(result => {
+                                if (result && result.error) {
+                                    this.editor.console.print(`Error: ${result.error}`, 'error');
+                                } else {
+                                    this.editor.rebuildScene();
+                                    this.editor.moleculeManager.updateUI();
+                                    this.editor.console.print('SMILES imported successfully', 'success');
+                                }
+                            }).catch(err => {
+                                this.editor.console.print(`Error: ${err.message}`, 'error');
+                            });
                             return { success: 'Importing SMILES...' };
                         } else if (format === 'xyz') {
                             this.editor.fileIOManager.importXYZ(data, { shouldClear: false, autoBond: true });
+                            this.editor.moleculeManager.updateUI();
                             return { success: 'Imported XYZ data' };
                         }
                         return { error: `Inline data not supported for ${format}` };

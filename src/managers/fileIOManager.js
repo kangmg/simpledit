@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ErrorHandler } from '../utils/errorHandler.js';
 import { oclManager } from './oclManager.js';
+import { rdkitManager } from './rdkitManager.js';
 import OCL from 'openchemlib';
 
 /**
@@ -29,19 +30,53 @@ export class FileIOManager {
         try {
             let molBlock;
 
+            // Strategy for Dummy Atoms with Hydrogens:
+            // OCL treats '*' as 'Any' (valence 0/unknown), so it doesn't add hydrogens to neighbors correctly.
+            // We temporarily replace '*' with '[2H]' (Deuterium, valence 1) to force correct valence.
+            // Then we post-process the MolBlock to turn Deuterium back into 'X' (Dummy).
+            let processingSmiles = smiles;
+            let usedDeuteriumTrick = false;
+
+            if (addHydrogens && smiles.includes('*')) {
+                processingSmiles = smiles.replace(/\[\*\]/g, '[2H]').replace(/\*/g, '[2H]');
+                usedDeuteriumTrick = true;
+            }
+
             if (generate3D) {
                 // Use OCL for 3D generation (implies explicit hydrogens)
-                const mol3D = await oclManager.generate3D(smiles);
+                const mol3D = await oclManager.generate3D(processingSmiles);
                 molBlock = mol3D.toMolfile();
             } else if (addHydrogens) {
                 // Use OCL for explicit hydrogens (2D)
-                molBlock = await oclManager.addHydrogens(smiles);
+                molBlock = await oclManager.addHydrogens(processingSmiles);
             } else {
                 // Use OCL for standard 2D (implicit hydrogens) - Replaces RDKit
                 // This ensures consistent behavior across all SMILES imports
-                // Actually, let's use a simple conversion if no flags
-                const mol = OCL.Molecule.fromSmiles(smiles);
-                molBlock = mol.toMolfile();
+                // Fallback to RDKit if OCL fails (e.g. aromaticity issues)
+                try {
+                    const mol = OCL.Molecule.fromSmiles(processingSmiles);
+                    molBlock = mol.toMolfile();
+                } catch (e) {
+                    console.warn('[importSMILES] OCL failed, trying RDKit fallback:', e);
+                    try {
+                        molBlock = await rdkitManager.smilesToMolBlock(processingSmiles);
+                    } catch (rdkitError) {
+                        console.error('[importSMILES] RDKit fallback failed:', rdkitError);
+                        throw e; // Throw original OCL error as it's likely more relevant
+                    }
+                }
+            }
+
+            // Post-process MolBlock
+            if (molBlock) {
+                // 1. Fix Deuterium Trick (convert [2H] back to X)
+                if (usedDeuteriumTrick) {
+                    molBlock = this.convertDeuteriumToDummy(molBlock);
+                }
+
+                // 2. Standard Dummy Atom Fix (Replace "A" with "X")
+                // OCL converts "*" in SMILES to "A" in Molfile (if we didn't use the trick).
+                molBlock = molBlock.replace(/^(\s+[0-9.-]+\s+[0-9.-]+\s+[0-9.-]+\s+)A(\s+)/gm, '$1X$2');
             }
 
             // Import the generated MolBlock (SDF/Mol format)
@@ -215,6 +250,90 @@ export class FileIOManager {
         } else {
             return this.atomsToXYZ(atoms);
         }
+    }
+
+    /**
+     * Helper: Convert Deuterium (H with isotope 2) to Dummy atom (X) in MolBlock
+     * Used to fix hydrogen addition for dummy atoms.
+     * @param {string} molBlock 
+     * @returns {string} Modified MolBlock
+     */
+    convertDeuteriumToDummy(molBlock) {
+        const lines = molBlock.split('\n');
+        const deuteriumIndices = new Set();
+        const isoLineIndices = [];
+
+        // 1. Find M ISO lines and identify Deuterium (Isotope 2)
+        lines.forEach((line, i) => {
+            if (line.startsWith('M  ISO')) {
+                isoLineIndices.push(i);
+                const parts = line.trim().split(/\s+/);
+                // Format: M ISO N idx1 iso1 idx2 iso2 ...
+                const count = parseInt(parts[2]);
+                for (let j = 0; j < count; j++) {
+                    const idx = parseInt(parts[3 + j * 2]);
+                    const iso = parseInt(parts[4 + j * 2]);
+                    if (iso === 2) {
+                        deuteriumIndices.add(idx);
+                    }
+                }
+            }
+        });
+
+        if (deuteriumIndices.size === 0) return molBlock;
+
+        // 2. Replace H with X for identified atoms
+        // Header (3) + Counts (1) = 4 lines. Atoms start at line 4 (0-indexed).
+        // Atom index is 1-based.
+        let atomStartIndex = 0;
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('V2000')) {
+                atomStartIndex = i + 1;
+                break;
+            }
+        }
+
+        if (atomStartIndex > 0) {
+            deuteriumIndices.forEach(idx => {
+                const lineIdx = atomStartIndex + idx - 1;
+                if (lines[lineIdx]) {
+                    // Replace ' H ' with ' X '
+                    // Regex to ensure we match the symbol column (approx col 31-33)
+                    // Or just simple replacement if we trust the line format
+                    lines[lineIdx] = lines[lineIdx].replace(/ H /, ' X ');
+                }
+            });
+        }
+
+        // 3. Update M ISO lines (remove Deuterium entries)
+        isoLineIndices.forEach(lineIdx => {
+            const line = lines[lineIdx];
+            const parts = line.trim().split(/\s+/);
+            const newEntries = [];
+            const count = parseInt(parts[2]);
+
+            for (let j = 0; j < count; j++) {
+                const idx = parseInt(parts[3 + j * 2]);
+                const iso = parseInt(parts[4 + j * 2]);
+                if (iso !== 2) {
+                    newEntries.push({ idx, iso });
+                }
+            }
+
+            if (newEntries.length > 0) {
+                // Reconstruct line
+                let newLine = `M  ISO ${newEntries.length.toString().padStart(3)}`;
+                newEntries.forEach(e => {
+                    newLine += ` ${e.idx.toString().padStart(3)} ${e.iso.toString().padStart(3)}`;
+                });
+                lines[lineIdx] = newLine;
+            } else {
+                // Remove line if empty
+                lines[lineIdx] = null;
+            }
+        });
+
+        return lines.filter(l => l !== null).join('\n');
     }
 
     /**
