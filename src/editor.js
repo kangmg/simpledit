@@ -1049,11 +1049,24 @@ export class Editor {
                 if (this.initialArgs.length > 0) {
                     this.fileIOManager.processInitialArgs(this.initialArgs);
                 }
+
+                // Start Heartbeat
+                this.startHeartbeat();
             }
         } catch (e) {
             // Not in local mode or server not responding
             console.log('Running in Web Mode');
         }
+    }
+
+    startHeartbeat() {
+        setInterval(async () => {
+            try {
+                await fetch('/api/heartbeat');
+            } catch (e) {
+                console.error('Heartbeat failed:', e);
+            }
+        }, 2000); // Send heartbeat every 2 seconds
     }
 
     // createBondMesh moved to RenderManager

@@ -45,6 +45,13 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    if (req.url === '/api/heartbeat') {
+        lastHeartbeat = Date.now();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'alive' }));
+        return;
+    }
+
     if (req.url.startsWith('/api/read')) {
         const url = new URL(req.url, `http://${req.headers.host}`);
         const filePath = url.searchParams.get('path');
@@ -116,6 +123,29 @@ const server = http.createServer((req, res) => {
         }
     });
 });
+
+// Heartbeat Logic
+let lastHeartbeat = Date.now();
+const HEARTBEAT_TIMEOUT = 5000; // 5 seconds
+const CHECK_INTERVAL = 1000; // 1 second
+
+// Wait for first heartbeat before enforcing timeout
+let clientConnected = false;
+
+const heartbeatCheck = setInterval(() => {
+    if (clientConnected) {
+        if (Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT) {
+            console.log('No heartbeat received. Shutting down...');
+            process.exit(0);
+        }
+    } else {
+        // Check if we received the first heartbeat
+        if (Date.now() - lastHeartbeat < 1000) { // Just received one
+            clientConnected = true;
+            console.log('Client connected. Heartbeat monitoring active.');
+        }
+    }
+}, CHECK_INTERVAL);
 
 server.listen(PORT, () => {
     const address = server.address();
