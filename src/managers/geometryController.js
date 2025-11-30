@@ -32,7 +32,7 @@ export class GeometryController {
 
         if (slider && input) {
             // Slider Interaction
-            slider.onmousedown = () => this.editor.saveState(); // Save state before drag
+            // slider.onmousedown = () => this.editor.saveState(); // Removed: Save after drag
 
             slider.oninput = () => {
                 input.value = slider.value;
@@ -40,12 +40,13 @@ export class GeometryController {
             };
 
             slider.onchange = () => {
-                this.setBondLength(parseFloat(slider.value), false); // Finalize (state already saved at mousedown)
+                this.setBondLength(parseFloat(slider.value), false); // Finalize
+                this.editor.saveState(); // Save after drag release
             };
 
             // Number Input Interaction
             input.onchange = () => {
-                this.editor.saveState();
+                // this.editor.saveState(); // Removed: setBondLength will save if saveHistory=true (default)
                 slider.value = input.value;
                 this.setBondLength(parseFloat(input.value), true); // Save state for manual entry
             };
@@ -60,7 +61,7 @@ export class GeometryController {
         const input = document.getElementById('val-angle');
 
         if (slider && input) {
-            slider.onmousedown = () => this.editor.saveState();
+            // slider.onmousedown = () => this.editor.saveState(); // Removed
 
             slider.oninput = () => {
                 input.value = slider.value;
@@ -69,10 +70,11 @@ export class GeometryController {
 
             slider.onchange = () => {
                 this.setAngle(parseFloat(slider.value), false);
+                this.editor.saveState(); // Save after drag
             };
 
             input.onchange = () => {
-                this.editor.saveState();
+                // this.editor.saveState(); // Removed
                 slider.value = input.value;
                 this.setAngle(parseFloat(input.value), true);
             };
@@ -87,7 +89,7 @@ export class GeometryController {
         const input = document.getElementById('val-dihedral');
 
         if (slider && input) {
-            slider.onmousedown = () => this.editor.saveState();
+            // slider.onmousedown = () => this.editor.saveState(); // Removed
 
             slider.oninput = () => {
                 input.value = slider.value;
@@ -96,10 +98,11 @@ export class GeometryController {
 
             slider.onchange = () => {
                 this.setDihedral(parseFloat(slider.value), false);
+                this.editor.saveState(); // Save after drag
             };
 
             input.onchange = () => {
-                this.editor.saveState();
+                // this.editor.saveState(); // Removed
                 slider.value = input.value;
                 this.setDihedral(parseFloat(input.value), true);
             };

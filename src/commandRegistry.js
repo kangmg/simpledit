@@ -510,6 +510,7 @@ export class CommandRegistry {
             });
 
             this.editor.rebuildScene();
+            this.editor.saveState(); // Save after center
             return { success: 'Molecule centered' };
         });
 
@@ -532,6 +533,7 @@ export class CommandRegistry {
             });
 
             this.editor.rebuildScene();
+            this.editor.saveState(); // Save after rotate
             return { success: `Rotated by (${x}, ${y}, ${z})` };
         });
 
@@ -554,6 +556,7 @@ export class CommandRegistry {
             });
 
             this.editor.rebuildScene();
+            this.editor.saveState(); // Save after translate
             return { success: `Translated by (${x}, ${y}, ${z})` };
         });
 
@@ -739,13 +742,9 @@ export class CommandRegistry {
                     return { error: `Invalid element: ${element}` };
                 }
 
-                this.editor.saveState();
-
-                const atom = this.editor.molecule.atoms[idx];
-                atom.element = element;
-
                 // Update visuals
                 this.editor.rebuildScene();
+                this.editor.saveState(); // Save after substitution
 
                 return { success: `Changed atom ${args[1]} to ${element}` };
             } else if (subCmd === 'grp' || subCmd === 'group') {

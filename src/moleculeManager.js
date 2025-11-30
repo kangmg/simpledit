@@ -221,32 +221,8 @@ export class MoleculeManager {
         const activeMol = this.getActive();
         if (!activeMol) return { error: 'No active molecule' };
 
-        this.editor.saveState();
-
-        // Calculate smart offset
-        const currentAtoms = activeMol.molecule.atoms;
-        const incomingAtoms = this.clipboard.atoms; // Simple objects with position
-        const offset = GeometryEngine.calculateSmartOffset(incomingAtoms, currentAtoms, minDistance);
-
-        // Create new atoms with offset
-        const newAtoms = [];
-        this.clipboard.atoms.forEach(atomData => {
-            const pos = atomData.position.clone().add(offset);
-            const atom = this.editor.addAtomToScene(atomData.element, pos);
-            newAtoms.push(atom);
-        });
-
-        // Create bonds
-        this.clipboard.bonds.forEach(bondData => {
-            const atom1 = newAtoms[bondData.atom1Idx];
-            const atom2 = newAtoms[bondData.atom2Idx];
-
-            if (atom1 && atom2) {
-                activeMol.molecule.addBond(atom1, atom2, bondData.order);
-            }
-        });
-
         this.editor.rebuildScene();
+        this.editor.saveState(); // Save after paste
 
         return { success: `Pasted ${newAtoms.length} atom(s)` };
     }
@@ -265,36 +241,11 @@ export class MoleculeManager {
 
         if (!targetMol) return { error: 'No active molecule' };
 
-        this.editor.saveState();
-
-        // Calculate offset to avoid overlap
-        const currentAtoms = targetMol.molecule.atoms;
-        const incomingAtoms = sourceMol.molecule.atoms; // Atom objects
-        const offset = GeometryEngine.calculateSmartOffset(incomingAtoms, currentAtoms, minDistance);
-
-        // Copy atoms from source to target
-        const atomMap = new Map(); // Map source atoms to new atoms
-        sourceMol.molecule.atoms.forEach(sourceAtom => {
-            const pos = sourceAtom.position.clone().add(offset);
-            const newAtom = this.editor.addAtomToScene(sourceAtom.element, pos);
-            atomMap.set(sourceAtom, newAtom);
-        });
-
-        // Copy bonds
-        sourceMol.molecule.bonds.forEach(bond => {
-            const newAtom1 = atomMap.get(bond.atom1);
-            const newAtom2 = atomMap.get(bond.atom2);
-
-            if (newAtom1 && newAtom2) {
-                targetMol.molecule.addBond(newAtom1, newAtom2, bond.order);
-            }
-        });
-
-        this.editor.rebuildScene();
-
         // Remove source molecule
         const sourceAtomCount = sourceMol.molecule.atoms.length;
         this.removeMolecule(sourceIndex);
+
+        this.editor.saveState(); // Save after merge
 
         return { success: `Merged ${sourceAtomCount} atoms from "${sourceMol.name}" into "${targetMol.name}"` };
     }
@@ -352,97 +303,13 @@ export class MoleculeManager {
         if (sourceRes.error) return sourceRes;
         const { leaving: sourceLeaving, anchor: sourceAnchor } = sourceRes;
 
-        this.editor.saveState();
-
-        // Perform Alignment and Merge
-        // 1. Calculate alignment transform for Source Molecule
-        //    Target Vector: Anchor -> Leaving
-        //    Source Vector: Anchor -> Leaving
-        //    Goal: Align Source Vector to be Anti-Parallel to Target Vector
-
-
-
-        // 2. Copy atoms from Source to Target (applying transform)
-        const atomMap = new Map();
-        sourceMolEntry.molecule.atoms.forEach(sourceAtom => {
-            if (sourceAtom === sourceLeaving) return; // Skip leaving atom
-
-            // Position is already updated in alignMolecules (it modifies in-place? No, better to return transform or clone)
-            // Wait, alignMolecules should probably NOT modify the source molecule directly if we want to keep it intact?
-            // But here we are merging, so we copy.
-            // Let's assume alignMolecules returns a translation vector and rotation quaternion, OR it modifies a cloned list of positions.
-
-            // Actually, simpler: Clone source atoms, apply transform, then add to scene.
-            // But we need to know the transform.
-            // Let's make alignMolecules return the rotation and translation needed for the source anchor.
-        });
-
-        // REVISIT: alignMolecules needs to be carefully designed.
-        // Let's implement it to return { rotation: Quaternion, translation: Vector3 }
-        // And we apply it here.
-
-        const transform = GeometryEngine.getAlignmentTransform(
-            targetAnchor.position, targetLeaving.position,
-            sourceAnchor.position, sourceLeaving.position
-        );
-
-        // Calculate bond distance (sum of radii)
-        const r1 = this.getElementRadius(targetAnchor.element);
-        const r2 = this.getElementRadius(sourceAnchor.element);
-        const bondDist = (r1 + r2) * 1.1; // Slight overlap factor? Or just sum. Let's use sum.
-
-        // Apply Transform and Add to Scene
-        sourceMolEntry.molecule.atoms.forEach(sourceAtom => {
-            if (sourceAtom === sourceLeaving) return; // Skip leaving atom
-
-            // 1. Translate to center Source Anchor at Origin
-            const pos = sourceAtom.position.clone().sub(sourceAnchor.position);
-
-            // 2. Rotate
-            pos.applyQuaternion(transform.rotation);
-
-            // 3. Translate to Target Anchor
-            pos.add(targetAnchor.position);
-
-            // 4. Move along Target Vector (Target Anchor -> Target Leaving) by Bond Distance
-            // Target Vector direction:
-            const dir = targetLeaving.position.clone().sub(targetAnchor.position).normalize();
-            pos.add(dir.multiplyScalar(bondDist));
-
-            const newAtom = this.editor.addAtomToScene(sourceAtom.element, pos);
-            atomMap.set(sourceAtom, newAtom);
-        });
-
-        // Copy Bonds
-        sourceMolEntry.molecule.bonds.forEach(bond => {
-            // Skip if connected to leaving atom
-            if (bond.atom1 === sourceLeaving || bond.atom2 === sourceLeaving) return;
-
-            const newAtom1 = atomMap.get(bond.atom1);
-            const newAtom2 = atomMap.get(bond.atom2);
-
-            if (newAtom1 && newAtom2) {
-                this.getActive().molecule.addBond(newAtom1, newAtom2, bond.order);
-            }
-        });
-
-        // Create New Bond between Anchors
-        const newSourceAnchor = atomMap.get(sourceAnchor);
-        if (newSourceAnchor) {
-            this.getActive().molecule.addBond(targetAnchor, newSourceAnchor, 1);
-        }
-
-        // Remove Target Leaving Atom
-        this.editor.molecule.removeAtom(targetLeaving);
-        // Also remove its mesh? rebuildScene handles it.
-
-        this.editor.rebuildScene();
-
         // Remove Source Molecule
         const sourceIndex = this.molecules.indexOf(sourceMolEntry);
         if (sourceIndex >= 0) {
             this.removeMolecule(sourceIndex);
         }
+
+        this.editor.saveState(); // Save after substitution
 
         return { success: `Substituted group from ${sourceMolEntry.name}` };
     }

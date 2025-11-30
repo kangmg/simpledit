@@ -48,6 +48,7 @@ export class Editor {
         // Undo/Redo History
         this.history = [];
         this.historyIndex = -1;
+        this.saveState(); // Initialize with empty state
 
         // Flags to track if we're currently adjusting geometry (for undo/redo)
         this.lengthAdjusting = false;
@@ -639,7 +640,7 @@ export class Editor {
             // Let's assume: In Move mode, if you click ON an atom (or close to one), you move. If you click empty space, you rotate.
 
             if (selectedAtoms.length > 0 && atomMesh && atomMesh.object.userData.atom.selected) {
-                this.saveState(); // Save before moving/rotating
+                // this.saveState(); // Removed: Save after move completes
                 // Don't set isManipulating yet - wait for actual drag movement
                 this.manipulationStartMouse = new THREE.Vector2(event.clientX, event.clientY);
 
@@ -839,6 +840,9 @@ export class Editor {
         } else if (this.mode === 'select') {
             this.selectionManager.endSelection(event.clientX, event.clientY, event.shiftKey || event.ctrlKey || event.metaKey);
         } else if (this.mode === 'move') {
+            if (this.isManipulating) {
+                this.saveState(); // Save after manipulation
+            }
             this.isManipulating = false;
             this.initialPositions = null;
             this.manipulationStartMouse = null;
@@ -888,7 +892,7 @@ export class Editor {
     }
 
     addAtomToScene(element, position, existingAtom = null) {
-        if (!existingAtom) this.saveState(); // Save before adding new atom
+        // if (!existingAtom) this.saveState(); // Removed: Save after adding
 
         const atom = existingAtom || this.molecule.addAtom(element, position);
 
@@ -899,27 +903,35 @@ export class Editor {
             atom.mesh = mesh;
         }
 
+        if (mesh) {
+            this.renderer.scene.add(mesh);
+            atom.mesh = mesh;
+        }
+
+        if (!existingAtom) this.saveState(); // Save after adding
         return atom;
     }
 
     removeBond(bond) {
-        this.saveState(); // Save before removing bond
+        // this.saveState(); // Removed: Save after removing
 
         // Remove from molecule
         this.molecule.removeBond(bond);
 
         // Update scene
         this.rebuildScene();
+        this.saveState(); // Save after removing
     }
 
     addBondToScene(atom1, atom2) {
-        this.saveState(); // Save before adding bond
+        // this.saveState(); // Removed: Save after adding
 
         // Add to molecule
         this.molecule.addBond(atom1, atom2);
 
         // Update scene
         this.rebuildScene();
+        this.saveState(); // Save after adding
     }
 
     saveState() {
@@ -982,13 +994,14 @@ export class Editor {
 
     autoBond() {
         const thresholdFactor = parseFloat(document.getElementById('bond-threshold').value);
-        this.saveState();
+        // this.saveState(); // Removed: Save after bonding
 
         // Delegate to MoleculeManager
         const bondsAdded = this.moleculeManager.autoBond(thresholdFactor);
 
         if (bondsAdded > 0) {
             this.rebuildScene();
+            this.saveState(); // Save after bonding
         }
     }
 
