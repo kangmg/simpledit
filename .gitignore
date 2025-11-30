@@ -36,3 +36,6 @@ Thumbs.db
 CONSOLE_DESIGN.md
 simpledit.code-workspace
 TODO.txt
+
+# Test files
+test_*.js
