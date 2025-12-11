@@ -679,14 +679,10 @@ export class UIManager {
             let displayName = group.key;
             let placeholderSvg = `<div style="width:120px;height:100px;display:flex;align-items:center;justify-content:center;color:#666;">...</div>`;
 
-            // Special action (e.g., Hs → show as H)
-            if (!group.smiles) {
-                if (group.key === 'Hs') {
-                    displayName = 'H';
-                    placeholderSvg = `<div style="width:120px;height:100px;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:bold;color:#1E90FF;">H</div>`;
-                } else {
-                    placeholderSvg = `<div style="width:120px;height:100px;display:flex;align-items:center;justify-content:center;font-size:36px;color:#1E90FF;">⊕</div>`;
-                }
+            // Special action (e.g., Hs → show as Hs)
+            if (group.action === 'addHydrogens') {
+                displayName = 'Hs';
+                placeholderSvg = `<div style="width:120px;height:100px;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:bold;color:#1E90FF;">H<sub style="font-size:24px;">s</sub></div>`;
             }
 
             card.innerHTML = `

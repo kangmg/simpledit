@@ -846,10 +846,19 @@ export class Editor {
                 const intersection = raycaster.ray.intersectPlane(plane, target);
 
                 if (intersection) {
-                    // Create new atom at the target position
-                    const newAtom = this.addAtomToScene(this.selectedElement, target);
-                    // Create bond between start atom and new atom
-                    this.addBondToScene(this.dragStartAtom, newAtom);
+                    // Check if FG is selected
+                    if (this.selectedGroup && this.selectedGroup.smiles) {
+                        // Set custom direction and bond length based on drag target position
+                        const dragVector = new THREE.Vector3().subVectors(target, this.dragStartAtom.position);
+                        this._customFGDirection = dragVector.clone().normalize();
+                        this._customFGBondLength = dragVector.length();
+                        this.addFunctionalGroup(this.dragStartAtom, this.selectedGroup);
+                    } else {
+                        // Create new atom at the target position
+                        const newAtom = this.addAtomToScene(this.selectedElement, target);
+                        // Create bond between start atom and new atom
+                        this.addBondToScene(this.dragStartAtom, newAtom);
+                    }
                 }
             }
             this.dragStartAtom = null;
@@ -1068,10 +1077,17 @@ export class Editor {
                 return;
             }
 
-            // Calculate optimal position for FG attachment
-            const neighbors = clickedAtom.bonds.map(b =>
-                b.atom1 === clickedAtom ? b.atom2 : b.atom1);
-            const optimalDir = this.getOptimalBondDirection(clickedAtom, neighbors);
+            // Calculate direction for FG attachment
+            // Use customDirection if provided (Manual mode), otherwise VSEPR optimal (Smart mode)
+            let optimalDir;
+            if (this._customFGDirection) {
+                optimalDir = this._customFGDirection.clone().normalize();
+                this._customFGDirection = null; // Clear after use
+            } else {
+                const neighbors = clickedAtom.bonds.map(b =>
+                    b.atom1 === clickedAtom ? b.atom2 : b.atom1);
+                optimalDir = this.getOptimalBondDirection(clickedAtom, neighbors);
+            }
 
             // The anchor atom is the one connected to Deuterium (not the Dummy itself)
             const anchorFGAtom = fgAtoms[deuteriumNeighbor];
@@ -1087,9 +1103,15 @@ export class Editor {
             // Calculate rotation to align FG bond direction with optimal direction
             const quaternion = new THREE.Quaternion().setFromUnitVectors(fgBondDir, optimalDir);
 
-            // Calculate bond length for clicked atom → anchor
-            const bondLength = this.getCovalentRadius(clickedAtom.element) +
-                this.getCovalentRadius(anchorFGAtom.element);
+            // Calculate bond length: use custom length (Manual mode) or covalent radii (Smart mode)
+            let bondLength;
+            if (this._customFGBondLength) {
+                bondLength = this._customFGBondLength;
+                this._customFGBondLength = null; // Clear after use
+            } else {
+                bondLength = this.getCovalentRadius(clickedAtom.element) +
+                    this.getCovalentRadius(anchorFGAtom.element);
+            }
 
             // Position of anchor atom
             const anchorPosition = clickedAtom.position.clone().add(
