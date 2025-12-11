@@ -221,10 +221,6 @@ export class Editor {
                 this.labelMode = 'both';
                 document.getElementById('btn-toggle-labels').innerText = 'Labels: Both';
                 this.updateAllLabels();
-            } else if (e.key.toLowerCase() === 'c') {
-                // Toggle console
-                e.preventDefault(); // Prevent 'c' from being typed into console input
-                this.console.toggle();
             } else if (e.key.toLowerCase() === 'o') {
                 this.setMode('move');
                 this.manipulationMode = 'orbit';

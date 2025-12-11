@@ -110,20 +110,12 @@ export class CommandRegistry {
                 return { info: output };
             }
             else if (['frags', 'fragments'].includes(type)) {
-                const visited = new Set();
-                const fragments = [];
-                this.editor.molecule.atoms.forEach(atom => {
-                    if (!visited.has(atom)) {
-                        const fragment = this.editor.getConnectedAtoms(atom, null);
-                        fragment.forEach(a => visited.add(a));
-                        const indices = Array.from(fragment).map(a => this.editor.molecule.atoms.indexOf(a));
-                        fragments.push(indices);
-                    }
-                });
+                const fragments = this.editor.fileIOManager.getFragments();
                 if (fragments.length === 0) return { info: 'No fragments' };
                 let output = '';
                 fragments.forEach((frag, i) => {
-                    output += `Fragment ${i}: atoms [${frag.join(',')}] (${frag.length} atoms)\n`;
+                    const indices = frag.map(a => this.editor.molecule.atoms.indexOf(a));
+                    output += `Fragment ${i}: atoms [${indices.join(',')}] (${frag.length} atoms)\n`;
                 });
                 return { info: output };
             }
@@ -191,7 +183,7 @@ export class CommandRegistry {
             // add atom <element> [x] [y] [z]
             if (subCmd === 'atom') {
                 if (args.length < 2) return { error: 'Usage: add atom <element> [x] [y] [z]' };
-                const element = args[1].toUpperCase();
+                const element = args[1].charAt(0).toUpperCase() + args[1].slice(1).toLowerCase();
                 if (!(element in ELEMENTS)) return { error: `Invalid element: ${element}` };
 
                 let x = 0, y = 0, z = 0;

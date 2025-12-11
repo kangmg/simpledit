@@ -69,8 +69,8 @@ export class RenderManager {
         const length = direction.length();
         const midpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
 
-        // Increased thickness (0.08 -> 0.1)
-        const geometry = new THREE.CylinderGeometry(0.1, 0.1, length, 8);
+        // Use unit height (1) so updateBonds can scale correctly
+        const geometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
         const material = new THREE.MeshPhongMaterial({
             color: 0x000000, // Black
             shininess: 30
@@ -78,6 +78,7 @@ export class RenderManager {
 
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.copy(midpoint);
+        mesh.scale.set(1, length, 1); // Scale Y to actual bond length
 
         // Align cylinder with bond direction
         mesh.quaternion.setFromUnitVectors(
