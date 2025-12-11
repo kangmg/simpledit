@@ -6,6 +6,7 @@ import { AxisHelper } from './axisHelper.js';
 import { ELEMENTS, DEFAULT_ELEMENT } from './constants.js';
 import { Console } from './console.js';
 import { Interaction } from './interaction.js';
+import { oclManager } from './managers/oclManager.js';
 
 // Manager classes
 import { EditorState } from './editorState.js';
@@ -43,7 +44,9 @@ export class Editor {
 
         // Legacy properties (will be migrated gradually)
         this.selectedElement = 'C';
+        this.selectedGroup = null;  // For functional groups: { key, smiles, name }
         this.manipulationMode = 'translate'; // For move mode: translate or rotate
+        this.editMode = 'manual'; // For edit mode: 'manual' or 'smart'
 
         // Undo/Redo History
         this.history = [];
@@ -280,33 +283,31 @@ export class Editor {
 
     updateManipulationStatus() {
         const btn = document.getElementById('btn-move');
-        const sub = btn.querySelector('.btn-sublabel');
+        const sub = btn ? btn.querySelector('.btn-sublabel') : null;
 
+        // Update sublabel
         if (sub) {
             sub.style.display = 'block';
             if (this.manipulationMode === 'translate') {
                 sub.innerText = 'Translate';
                 sub.style.color = '#4a90e2';
-            } else if (this.manipulationMode === 'rotate') {
-                sub.innerText = 'Trackball Rotate';
+            } else if (this.manipulationMode === 'rotate' || this.manipulationMode === 'trackball') {
+                sub.innerText = 'Trackball';
                 sub.style.color = '#e24a90';
             } else if (this.manipulationMode === 'orbit') {
-                sub.innerText = 'Orbit Rotate';
+                sub.innerText = 'Orbit';
                 sub.style.color = '#90e24a';
             }
-        } else {
-            // Fallback for old design
-            if (this.manipulationMode === 'translate') {
-                btn.innerText = 'Move: Translate';
-                btn.style.backgroundColor = '#4a90e2';
-            } else if (this.manipulationMode === 'rotate') {
-                btn.innerText = 'Move: Trackball Rotate';
-                btn.style.backgroundColor = '#e24a90';
-            } else if (this.manipulationMode === 'orbit') {
-                btn.innerText = 'Move: Orbit Rotate';
-                btn.style.backgroundColor = '#90e24a';
-            }
         }
+
+        // Update submode buttons active state
+        const btnTranslate = document.getElementById('btn-move-translate');
+        const btnOrbit = document.getElementById('btn-move-orbit');
+        const btnTrackball = document.getElementById('btn-move-trackball');
+
+        if (btnTranslate) btnTranslate.classList.toggle('active', this.manipulationMode === 'translate');
+        if (btnOrbit) btnOrbit.classList.toggle('active', this.manipulationMode === 'orbit');
+        if (btnTrackball) btnTrackball.classList.toggle('active', this.manipulationMode === 'rotate' || this.manipulationMode === 'trackball');
     }
 
     clearManipulationStatus() {
@@ -356,7 +357,7 @@ export class Editor {
         this.initialPositions = null;
     }
 
-    handleClick(event, raycaster) {
+    async handleClick(event, raycaster) {
         this.cleanupDrag(); // Ensure any drag state is cleared (e.g. selection box from mousedown)
 
         // Also clear manipulation state from move mode
@@ -374,21 +375,25 @@ export class Editor {
 
             if (atomMesh) {
                 const atom = atomMesh.object.userData.atom;
-                // If selected element is different, substitute
+
+                // Smart mode: Add atom at optimal position
+                if (this.editMode === 'smart') {
+                    this.saveState();
+                    await this.addAtomSmart(atom);
+                    return;
+                }
+
+                // Manual mode: Substitute element if different
                 if (this.selectedElement && atom.element !== this.selectedElement) {
                     this.saveState();
                     atom.element = this.selectedElement;
                     this.rebuildScene();
                     return;
                 }
-                // If same element, maybe we want to add a neighbor? 
-                // For now, let's just return to avoid adding an atom on top or in background.
-                // Or if we want to support "click to add neighbor", we need logic for that.
-                // But user specifically asked for substitution.
                 return;
             }
 
-            // In edit mode, clicking empty space adds an atom
+            // In edit mode, clicking empty space adds an atom (only in Manual mode)
             // Create a plane perpendicular to the camera at an appropriate depth
             const normal = new THREE.Vector3();
             const camera = this.renderer.activeCamera || this.renderer.camera;
@@ -579,7 +584,18 @@ export class Editor {
     }
 
     handleRightClick(event, raycaster) {
-        // TODO: Implement atom type cycling or context menu
+        // In edit mode, right-click deletes atoms
+        if (this.mode === 'edit') {
+            const intersects = raycaster.intersectObjects(this.renderer.scene.children);
+            const atomMesh = intersects.find(i => i.object.userData.type === 'atom');
+
+            if (atomMesh) {
+                const atom = atomMesh.object.userData.atom;
+                this.saveState();
+                this.molecule.removeAtom(atom);
+                this.rebuildScene();
+            }
+        }
     }
 
     getTrackballVector(x, y) {
@@ -912,9 +928,440 @@ export class Editor {
         return atom;
     }
 
-    removeBond(bond) {
-        // this.saveState(); // Removed: Save after removing
+    /**
+     * Smart mode: Add atom at optimal position based on VSEPR-like geometry
+     * @param {Object} clickedAtom - The atom that was clicked
+     */
+    async addAtomSmart(clickedAtom) {
+        const position = clickedAtom.position.clone();
+        const neighbors = clickedAtom.bonds.map(bond =>
+            bond.atom1 === clickedAtom ? bond.atom2 : bond.atom1
+        );
 
+        // Handle "Hs" special group - add hydrogens to fill valence
+        if (this.selectedGroup && this.selectedGroup.action === 'addHydrogens') {
+            this.addHydrogensToAtom(clickedAtom);
+            this.rebuildScene();
+            return;
+        }
+
+        // Handle functional group addition
+        if (this.selectedGroup && this.selectedGroup.smiles) {
+            await this.addFunctionalGroup(clickedAtom, this.selectedGroup);
+            return;
+        }
+
+        // Calculate optimal direction for new atom
+        const optimalDir = this.getOptimalBondDirection(clickedAtom, neighbors);
+
+        // Calculate bond distance (covalent radii sum)
+        const element = this.selectedElement || 'C';
+        const radius1 = this.getCovalentRadius(clickedAtom.element);
+        const radius2 = this.getCovalentRadius(element);
+        const bondLength = (radius1 + radius2) * 1.0;
+
+        // Calculate new position
+        const newPosition = position.clone().add(optimalDir.multiplyScalar(bondLength));
+
+        // Add the new atom
+        const newAtom = this.addAtomToScene(element, newPosition);
+
+        // Create bond between clicked atom and new atom
+        this.molecule.addBond(clickedAtom, newAtom);
+
+        this.rebuildScene();
+    }
+
+    /**
+     * Add a functional group to a clicked atom using OCL 3D generation
+     * Uses the deuterium trick: * → [2H], generate 3D, then substitute
+     * @param {Object} clickedAtom - The atom to attach to
+     * @param {Object} group - Functional group object with smiles
+     */
+    async addFunctionalGroup(clickedAtom, group) {
+        if (!group.smiles) {
+            console.error('No SMILES for functional group');
+            return;
+        }
+
+        try {
+            // Replace * with [2H] (Deuterium) for proper valence handling
+            const processingSmiles = group.smiles.replace(/\[\*\]/g, '[2H]').replace(/\*/g, '[2H]');
+
+            // Generate 3D coordinates using OCL (includes hydrogen addition)
+            const mol3D = await oclManager.generate3D(processingSmiles);
+            const molBlock = mol3D.toMolfile();
+
+            // Parse MolBlock to extract atoms and bonds
+            const lines = molBlock.split('\n');
+            let atomCount = 0, bondCount = 0;
+            let lineIndex = 0;
+
+            // Find counts line
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('V2000')) {
+                    const parts = lines[i].trim().split(/\s+/);
+                    atomCount = parseInt(parts[0]);
+                    bondCount = parseInt(parts[1]);
+                    lineIndex = i + 1;
+                    break;
+                }
+            }
+
+            // Parse atoms
+            const fgAtoms = [];
+            let deuteriumIndex = -1;
+
+            for (let i = 0; i < atomCount; i++) {
+                const line = lines[lineIndex + i];
+                const parts = line.trim().split(/\s+/);
+                const x = parseFloat(parts[0]);
+                const y = parseFloat(parts[1]);
+                const z = parseFloat(parts[2]);
+                let element = parts[3];
+
+                // V2000 format: x y z element massDiff charge stereo etc
+                // For Deuterium: element='H', massDiff=1 (since D = H + 1 neutron)
+                const massDiff = parts.length > 4 ? parseInt(parts[4]) : 0;
+
+                // Detect Deuterium: D, 2H, or H with mass difference 1
+                if (element === 'D' || element === '2H' ||
+                    (element === 'H' && massDiff === 1)) {
+                    deuteriumIndex = i;
+                    element = 'X'; // Mark as dummy
+                    console.log('Found Deuterium at index', i, 'massDiff:', massDiff);
+                }
+
+                fgAtoms.push({ element, x, y, z, index: i });
+            }
+
+            // Fallback: if no Deuterium found, use the first H as attachment point
+            if (deuteriumIndex === -1) {
+                for (let i = 0; i < fgAtoms.length; i++) {
+                    if (fgAtoms[i].element === 'H') {
+                        deuteriumIndex = i;
+                        fgAtoms[i].element = 'X';
+                        console.log('Fallback: using first H at index', i, 'as attachment');
+                        break;
+                    }
+                }
+            }
+
+            // Parse bonds
+            const fgBonds = [];
+            let deuteriumNeighbor = -1;
+
+            for (let i = 0; i < bondCount; i++) {
+                const line = lines[lineIndex + atomCount + i];
+                const parts = line.trim().split(/\s+/);
+                const a1 = parseInt(parts[0]) - 1; // 0-indexed
+                const a2 = parseInt(parts[1]) - 1;
+                fgBonds.push([a1, a2]);
+
+                // Find which atom is connected to Deuterium
+                if (a1 === deuteriumIndex) deuteriumNeighbor = a2;
+                if (a2 === deuteriumIndex) deuteriumNeighbor = a1;
+            }
+
+            if (deuteriumIndex === -1 || deuteriumNeighbor === -1) {
+                console.error('Could not find attachment point in FG');
+                return;
+            }
+
+            // Calculate optimal position for FG attachment
+            const neighbors = clickedAtom.bonds.map(b =>
+                b.atom1 === clickedAtom ? b.atom2 : b.atom1);
+            const optimalDir = this.getOptimalBondDirection(clickedAtom, neighbors);
+
+            // The anchor atom is the one connected to Deuterium (not the Dummy itself)
+            const anchorFGAtom = fgAtoms[deuteriumNeighbor];
+            const dummyAtom = fgAtoms[deuteriumIndex];
+
+            // Calculate bond direction from Deuterium → anchor in FG coords
+            const fgBondDir = new THREE.Vector3(
+                anchorFGAtom.x - dummyAtom.x,
+                anchorFGAtom.y - dummyAtom.y,
+                anchorFGAtom.z - dummyAtom.z
+            ).normalize();
+
+            // Calculate rotation to align FG bond direction with optimal direction
+            const quaternion = new THREE.Quaternion().setFromUnitVectors(fgBondDir, optimalDir);
+
+            // Calculate bond length for clicked atom → anchor
+            const bondLength = this.getCovalentRadius(clickedAtom.element) +
+                this.getCovalentRadius(anchorFGAtom.element);
+
+            // Position of anchor atom
+            const anchorPosition = clickedAtom.position.clone().add(
+                optimalDir.clone().multiplyScalar(bondLength)
+            );
+
+            // Add all atoms except Deuterium (dummy)
+            const newAtoms = [];
+            const indexMap = {}; // Map old indices to new atoms
+
+            for (let i = 0; i < fgAtoms.length; i++) {
+                if (i === deuteriumIndex) {
+                    indexMap[i] = null; // Skip dummy
+                    continue;
+                }
+
+                const atomData = fgAtoms[i];
+
+                // Position relative to anchor atom
+                const relPos = new THREE.Vector3(
+                    atomData.x - anchorFGAtom.x,
+                    atomData.y - anchorFGAtom.y,
+                    atomData.z - anchorFGAtom.z
+                );
+
+                // Apply rotation
+                relPos.applyQuaternion(quaternion);
+
+                // Final position
+                const finalPos = anchorPosition.clone().add(relPos);
+
+                const newAtom = this.molecule.addAtom(atomData.element, finalPos);
+                newAtoms.push(newAtom);
+                indexMap[i] = newAtom;
+            }
+
+            // Add bond from clicked atom to anchor atom
+            const anchorNewAtom = indexMap[deuteriumNeighbor];
+            if (anchorNewAtom) {
+                this.molecule.addBond(clickedAtom, anchorNewAtom);
+            }
+
+            // Add internal bonds (skip bonds to dummy)
+            for (const [a1, a2] of fgBonds) {
+                if (a1 === deuteriumIndex || a2 === deuteriumIndex) continue;
+                if (indexMap[a1] && indexMap[a2]) {
+                    this.molecule.addBond(indexMap[a1], indexMap[a2]);
+                }
+            }
+
+            this.rebuildScene();
+            this.saveState();
+
+        } catch (error) {
+            console.error('Error adding functional group:', error);
+        }
+    }
+
+    /**
+     * Calculate optimal bond direction based on existing bonds (VSEPR-like)
+     * @param {Object} atom - Center atom
+     * @param {Array} neighbors - Array of neighbor atoms
+     * @returns {THREE.Vector3} Normalized direction vector
+     */
+    getOptimalBondDirection(atom, neighbors) {
+        const position = atom.position;
+
+        if (neighbors.length === 0) {
+            // No neighbors: add in +X direction
+            return new THREE.Vector3(1, 0, 0);
+        }
+
+        if (neighbors.length === 1) {
+            // One neighbor: add in opposite direction (180°)
+            const dir = new THREE.Vector3().subVectors(position, neighbors[0].position).normalize();
+            return dir;
+        }
+
+        if (neighbors.length === 2) {
+            // Two neighbors: place in plane, 120° from both
+            const v1 = new THREE.Vector3().subVectors(neighbors[0].position, position).normalize();
+            const v2 = new THREE.Vector3().subVectors(neighbors[1].position, position).normalize();
+
+            // Average direction, then negate
+            const avgDir = new THREE.Vector3().addVectors(v1, v2).normalize();
+            if (avgDir.length() < 0.01) {
+                // Neighbors are opposite - choose perpendicular direction
+                const perp = new THREE.Vector3(0, 1, 0);
+                if (Math.abs(v1.dot(perp)) > 0.9) perp.set(1, 0, 0);
+                return perp.cross(v1).normalize();
+            }
+            return avgDir.negate();
+        }
+
+        if (neighbors.length === 3) {
+            // Three neighbors: tetrahedral, add opposite to average
+            const avgDir = new THREE.Vector3();
+            neighbors.forEach(n => {
+                avgDir.add(new THREE.Vector3().subVectors(n.position, position));
+            });
+            avgDir.normalize();
+            return avgDir.negate();
+        }
+
+        // 4+ neighbors: saturated, still try opposite of average
+        const avgDir = new THREE.Vector3();
+        neighbors.forEach(n => {
+            avgDir.add(new THREE.Vector3().subVectors(n.position, position));
+        });
+        return avgDir.normalize().negate();
+    }
+
+    /**
+     * Get covalent radius for an element
+     * @param {string} element 
+     * @returns {number} Covalent radius in Angstroms
+     */
+    getCovalentRadius(element) {
+        const radii = {
+            'H': 0.31, 'C': 0.76, 'N': 0.71, 'O': 0.66, 'F': 0.57,
+            'P': 1.07, 'S': 1.05, 'Cl': 1.02, 'Br': 1.20, 'I': 1.39,
+            'X': 0.76 // Dummy atom
+        };
+        return radii[element] || 0.76; // Default to C
+    }
+
+    /**
+     * Add hydrogens to fill valence of an atom
+     * Uses proper tetrahedral/trigonal geometry for multiple hydrogens
+     * @param {Object} atom 
+     */
+    addHydrogensToAtom(atom) {
+        const maxValence = this.getMaxValence(atom.element);
+        const currentBonds = atom.bonds.length;
+        const needed = maxValence - currentBonds;
+
+        if (needed <= 0) return;
+
+        const bondLength = this.getCovalentRadius(atom.element) + this.getCovalentRadius('H');
+        const neighbors = atom.bonds.map(b => b.atom1 === atom ? b.atom2 : b.atom1);
+
+        // Calculate all hydrogen directions at once based on total coordination
+        const totalCoord = currentBonds + needed;
+        const hDirections = this.getMultipleBondDirections(atom, neighbors, needed, totalCoord);
+
+        // Add all hydrogens
+        for (const dir of hDirections) {
+            const newPos = atom.position.clone().add(dir.multiplyScalar(bondLength));
+            const hAtom = this.molecule.addAtom('H', newPos);
+            this.molecule.addBond(atom, hAtom);
+        }
+    }
+
+    /**
+     * Calculate multiple bond directions for adding atoms (e.g., hydrogens)
+     * @param {Object} atom - Center atom
+     * @param {Array} neighbors - Existing neighbor atoms
+     * @param {number} count - Number of new directions needed
+     * @param {number} totalCoord - Total coordination number (existing + new)
+     * @returns {Array<THREE.Vector3>} Array of normalized direction vectors
+     */
+    getMultipleBondDirections(atom, neighbors, count, totalCoord) {
+        const position = atom.position;
+        const directions = [];
+
+        // Get existing bond directions
+        const existingDirs = neighbors.map(n =>
+            new THREE.Vector3().subVectors(n.position, position).normalize()
+        );
+
+        if (neighbors.length === 0) {
+            // No neighbors - arrange based on total geometry
+            if (totalCoord === 1) {
+                directions.push(new THREE.Vector3(1, 0, 0));
+            } else if (totalCoord === 2) {
+                // Linear
+                directions.push(new THREE.Vector3(1, 0, 0));
+                directions.push(new THREE.Vector3(-1, 0, 0));
+            } else if (totalCoord === 3) {
+                // Trigonal planar
+                directions.push(new THREE.Vector3(1, 0, 0));
+                directions.push(new THREE.Vector3(-0.5, 0.866, 0));
+                directions.push(new THREE.Vector3(-0.5, -0.866, 0));
+            } else if (totalCoord === 4) {
+                // Tetrahedral
+                const a = 1 / Math.sqrt(3);
+                directions.push(new THREE.Vector3(a, a, a));
+                directions.push(new THREE.Vector3(a, -a, -a));
+                directions.push(new THREE.Vector3(-a, a, -a));
+                directions.push(new THREE.Vector3(-a, -a, a));
+            }
+            return directions.slice(0, count);
+        }
+
+        if (neighbors.length === 1) {
+            const oppDir = existingDirs[0].clone().negate();
+
+            if (count === 1) {
+                // Just opposite
+                directions.push(oppDir);
+            } else if (count === 2) {
+                // Two more for trigonal planar or tetrahedral
+                // Use perpendicular directions
+                const perp1 = new THREE.Vector3(0, 1, 0);
+                if (Math.abs(oppDir.dot(perp1)) > 0.9) perp1.set(1, 0, 0);
+                const perp2 = new THREE.Vector3().crossVectors(oppDir, perp1).normalize();
+                perp1.crossVectors(perp2, oppDir).normalize();
+
+                if (totalCoord === 3) {
+                    // Trigonal planar: 120° apart from existing
+                    const angle = Math.PI * 2 / 3;
+                    directions.push(oppDir.clone().applyAxisAngle(perp2, angle / 2));
+                    directions.push(oppDir.clone().applyAxisAngle(perp2, -angle / 2));
+                } else {
+                    // Tetrahedral: ~109.5° - two hydrogens straddling the opposite direction
+                    const tetraAngle = Math.acos(-1 / 3); // 109.47°
+                    // Rotate from the existing bond direction, not opposite
+                    const bondDir = existingDirs[0].clone();
+                    directions.push(bondDir.clone().applyAxisAngle(perp1, tetraAngle).applyAxisAngle(bondDir, Math.PI / 3));
+                    directions.push(bondDir.clone().applyAxisAngle(perp1, tetraAngle).applyAxisAngle(bondDir, -Math.PI / 3));
+                }
+            } else if (count === 3) {
+                // Three more for tetrahedral - arrange around the axis opposite to existing bond
+                const tetraAngle = Math.acos(-1 / 3); // 109.47°
+                const bondDir = existingDirs[0].clone();
+                for (let i = 0; i < 3; i++) {
+                    const rot = bondDir.clone();
+                    const perp = new THREE.Vector3(0, 1, 0);
+                    if (Math.abs(bondDir.dot(perp)) > 0.9) perp.set(1, 0, 0);
+                    const axis = new THREE.Vector3().crossVectors(bondDir, perp).normalize();
+                    rot.applyAxisAngle(axis, tetraAngle);
+                    rot.applyAxisAngle(bondDir, i * (2 * Math.PI / 3));
+                    directions.push(rot.normalize());
+                }
+            }
+        } else if (neighbors.length === 2) {
+            // Average of existing, then negate for bisector
+            const avg = existingDirs[0].clone().add(existingDirs[1]).normalize();
+
+            if (count === 1) {
+                directions.push(avg.clone().negate());
+            } else if (count === 2) {
+                // Tetrahedral: two positions perpendicular to the plane and opposite to avg
+                const normal = new THREE.Vector3().crossVectors(existingDirs[0], existingDirs[1]).normalize();
+                const bisector = avg.clone().negate();
+                const tetraAngle = Math.acos(-1 / 3) / 2;
+                directions.push(bisector.clone().applyAxisAngle(normal, tetraAngle));
+                directions.push(bisector.clone().applyAxisAngle(normal, -tetraAngle));
+            }
+        } else if (neighbors.length === 3) {
+            // One position opposite to average of three
+            const avg = existingDirs[0].clone().add(existingDirs[1]).add(existingDirs[2]).normalize();
+            directions.push(avg.clone().negate());
+        }
+
+        return directions.slice(0, count);
+    }
+
+    /**
+     * Get maximum valence for an element
+     * @param {string} element 
+     * @returns {number}
+     */
+    getMaxValence(element) {
+        const valences = {
+            'H': 1, 'C': 4, 'N': 3, 'O': 2, 'F': 1, 'Cl': 1, 'Br': 1, 'I': 1,
+            'P': 5, 'S': 6, 'Si': 4, 'B': 3
+        };
+        return valences[element] || 4; // Default to 4
+    }
+
+    removeBond(bond) {
         // Remove from molecule
         this.molecule.removeBond(bond);
 
@@ -924,8 +1371,6 @@ export class Editor {
     }
 
     addBondToScene(atom1, atom2) {
-        // this.saveState(); // Removed: Save after adding
-
         // Add to molecule
         this.molecule.addBond(atom1, atom2);
 

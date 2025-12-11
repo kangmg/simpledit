@@ -909,3 +909,35 @@ select:hover {
 .toggle-switch input:focus+.toggle-slider {
     box-shadow: 0 0 4px var(--accent-color);
 }
+
+/* Submode Buttons */
+.submode-container {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+    padding-left: 12px;
+}
+
+.submode-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #888;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.submode-btn:hover {
+    background: #3a3a3a;
+    border-color: #555;
+    color: #aaa;
+}
+
+.submode-btn.active {
+    background: rgba(30, 144, 255, 0.2);
+    border-color: #1E90FF;
+    color: #1E90FF;
+}

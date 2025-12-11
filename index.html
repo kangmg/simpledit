@@ -63,7 +63,16 @@
 
         <div class="tool-section">
           <div class="section-label">Tools</div>
-          <button id="btn-edit" class="icon-btn active" title="Edit Mode">Edit</button>
+          <button id="btn-edit" class="icon-btn active" title="Edit Mode">
+            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+              <span>Edit</span>
+              <span class="btn-sublabel" style="font-size: 11px; margin-top: 2px; display: none;">Manual</span>
+            </div>
+          </button>
+          <div id="edit-submodes" class="submode-container" style="display: flex;">
+            <button id="btn-edit-manual" class="submode-btn active" title="Manual editing">Manual</button>
+            <button id="btn-edit-smart" class="submode-btn" title="Smart atom placement">Smart</button>
+          </div>
 
           <button id="btn-select" class="icon-btn" title="Select Mode">
             <div style="display: flex; flex-direction: column; align-items: flex-start;">
@@ -71,6 +80,10 @@
               <span class="btn-sublabel" style="font-size: 11px; margin-top: 2px; display: none;">Lasso</span>
             </div>
           </button>
+          <div id="select-submodes" class="submode-container" style="display: none;">
+            <button id="btn-select-lasso" class="submode-btn active" title="Lasso Selection">Lasso</button>
+            <button id="btn-select-rectangle" class="submode-btn" title="Rectangle Selection">Rectangle</button>
+          </div>
 
           <button id="btn-move" class="icon-btn" title="Move Mode">
             <div style="display: flex; flex-direction: column; align-items: flex-start;">
@@ -78,6 +91,11 @@
               <span class="btn-sublabel" style="font-size: 11px; margin-top: 2px; display: none;">Translate</span>
             </div>
           </button>
+          <div id="move-submodes" class="submode-container" style="display: none;">
+            <button id="btn-move-translate" class="submode-btn active" title="Translate Fragment">Translate</button>
+            <button id="btn-move-orbit" class="submode-btn" title="Orbit Rotation">Orbit</button>
+            <button id="btn-move-trackball" class="submode-btn" title="Trackball Rotation">Trackball</button>
+          </div>
 
           <div style="display: flex; gap: 5px; margin-top: 5px;">
             <button id="btn-undo" class="action-btn" style="flex: 1;">Undo</button>
@@ -115,7 +133,7 @@
           <div class="control-row">
             <button id="btn-element-select" class="action-btn"
               style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <span style="color: #888;">Element</span>
+              <span id="element-fg-label" style="color: #888;">Element</span>
               <span id="current-element-symbol" style="font-weight: bold; color: white;">C</span>
             </button>
           </div>
@@ -231,19 +249,29 @@
     </div>
 
     <div id="pt-modal" class="modal-content"
-      style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px; z-index: 1000; max-height: 80vh; overflow-y: auto;">
+      style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px; z-index: 1000; max-height: 80vh; overflow-y: auto; min-width: 450px;">
       <div class="modal-header"
-        style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px; position: relative;">
-        <h3 style="margin: 0; color: white;">Periodic Table</h3>
+        style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px; position: relative;">
         <div class="mac-window-controls" style="position: absolute; left: 0;">
           <button class="mac-btn mac-close-btn close-pt"></button>
           <button class="mac-btn mac-minimize-btn close-pt"></button>
           <button class="mac-btn mac-maximize-btn maximize-pt"></button>
         </div>
+        <!-- Toggle Tabs -->
+        <div id="element-fg-tabs" style="display: flex; background: #333; border-radius: 6px; padding: 2px;">
+          <button id="tab-periodic-table" class="editor-toggle-btn active"
+            style="padding: 6px 16px; border: none; background: #555; color: white; border-radius: 4px; cursor: pointer; font-size: 13px;">Periodic
+            Table</button>
+          <button id="tab-functional-groups" class="editor-toggle-btn"
+            style="padding: 6px 16px; border: none; background: transparent; color: #aaa; border-radius: 4px; cursor: pointer; font-size: 13px;">Functional
+            Groups</button>
+        </div>
       </div>
+      <!-- Periodic Table View -->
       <div id="periodic-table"
         style="display: grid; grid-template-columns: repeat(18, 36px); gap: 4px; margin-top: 10px;"></div>
-
+      <!-- Functional Groups View -->
+      <div id="functional-groups-grid" style="display: none; flex-direction: column; gap: 15px;"></div>
     </div>
 
     <!-- JSME Editor Modal -->

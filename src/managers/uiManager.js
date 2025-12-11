@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { ErrorHandler } from '../utils/errorHandler.js';
 import { ELEMENTS } from '../constants.js';
+import { FUNCTIONAL_GROUPS, GROUP_CATEGORIES } from '../functionalGroups.js';
 import { jsmeManager } from './jsmeManager.js';
 import { oclEditorManager } from './oclEditorManager.js';
+import { rdkitManager } from './rdkitManager.js';
 
 /**
  * Manages UI interactions, modals, and labels
@@ -26,6 +28,7 @@ export class UIManager {
         this.bindSidebarEvents();
         this.bindUndoRedoEvents();
         this.bindPeriodicTableEvents();
+        this.bindFunctionalGroupsEvents();
         this.bindAutoBondButton();
         this.bindCoordinateEditorButton();
         this.bindJSMEButton();
@@ -41,24 +44,170 @@ export class UIManager {
         const btnEdit = document.getElementById('btn-edit');
         const btnSelect = document.getElementById('btn-select');
         const btnMove = document.getElementById('btn-move');
+        const editSubmodes = document.getElementById('edit-submodes');
+        const selectSubmodes = document.getElementById('select-submodes');
+        const moveSubmodes = document.getElementById('move-submodes');
 
         if (btnEdit) {
-            btnEdit.onclick = () => this.editor.setMode('edit');
+            btnEdit.onclick = () => {
+                this.editor.setMode('edit');
+                // Show edit submodes, hide others
+                if (editSubmodes) editSubmodes.style.display = 'flex';
+                if (selectSubmodes) selectSubmodes.style.display = 'none';
+                if (moveSubmodes) moveSubmodes.style.display = 'none';
+            };
         }
 
         if (btnSelect) {
             btnSelect.onclick = () => {
-                if (this.state.isSelectMode()) {
-                    // Cycle selection mode
-                    this.editor.selectionManager.cycleSelectionMode();
-                } else {
-                    this.editor.setMode('select');
-                }
+                this.editor.setMode('select');
+                // Show select submodes, hide others
+                if (editSubmodes) editSubmodes.style.display = 'none';
+                if (selectSubmodes) selectSubmodes.style.display = 'flex';
+                if (moveSubmodes) moveSubmodes.style.display = 'none';
             };
         }
 
         if (btnMove) {
-            btnMove.onclick = () => this.editor.setMode('move');
+            btnMove.onclick = () => {
+                this.editor.setMode('move');
+                // Show move submodes, hide others
+                if (editSubmodes) editSubmodes.style.display = 'none';
+                if (selectSubmodes) selectSubmodes.style.display = 'none';
+                if (moveSubmodes) moveSubmodes.style.display = 'flex';
+            };
+        }
+
+        // Bind submode buttons
+        this.bindEditSubmodeButtons();
+        this.bindSelectSubmodeButtons();
+        this.bindMoveSubmodeButtons();
+    }
+
+    /**
+     * Bind Edit submode buttons (manual/smart)
+     */
+    bindEditSubmodeButtons() {
+        const btnManual = document.getElementById('btn-edit-manual');
+        const btnSmart = document.getElementById('btn-edit-smart');
+
+        if (btnManual) {
+            btnManual.onclick = () => {
+                this.editor.editMode = 'manual';
+                this.updateEditSubmodeUI('manual');
+            };
+        }
+
+        if (btnSmart) {
+            btnSmart.onclick = () => {
+                this.editor.editMode = 'smart';
+                this.updateEditSubmodeUI('smart');
+            };
+        }
+    }
+
+    /**
+     * Update Edit submode button UI
+     * @param {string} mode - 'manual' or 'smart'
+     */
+    updateEditSubmodeUI(mode) {
+        const btnManual = document.getElementById('btn-edit-manual');
+        const btnSmart = document.getElementById('btn-edit-smart');
+        const sublabel = document.querySelector('#btn-edit .btn-sublabel');
+
+        if (btnManual) btnManual.classList.toggle('active', mode === 'manual');
+        if (btnSmart) btnSmart.classList.toggle('active', mode === 'smart');
+        if (sublabel) {
+            sublabel.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+            sublabel.style.display = 'block';
+        }
+    }
+
+    /**
+     * Bind Select submode buttons (lasso/rectangle)
+     */
+    bindSelectSubmodeButtons() {
+        const btnLasso = document.getElementById('btn-select-lasso');
+        const btnRectangle = document.getElementById('btn-select-rectangle');
+
+        if (btnLasso) {
+            btnLasso.onclick = () => {
+                this.editor.selectionManager.setSelectionMode('lasso');
+                this.updateSelectSubmodeUI('lasso');
+            };
+        }
+
+        if (btnRectangle) {
+            btnRectangle.onclick = () => {
+                this.editor.selectionManager.setSelectionMode('rectangle');
+                this.updateSelectSubmodeUI('rectangle');
+            };
+        }
+    }
+
+    /**
+     * Bind Move submode buttons (translate/orbit/trackball)
+     */
+    bindMoveSubmodeButtons() {
+        const btnTranslate = document.getElementById('btn-move-translate');
+        const btnOrbit = document.getElementById('btn-move-orbit');
+        const btnTrackball = document.getElementById('btn-move-trackball');
+
+        if (btnTranslate) {
+            btnTranslate.onclick = () => {
+                this.editor.manipulationMode = 'translate';
+                this.updateMoveSubmodeUI('translate');
+            };
+        }
+
+        if (btnOrbit) {
+            btnOrbit.onclick = () => {
+                this.editor.manipulationMode = 'orbit';
+                this.updateMoveSubmodeUI('orbit');
+            };
+        }
+
+        if (btnTrackball) {
+            btnTrackball.onclick = () => {
+                this.editor.manipulationMode = 'trackball';
+                this.updateMoveSubmodeUI('trackball');
+            };
+        }
+    }
+
+    /**
+     * Update Select submode button UI
+     * @param {string} mode - 'lasso' or 'rectangle'
+     */
+    updateSelectSubmodeUI(mode) {
+        const btnLasso = document.getElementById('btn-select-lasso');
+        const btnRectangle = document.getElementById('btn-select-rectangle');
+        const sublabel = document.querySelector('#btn-select .btn-sublabel');
+
+        if (btnLasso) btnLasso.classList.toggle('active', mode === 'lasso');
+        if (btnRectangle) btnRectangle.classList.toggle('active', mode === 'rectangle');
+        if (sublabel) {
+            sublabel.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+            sublabel.style.display = 'block';
+        }
+    }
+
+    /**
+     * Update Move submode button UI
+     * @param {string} mode - 'translate', 'orbit', or 'trackball'
+     */
+    updateMoveSubmodeUI(mode) {
+        const btnTranslate = document.getElementById('btn-move-translate');
+        const btnOrbit = document.getElementById('btn-move-orbit');
+        const btnTrackball = document.getElementById('btn-move-trackball');
+        const sublabel = document.querySelector('#btn-move .btn-sublabel');
+
+        if (btnTranslate) btnTranslate.classList.toggle('active', mode === 'translate');
+        if (btnOrbit) btnOrbit.classList.toggle('active', mode === 'orbit');
+        if (btnTrackball) btnTrackball.classList.toggle('active', mode === 'trackball');
+        if (sublabel) {
+            sublabel.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+            sublabel.style.display = 'block';
         }
     }
 
@@ -209,9 +358,12 @@ export class UIManager {
                     this.toggleMaximize(ptModal);
                 }
                 this.editor.renderPeriodicTable();
+                this.renderFunctionalGroupsGrid();
                 this.openPeriodicTable((element) => {
                     this.editor.selectedElement = element;
+                    this.editor.selectedGroup = null; // Clear group selection
                     document.getElementById('current-element-symbol').textContent = element;
+                    document.getElementById('element-fg-label').textContent = 'Element';
 
                     // If atoms are selected, update their element
                     const selectedAtoms = this.editor.molecule.atoms.filter(a => a.selected);
@@ -225,6 +377,38 @@ export class UIManager {
 
                     this.closePeriodicTable();
                 });
+            };
+        }
+
+        // Tab toggle logic
+        const tabPT = document.getElementById('tab-periodic-table');
+        const tabFG = document.getElementById('tab-functional-groups');
+        const ptView = document.getElementById('periodic-table');
+        const fgView = document.getElementById('functional-groups-grid');
+
+        if (tabPT) {
+            tabPT.onclick = () => {
+                tabPT.classList.add('active');
+                tabPT.style.background = '#555';
+                tabPT.style.color = 'white';
+                tabFG.classList.remove('active');
+                tabFG.style.background = 'transparent';
+                tabFG.style.color = '#aaa';
+                if (ptView) ptView.style.display = 'grid';
+                if (fgView) fgView.style.display = 'none';
+            };
+        }
+
+        if (tabFG) {
+            tabFG.onclick = () => {
+                tabFG.classList.add('active');
+                tabFG.style.background = '#555';
+                tabFG.style.color = 'white';
+                tabPT.classList.remove('active');
+                tabPT.style.background = 'transparent';
+                tabPT.style.color = '#aaa';
+                if (ptView) ptView.style.display = 'none';
+                if (fgView) fgView.style.display = 'grid';
             };
         }
 
@@ -414,6 +598,130 @@ export class UIManager {
                 container.appendChild(cell);
             });
         });
+    }
+
+    /**
+     * Bind Functional Groups modal events
+     */
+    bindFunctionalGroupsEvents() {
+        const btnFG = document.getElementById('btn-functional-groups');
+        const fgModal = document.getElementById('fg-modal');
+        const closeFgBtns = document.querySelectorAll('.close-fg');
+
+        if (btnFG && fgModal) {
+            btnFG.onclick = () => {
+                this.renderFunctionalGroupsGrid();
+                this.openFunctionalGroupsModal();
+            };
+        }
+
+        closeFgBtns.forEach(btn => {
+            btn.onclick = () => this.closeFunctionalGroupsModal();
+        });
+    }
+
+    /**
+     * Open Functional Groups modal
+     */
+    openFunctionalGroupsModal() {
+        const fgModal = document.getElementById('fg-modal');
+        const backdrop = document.getElementById('modal-backdrop');
+        if (fgModal) fgModal.style.display = 'block';
+        if (backdrop) backdrop.style.display = 'block';
+    }
+
+    /**
+     * Close Functional Groups modal
+     */
+    closeFunctionalGroupsModal() {
+        const fgModal = document.getElementById('fg-modal');
+        const backdrop = document.getElementById('modal-backdrop');
+        if (fgModal) fgModal.style.display = 'none';
+        if (backdrop) backdrop.style.display = 'none';
+    }
+
+    /**
+     * Render Functional Groups grid by category
+     */
+    async renderFunctionalGroupsGrid() {
+        const container = document.getElementById('functional-groups-grid');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        // Set grid layout properties (don't override display - let tab clicks control it)
+        container.style.gridTemplateColumns = 'repeat(4, 1fr)';
+        container.style.gap = '8px';
+        container.style.maxHeight = '350px';
+        container.style.overflowY = 'auto';
+
+        // Collect all groups in order (flatten by category)
+        const allGroups = [];
+        for (const [catKey] of Object.entries(GROUP_CATEGORIES)) {
+            for (const [key, group] of Object.entries(FUNCTIONAL_GROUPS)) {
+                if ((group.category || 'other') === catKey) {
+                    allGroups.push({ key, ...group });
+                }
+            }
+        }
+
+        for (const group of allGroups) {
+            const card = document.createElement('button');
+            card.className = 'action-btn fg-card';
+            card.style.cssText = `
+                display: flex; flex-direction: column; align-items: center;
+                padding: 6px; border: 1px solid #444; background: #2a2a2a;
+                border-radius: 6px; cursor: pointer;
+                transition: all 0.2s;
+            `;
+            card.title = group.name;
+
+            let displayName = group.key;
+            let placeholderSvg = `<div style="width:120px;height:100px;display:flex;align-items:center;justify-content:center;color:#666;">...</div>`;
+
+            // Special action (e.g., Hs → show as H)
+            if (!group.smiles) {
+                if (group.key === 'Hs') {
+                    displayName = 'H';
+                    placeholderSvg = `<div style="width:120px;height:100px;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:bold;color:#1E90FF;">H</div>`;
+                } else {
+                    placeholderSvg = `<div style="width:120px;height:100px;display:flex;align-items:center;justify-content:center;font-size:36px;color:#1E90FF;">⊕</div>`;
+                }
+            }
+
+            card.innerHTML = `
+                <div class="fg-svg-container" style="background:#fff;border-radius:4px;padding:4px;min-width:128px;min-height:108px;display:flex;align-items:center;justify-content:center;">${placeholderSvg}</div>
+                <div style="margin-top:5px;font-size:14px;font-weight:600;color:#e0e0e0;text-align:center;">${displayName}</div>
+            `;
+
+            // Highlight if selected
+            if (this.editor.selectedGroup && this.editor.selectedGroup.key === group.key) {
+                card.style.borderColor = '#1E90FF';
+                card.style.background = 'rgba(30, 144, 255, 0.2)';
+            }
+
+            card.onclick = () => {
+                this.editor.selectedGroup = group;
+                this.editor.selectedElement = null;
+                document.getElementById('current-element-symbol').textContent = displayName;
+                document.getElementById('element-fg-label').textContent = 'FG';
+                this.closePeriodicTable();
+            };
+
+            container.appendChild(card);
+
+            // Async load SVG from RDKit
+            if (group.smiles) {
+                rdkitManager.getSVG(group.smiles, 120, 100).then(svg => {
+                    const svgContainer = card.querySelector('.fg-svg-container');
+                    if (svgContainer && svg) {
+                        svgContainer.innerHTML = svg;
+                    }
+                }).catch(e => {
+                    console.warn(`RDKit SVG failed for ${group.key}:`, e);
+                });
+            }
+        }
     }
 
     /**

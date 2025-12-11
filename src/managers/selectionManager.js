@@ -233,6 +233,7 @@ export class SelectionManager {
 
         const sub = btn.querySelector('.btn-sublabel');
 
+        // Update sublabel
         if (sub) {
             sub.style.display = 'block';
             if (this.selectionMode === 'rectangle') {
@@ -242,15 +243,14 @@ export class SelectionManager {
                 sub.innerText = 'Lasso';
                 sub.style.color = '#e2904a';
             }
-        } else {
-            if (this.selectionMode === 'rectangle') {
-                btn.innerText = 'Select: Rectangle';
-                btn.style.backgroundColor = '#4a90e2';
-            } else if (this.selectionMode === 'lasso') {
-                btn.innerText = 'Select: Lasso';
-                btn.style.backgroundColor = '#e2904a';
-            }
         }
+
+        // Update submode buttons active state
+        const btnLasso = document.getElementById('btn-select-lasso');
+        const btnRectangle = document.getElementById('btn-select-rectangle');
+
+        if (btnLasso) btnLasso.classList.toggle('active', this.selectionMode === 'lasso');
+        if (btnRectangle) btnRectangle.classList.toggle('active', this.selectionMode === 'rectangle');
     }
 
     /**
