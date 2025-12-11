@@ -433,10 +433,21 @@ export class UIManager {
         const btnAutoBond = document.getElementById('btn-auto-bond');
         if (btnAutoBond) {
             btnAutoBond.onclick = () => {
-                this.editor.autoBond();
-                this.editor.renderManager.updateBondVisuals();
+                const thresholdInput = document.getElementById('bond-threshold');
+                const threshold = thresholdInput ? parseFloat(thresholdInput.value) : 1.1;
+
+                // Clear all existing bonds
+                this.editor.molecule.bonds = [];
+                this.editor.molecule.atoms.forEach(atom => {
+                    atom.bonds = [];
+                });
+
+                // Auto bond with threshold
+                const count = this.editor.moleculeManager.autoBond(threshold);
+
+                this.editor.rebuildScene();
                 this.editor.saveState();
-                this.showSuccess('Auto-bonding complete');
+                this.showSuccess(`Rebonded: ${count} bonds created`);
             };
         }
     }

@@ -1230,12 +1230,10 @@ export class Editor {
      * @returns {number} Covalent radius in Angstroms
      */
     getCovalentRadius(element) {
-        const radii = {
-            'H': 0.31, 'C': 0.76, 'N': 0.71, 'O': 0.66, 'F': 0.57,
-            'P': 1.07, 'S': 1.05, 'Cl': 1.02, 'Br': 1.20, 'I': 1.39,
-            'X': 0.76 // Dummy atom
-        };
-        return radii[element] || 0.76; // Default to C
+        if (ELEMENTS[element] && ELEMENTS[element].radius) {
+            return ELEMENTS[element].radius;
+        }
+        return 0.76; // Default to Carbon
     }
 
     /**
@@ -1358,8 +1356,13 @@ export class Editor {
                 const normal = new THREE.Vector3().crossVectors(existingDirs[0], existingDirs[1]).normalize();
                 const bisector = avg.clone().negate();
                 const tetraAngle = Math.acos(-1 / 3) / 2;
-                directions.push(bisector.clone().applyAxisAngle(normal, tetraAngle));
-                directions.push(bisector.clone().applyAxisAngle(normal, -tetraAngle));
+                // Fix for planar hydrogens: rotate 'bisector' out of the plane defined by existing bonds
+                // 'normal' is perpendicular to existing bond plane. 'bisector' is in that plane.
+                // We rotate around 'axis' which is in the plane and perpendicular to 'bisector'.
+                const axis = new THREE.Vector3().crossVectors(bisector, normal).normalize();
+
+                directions.push(bisector.clone().applyAxisAngle(axis, tetraAngle));
+                directions.push(bisector.clone().applyAxisAngle(axis, -tetraAngle));
             }
         } else if (neighbors.length === 3) {
             // One position opposite to average of three
