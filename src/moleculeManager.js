@@ -229,7 +229,37 @@ export class MoleculeManager {
         const activeMol = this.getActive();
         if (!activeMol) return { error: 'No active molecule' };
 
+        // Deselect current selection
+        activeMol.molecule.atoms.forEach(a => a.selected = false);
+        this.editor.selectionOrder = [];
+
+        // Calculate offset (e.g., shift by 2.0 units to avoid overlap)
+        const offset = new THREE.Vector3(2, 2, 0);
+
+        const newAtoms = [];
+        const indexMap = []; // Map clipboard index to new atom
+
+        // Create atoms
+        this.clipboard.atoms.forEach((data, i) => {
+            const newPos = data.position.clone().add(offset);
+            const atom = activeMol.molecule.addAtom(data.element, newPos);
+            atom.selected = true;
+            newAtoms.push(atom);
+            indexMap[i] = atom;
+            this.editor.selectionOrder.push(atom);
+        });
+
+        // Create bonds
+        this.clipboard.bonds.forEach(bondData => {
+            const atom1 = indexMap[bondData.atom1Idx];
+            const atom2 = indexMap[bondData.atom2Idx];
+            if (atom1 && atom2) {
+                activeMol.molecule.addBond(atom1, atom2, bondData.order);
+            }
+        });
+
         this.editor.rebuildScene();
+        this.editor.updateSelectionInfo();
         this.editor.saveState(); // Save after paste
 
         return { success: `Pasted ${newAtoms.length} atom(s)` };
