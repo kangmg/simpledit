@@ -357,7 +357,7 @@ export class FileIOManager {
                 }
             }
 
-            // 6. Import to editor
+            // 6. Import to editor - only update current molecule, not all
             let newMolBlock = mol3D.toMolfile();
 
             // Standardize Dummy Atoms (A/? -> *) for export consistency
@@ -365,8 +365,9 @@ export class FileIOManager {
 
             console.log('[updateFromMolBlock] Generated MolBlock:', newMolBlock);
 
-            return this.importSDF(newMolBlock, {
-                shouldClear: true,
+            this.editor.molecule.clear();  // Clear only current molecule
+            return this.importSingleSDF(newMolBlock, {
+                shouldClear: false,  // Already cleared above
                 autoBond: false // SDF has bonds
             });
 

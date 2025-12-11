@@ -487,9 +487,10 @@ export class UIManager {
                         this.editor.saveState(); // Save before importing
 
                         if (format === 'xyz') {
-                            // Multi-frame XYZ automatically creates separate molecules
-                            const result = this.editor.fileIOManager.importXYZ(text, {
-                                shouldClear: true,
+                            // Update current molecule only (clear and reimport)
+                            this.editor.molecule.clear();
+                            const result = this.editor.fileIOManager.importSingleXYZ(text, {
+                                shouldClear: false,  // Already cleared above
                                 autoBond: true
                             });
                             if (result.error) {
@@ -497,27 +498,31 @@ export class UIManager {
                             } else {
                                 this.editor.renderManager.rebuildScene();
                                 this.updateAtomCount(); // Sync UI
-                                this.showSuccess(result.success || 'Imported XYZ');
+                                this.showSuccess(result.success || 'Updated XYZ');
                                 this.closeCoordinateEditor();
                             }
                         } else if (format === 'smi' || format === 'smiles') {
-                            const result = await this.editor.fileIOManager.importSMILES(text, {
-                                shouldClear: true,
+                            // For SMILES, clear current and import single molecule
+                            this.editor.molecule.clear();
+                            const result = await this.editor.fileIOManager.importSingleSMILES(text.trim(), {
+                                shouldClear: false,  // Already cleared above
                                 autoBond: false,
-                                generate3D: true, // Default to 3D for Coordinate Editor
+                                generate3D: true,
                                 addHydrogens: true
                             });
-                            if (result.error) {
+                            if (result && result.error) {
                                 this.showError(result.error);
                             } else {
                                 this.editor.renderManager.rebuildScene();
                                 this.updateAtomCount(); // Sync UI
-                                this.showSuccess('Imported SMILES');
+                                this.showSuccess('Updated SMILES');
                                 this.closeCoordinateEditor();
                             }
                         } else if (format === 'sdf') {
-                            const result = this.editor.fileIOManager.importSDF(text, {
-                                shouldClear: true,
+                            // Update current molecule only
+                            this.editor.molecule.clear();
+                            const result = this.editor.fileIOManager.importSingleSDF(text, {
+                                shouldClear: false,  // Already cleared above
                                 autoBond: false
                             });
                             if (result.error) {
@@ -525,7 +530,7 @@ export class UIManager {
                             } else {
                                 this.editor.renderManager.rebuildScene();
                                 this.updateAtomCount(); // Sync UI
-                                this.showSuccess('Imported SDF');
+                                this.showSuccess('Updated SDF');
                                 this.closeCoordinateEditor();
                             }
                         }

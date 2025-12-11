@@ -155,7 +155,8 @@ export class CommandRegistry {
                 const format = args[1].toLowerCase();
                 try {
                     if (format === 'xyz') {
-                        this.editor.fileIOManager.importXYZ(heredocData, { shouldClear: false, autoBond: true });
+                        // Use importSingleXYZ to add to current molecule (not importXYZ which creates new molecules)
+                        this.editor.fileIOManager.importSingleXYZ(heredocData, { shouldClear: false, autoBond: true });
                         return { success: 'Atoms added from XYZ data' };
                     }
                     return { warning: `${format} format not implemented` };

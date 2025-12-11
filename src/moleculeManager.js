@@ -34,9 +34,15 @@ export class MoleculeManager {
                 name = `Molecule ${this.molecules.length + counter}`;
             }
         } else {
-            // Check for duplicate name
+            // Auto-generate unique name if duplicate exists
             if (this.molecules.some(m => m.name === name)) {
-                return { error: `Molecule with name "${name}" already exists` };
+                let counter = 1;
+                let uniqueName = `${name}_${counter}`;
+                while (this.molecules.some(m => m.name === uniqueName)) {
+                    counter++;
+                    uniqueName = `${name}_${counter}`;
+                }
+                name = uniqueName;
             }
         }
 
