@@ -159,6 +159,10 @@ export class Editor {
         console.log('Editor initialized');
     }
 
+    get molecule() {
+        return this.moleculeManager ? (this.moleculeManager.getActive()?.molecule || null) : null;
+    }
+
     bindEvents() {
         // Delegate UI events to UIManager
         this.uiManager.bindToolbarEvents();

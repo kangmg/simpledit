@@ -148,6 +148,8 @@ export class RenderManager {
      * Rebuild entire scene from scratch
      */
     rebuildScene() {
+        if (!this.editor.molecule) return;
+
         // Clear existing objects
         const toRemove = [];
         this.renderer.scene.traverse(obj => {

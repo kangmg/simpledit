@@ -116,8 +116,8 @@ export class MoleculeManager {
         this.activeMoleculeIndex = index;
         const entry = this.molecules[index];
 
-        // Update Editor's molecule reference
-        this.editor.molecule = entry.molecule;
+        // Update Editor's molecule reference - Now handled by getter in Editor
+        // this.editor.molecule = entry.molecule;
 
         // Load new molecule's state (history and settings)
         this.loadHistoryFromActive();
@@ -382,6 +382,9 @@ export class MoleculeManager {
     }
 
     getActive() {
+        if (this.activeMoleculeIndex < 0 || this.activeMoleculeIndex >= this.molecules.length) {
+            return null;
+        }
         return this.molecules[this.activeMoleculeIndex];
     }
 

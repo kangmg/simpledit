@@ -802,12 +802,12 @@ export class UIManager {
                         this.editor.saveState(); // Save before importing
 
                         if (format === 'xyz') {
-                            // Update current molecule only (clear and reimport)
-                            this.editor.molecule.clear();
-                            const result = this.editor.fileIOManager.importSingleXYZ(text, {
-                                shouldClear: false,  // Already cleared above
+                            // Use generic importXYZ to support multi-frame/trajectory
+                            const result = this.editor.fileIOManager.importXYZ(text, {
+                                shouldClear: false,
                                 autoBond: true
                             });
+
                             if (result.error) {
                                 this.showError(result.error);
                             } else {
@@ -817,27 +817,26 @@ export class UIManager {
                                 this.closeCoordinateEditor();
                             }
                         } else if (format === 'smi' || format === 'smiles') {
-                            // For SMILES, clear current and import single molecule
-                            this.editor.molecule.clear();
-                            const result = await this.editor.fileIOManager.importSingleSMILES(text.trim(), {
-                                shouldClear: false,  // Already cleared above
+                            // Use generic importSMILES to support multi-line/multi-molecule
+                            const result = await this.editor.fileIOManager.importSMILES(text, {
+                                shouldClear: false,
                                 autoBond: false,
                                 generate3D: true,
                                 addHydrogens: true
                             });
+
                             if (result && result.error) {
                                 this.showError(result.error);
                             } else {
                                 this.editor.renderManager.rebuildScene();
                                 this.updateAtomCount(); // Sync UI
-                                this.showSuccess('Updated SMILES');
+                                this.showSuccess(result.success || 'Updated SMILES');
                                 this.closeCoordinateEditor();
                             }
                         } else if (format === 'sdf') {
-                            // Update current molecule only
-                            this.editor.molecule.clear();
-                            const result = this.editor.fileIOManager.importSingleSDF(text, {
-                                shouldClear: false,  // Already cleared above
+                            // Use generic importSDF
+                            const result = this.editor.fileIOManager.importSDF(text, {
+                                shouldClear: false,
                                 autoBond: false
                             });
                             if (result.error) {
@@ -845,10 +844,11 @@ export class UIManager {
                             } else {
                                 this.editor.renderManager.rebuildScene();
                                 this.updateAtomCount(); // Sync UI
-                                this.showSuccess('Updated SDF');
+                                this.showSuccess(result.success || 'Updated SDF');
                                 this.closeCoordinateEditor();
                             }
                         }
+
                     } catch (error) {
                         console.error('Error importing coordinates:', error);
                         this.showError('Error importing coordinates: ' + error.message);
@@ -1274,6 +1274,8 @@ export class UIManager {
      * Update all atom labels
      */
     updateAllLabels() {
+        if (!this.editor.molecule) return;
+
         this.editor.molecule.atoms.forEach(atom => {
             // Create label if missing
             if (!atom.label) {

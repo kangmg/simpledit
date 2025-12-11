@@ -116,6 +116,8 @@ export class FileIOManager {
                 this.resetMolecules();
             }
 
+            console.log(`[ImportSMILES] Processing ${lines.length} lines`);
+
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 // Parse SMILES and Name: "SMILES Name" or just "SMILES"
@@ -124,10 +126,14 @@ export class FileIOManager {
                 const name = parts.length > 1 ? parts.slice(1).join(' ') : `Molecule ${this.editor.moleculeManager.molecules.length + 1}`;
 
                 if (i > 0 || !shouldClear) {
+                    console.log(`[ImportSMILES] Creating new molecule: ${name}`);
                     this.editor.moleculeManager.createMolecule(name);
                 } else {
                     // First molecule (already reset), just rename
-                    if (parts.length > 1) this.editor.moleculeManager.renameMolecule(0, name);
+                    if (parts.length > 1) {
+                        console.log(`[ImportSMILES] Renaming first molecule: ${name}`);
+                        this.editor.moleculeManager.renameMolecule(0, name);
+                    }
                 }
 
                 await this.importSingleSMILES(smiles, { shouldClear: true, autoBond, generate3D, addHydrogens });
@@ -1337,25 +1343,29 @@ export class FileIOManager {
                 break;
             }
 
-            const commentLine = (currentIndex + 1 < lines.length) ? lines[currentIndex + 1].trim() : '';
-            const name = commentLine || `Molecule ${this.editor.moleculeManager.molecules.length + 1}`;
-
-            if (moleculeCount > 0 || !shouldClear) {
-                this.editor.moleculeManager.createMolecule(name);
-            } else {
-                this.editor.moleculeManager.renameMolecule(0, name);
-            }
-
             // Extract block
             const endIndex = Math.min(currentIndex + 2 + atomCount, lines.length);
+            console.log(`[ImportXYZ] Frame ${moleculeCount}: Atoms=${atomCount} Start=${currentIndex} End=${endIndex} TotalLines=${lines.length}`);
+
             const blockLines = lines.slice(currentIndex, endIndex);
             const block = blockLines.join('\n');
+
+            const name = (currentIndex + 1 < lines.length) ? lines[currentIndex + 1].trim() : `Molecule ${moleculeCount + 1}`;
+
+            if (moleculeCount > 0 || !shouldClear) {
+                console.log(`[ImportXYZ] Creating new molecule: ${name}`);
+                this.editor.moleculeManager.createMolecule(name);
+            } else {
+                console.log(`[ImportXYZ] Renaming first molecule: ${name}`);
+                this.editor.moleculeManager.renameMolecule(0, name);
+            }
 
             this.importSingleXYZ(block, { shouldClear: true, autoBond });
 
             currentIndex = endIndex;
             moleculeCount++;
         }
+        console.log(`[ImportXYZ] Total imported: ${moleculeCount}`);
 
         this.editor.moleculeManager.updateUI();
         return ErrorHandler.success(`Imported ${moleculeCount} molecules from XYZ`);
