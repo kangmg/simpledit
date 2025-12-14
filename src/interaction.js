@@ -7,11 +7,12 @@ export class Interaction {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
 
-        // Events
-        this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
-        this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-        this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
-        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        // Events - use capture phase to intercept before OrbitControls
+        // capture: true ensures our handlers run BEFORE OrbitControls
+        this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this), { capture: true });
+        this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this), { capture: true });
+        this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this), { capture: true });
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault(), { capture: true });
         window.addEventListener('keydown', this.onKeyDown.bind(this));
         window.addEventListener('keyup', this.onKeyUp.bind(this));
 
@@ -54,9 +55,10 @@ export class Interaction {
         }
     }
 
+
     onMouseDown(event) {
-        // event.preventDefault(); // Removed to fix potential click issues
         this.canvas.focus();
+
         if (event.button === 0) { // Left click
             this.isDragging = true;
             const pos = this.getMousePosition(event);
@@ -64,8 +66,17 @@ export class Interaction {
             this.updateRaycaster();
 
             this.dragStartPos.set(pos.x, pos.y);
+
+            // Call callback and check if it wants to prevent default
+            let shouldPreventDefault = false;
             if (this.callbacks.onDragStart) {
-                this.callbacks.onDragStart(event, this.raycaster);
+                shouldPreventDefault = this.callbacks.onDragStart(event, this.raycaster);
+            }
+
+            // Only preventDefault if callback requested it
+            if (shouldPreventDefault) {
+                event.preventDefault();
+                event.stopPropagation();
             }
         } else if (event.button === 2) { // Right click
             const pos = this.getMousePosition(event);

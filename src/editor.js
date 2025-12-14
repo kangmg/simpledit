@@ -94,6 +94,9 @@ export class Editor {
 
         this.axisHelper = new AxisHelper(this);
 
+        // Setup beforeunload handler for data loss prevention
+        this.setupBeforeUnload();
+
         // Start animation loop
         this.animate = this.animate.bind(this);
         this.animate();
@@ -617,8 +620,7 @@ export class Editor {
     }
 
     handleDragStart(event, raycaster) {
-        // By default, allow controls (rotation)
-        this.renderer.controls.enabled = true;
+        // Return true to preventDefault, false to allow OrbitControls
 
         if (this.mode === 'edit') {
             // In edit mode, dragging from an atom creates a bond
@@ -626,40 +628,61 @@ export class Editor {
             const atomMesh = intersects.find(i => i.object.userData.type === 'atom');
 
             if (atomMesh) {
+                // Dragging from atom - prevent OrbitControls
+                // Disable rotation and panning in TrackballControls
+                if (this.renderer.trackballControls) {
+                    this.renderer.trackballControls.noRotate = true;
+                    this.renderer.trackballControls.noPan = true;
+                }
+
                 this.dragStartAtom = atomMesh.object.userData.atom;
                 this.ghostBond = this.createGhostBond(this.dragStartAtom.position);
-                this.renderer.controls.enabled = false; // Disable rotation while dragging bond
+                return true; // Prevent default
+            } else {
+                // Dragging empty space - allow rotation
+                if (this.renderer.trackballControls) {
+                    this.renderer.trackballControls.noRotate = false;
+                    this.renderer.trackballControls.noPan = false;
+                }
+                return false; // Allow default (OrbitControls)
             }
         } else if (this.mode === 'select') {
-            // If clicking on an atom, maybe toggle selection? (Handled in Click)
-            // If dragging empty space, Lasso.
+            // If clicking on an atom, allow OrbitControls (selection handled in Click)
+            // If dragging empty space, prevent OrbitControls for Lasso
             const intersects = raycaster.intersectObjects(this.renderer.scene.children);
             const atomMesh = intersects.find(i => i.object.userData.type === 'atom');
 
             if (!atomMesh) {
-                // Start selection (rectangle or lasso)
+                // Start selection (rectangle or lasso) - prevent OrbitControls
+                if (this.renderer.trackballControls) {
+                    this.renderer.trackballControls.noRotate = true;
+                    this.renderer.trackballControls.noPan = true;
+                }
+
                 this.selectionManager.startSelection(event.clientX, event.clientY);
-                this.renderer.controls.enabled = false; // Disable rotation while selecting
+                return true; // Prevent default
+            } else {
+                // Clicking on atom - allow OrbitControls
+                if (this.renderer.trackballControls) {
+                    this.renderer.trackballControls.noRotate = false;
+                    this.renderer.trackballControls.noPan = false;
+                }
+                return false; // Allow default
             }
         } else if (this.mode === 'move') {
             const selectedAtoms = this.molecule.atoms.filter(a => a.selected);
             console.log('Move start. Selected:', selectedAtoms.length);
 
-            // Check if we clicked ON a selected atom to start move?
-            // Or if we just drag anywhere?
-            // Usually move tool works by dragging anywhere if items are selected.
-            // But if we want "empty space -> rotate", then we must click ON an atom to move.
-
             const intersects = raycaster.intersectObjects(this.renderer.scene.children);
             const atomMesh = intersects.find(i => i.object.userData.type === 'atom');
 
-            // If we clicked an atom that is selected, OR if we have atoms selected and the tool implies moving them...
-            // User requirement: "Default or empty space drag -> total rotation".
-            // This implies moving fragments requires clicking ON them or using a specific handle?
-            // Or maybe "Move" mode overrides rotation?
-            // Let's assume: In Move mode, if you click ON an atom (or close to one), you move. If you click empty space, you rotate.
-
             if (selectedAtoms.length > 0 && atomMesh && atomMesh.object.userData.atom.selected) {
+                // Prevent OrbitControls from interfering with atom manipulation
+                if (this.renderer.trackballControls) {
+                    this.renderer.trackballControls.noRotate = true;
+                    this.renderer.trackballControls.noPan = true;
+                }
+
                 // this.saveState(); // Removed: Save after move completes
                 // Don't set isManipulating yet - wait for actual drag movement
                 this.manipulationStartMouse = new THREE.Vector2(event.clientX, event.clientY);
@@ -677,9 +700,19 @@ export class Editor {
                 selectedAtoms.forEach(a => {
                     this.initialPositions.set(a, a.position.clone());
                 });
-                this.renderer.controls.enabled = false; // Disable rotation while moving atoms
+                return true; // Prevent default
+            } else {
+                // Empty space or no selection - allow OrbitControls
+                if (this.renderer.trackballControls) {
+                    this.renderer.trackballControls.noRotate = false;
+                    this.renderer.trackballControls.noPan = false;
+                }
+                return false; // Allow default
             }
         }
+
+        // Default: allow OrbitControls
+        return false;
     }
 
     handleDrag(event, raycaster) {
@@ -719,7 +752,7 @@ export class Editor {
             // Only manipulate if we actually started manipulation in handleDragStart
             if (!this.initialPositions || selectedAtoms.length === 0) return;
 
-            if (this.manipulationMode === 'rotate' || event.altKey) {
+            if (this.manipulationMode === 'rotate' || this.manipulationMode === 'trackball' || event.altKey) {
                 // Trackball Rotation
                 const currentTrackball = this.getTrackballVector(event.clientX, event.clientY);
                 const startTrackball = this.trackballStart;
@@ -1536,7 +1569,47 @@ export class Editor {
             } catch (e) {
                 console.error('Heartbeat failed:', e);
             }
-        }, 2000); // Send heartbeat every 2 seconds
+        }, 1000); // Send heartbeat every 1 second for instant shutdown detection
+    }
+
+    /**
+     * Setup beforeunload and pagehide handlers for data loss prevention and server shutdown
+     */
+    setupBeforeUnload() {
+        // Show browser default warning when there's unsaved data
+        window.addEventListener('beforeunload', (event) => {
+            if (this.hasUnsavedData()) {
+                // Modern browsers show their own message, we just need to preventDefault
+                event.preventDefault();
+                event.returnValue = ''; // Chrome requires returnValue to be set
+                return ''; // Legacy browsers
+            }
+        });
+
+        // Send shutdown signal when page actually closes
+        window.addEventListener('pagehide', () => {
+            this.shutdownServer();
+        });
+    }
+
+    /**
+     * Check if there is unsaved data (atoms in molecule)
+     * @returns {boolean}
+     */
+    hasUnsavedData() {
+        return this.molecule && this.molecule.atoms.length > 0;
+    }
+
+    /**
+     * Shutdown the server gracefully
+     */
+    shutdownServer() {
+        // Use sendBeacon for reliability when page is closing
+        // (fetch with keepalive might not complete in time)
+        const data = JSON.stringify({ timestamp: Date.now() });
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon('/api/shutdown', blob);
+        console.log('Shutdown signal sent to server.');
     }
 
     // createBondMesh moved to RenderManager

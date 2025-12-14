@@ -201,6 +201,23 @@ async function main() {
             return;
         }
 
+        if (req.url === '/api/shutdown' && req.method === 'POST') {
+            console.log('Shutdown signal received from client.');
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'shutting down' }));
+
+            // Graceful shutdown
+            setTimeout(() => {
+                if (pythonProcess) {
+                    console.log('Terminating Python backend...');
+                    pythonProcess.kill();
+                }
+                console.log('Server shutting down.');
+                process.exit(0);
+            }, 100); // Small delay to ensure response is sent
+            return;
+        }
+
         if (req.url === '/api/heartbeat') {
             lastHeartbeat = Date.now();
             res.writeHead(200, { 'Content-Type': 'application/json' });

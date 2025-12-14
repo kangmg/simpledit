@@ -51,6 +51,10 @@ export class Renderer {
 
     this.controls = this.trackballControls; // Active controls reference
 
+    // Store original mouse controls state for toggling
+    this.originalTrackballNoPan = this.trackballControls.noPan;
+    this.originalTrackballNoRotate = this.trackballControls.noRotate;
+
     // Lights - full ambient light to minimize shadows
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
     this.scene.add(ambientLight);
