@@ -109,7 +109,7 @@ export class CommandRegistry {
                 });
                 return { info: output };
             }
-            else if (['frags', 'fragments'].includes(type)) {
+            else if (['fragment', 'frag', 'frags', 'fragments'].includes(type)) {
                 const fragments = this.editor.fileIOManager.getFragments();
                 if (fragments.length === 0) return { info: 'No fragments' };
                 let output = '';
@@ -538,50 +538,151 @@ export class CommandRegistry {
             return { success: 'Molecule centered' };
         });
 
-        // Rotate command
-        this.register('rotate', ['rot'], 'rotate <x> <y> <z> - Rotate molecule (degrees)', { isDestructive: true }, (args) => {
-            if (args.length !== 3) return { error: 'Usage: rotate <x> <y> <z>' };
+        // Move command (mv) - supports atom, frag, mol
+        this.register('mv', ['move'], 'mv [atom|frag|mol] [index] <x> <y> <z> - Move atom/fragment/molecule', { isDestructive: true }, (args) => {
+            if (args.length < 4) {
+                return { error: 'Usage: mv [atom|frag|mol] [index] <x> <y> <z>\nExamples:\n  mv atom 2 0 0 3\n  mv frag 1 0 0 3\n  mv mol 0 0 3' };
+            }
 
-            const x = parseFloat(args[0]);
-            const y = parseFloat(args[1]);
-            const z = parseFloat(args[2]);
+            const type = args[0].toLowerCase();
 
-            if (isNaN(x) || isNaN(y) || isNaN(z)) return { error: 'Invalid angles' };
+            // mol type: mv mol x y z (no index)
+            if (type === 'mol' || type === 'molecule') {
+                const [x, y, z] = args.slice(1).map(parseFloat);
 
-            const atoms = this.editor.molecule.atoms;
-            const positions = atoms.map(a => a.position);
-            const newPositions = GeometryEngine.getRotatedPositions(positions, x, y, z);
+                if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                    return { error: 'Invalid coordinates' };
+                }
 
-            atoms.forEach((atom, i) => {
-                atom.position.copy(newPositions[i]);
-            });
+                const atoms = this.editor.molecule.atoms;
+                const positions = atoms.map(a => a.position);
+                const newPositions = GeometryEngine.getTranslatedPositions(positions, x, y, z);
 
-            this.editor.rebuildScene();
-            this.editor.saveState(); // Save after rotate
-            return { success: `Rotated by (${x}, ${y}, ${z})` };
+                atoms.forEach((atom, i) => {
+                    atom.position.copy(newPositions[i]);
+                });
+
+                this.editor.rebuildScene();
+                this.editor.saveState();
+                return { success: `Moved molecule by (${x}, ${y}, ${z})` };
+            }
+
+            // atom/frag type: mv atom/frag index x y z
+            if (type === 'atom' || type === 'frag' || type === 'fragment') {
+                if (args.length < 5) {
+                    return { error: `Usage: mv ${type} <index> <x> <y> <z>` };
+                }
+
+                const index = parseInt(args[1]);
+                const [x, y, z] = args.slice(2).map(parseFloat);
+
+                if (isNaN(index) || isNaN(x) || isNaN(y) || isNaN(z)) {
+                    return { error: 'Invalid index or coordinates' };
+                }
+
+                if (type === 'atom') {
+                    const atom = this.editor.molecule.atoms[index];
+                    if (!atom) return { error: `Invalid atom index: ${index}` };
+
+                    atom.position.add(new THREE.Vector3(x, y, z));
+                    this.editor.rebuildScene();
+                    this.editor.saveState();
+                    return { success: `Moved atom ${index} by (${x}, ${y}, ${z})` };
+                }
+
+                if (type === 'frag' || type === 'fragment') {
+                    const fragments = this.editor.fileIOManager.getFragments();
+                    if (index >= fragments.length || index < 0) {
+                        return { error: `Invalid fragment index: ${index} (${fragments.length} fragments)` };
+                    }
+
+                    const offset = new THREE.Vector3(x, y, z);
+                    fragments[index].forEach(atom => {
+                        atom.position.add(offset);
+                    });
+
+                    this.editor.rebuildScene();
+                    this.editor.saveState();
+                    return { success: `Moved fragment ${index} by (${x}, ${y}, ${z})` };
+                }
+            }
+
+            return { error: 'Invalid type. Use: atom, frag, or mol' };
         });
 
-        // Translate command
-        this.register('trans', ['tr', 'translation'], 'trans <x> <y> <z> - Translate molecule', { isDestructive: true }, (args) => {
-            if (args.length !== 3) return { error: 'Usage: trans <x> <y> <z>' };
+        // Rotate command (rot) - supports frag, mol only (no atom)
+        this.register('rot', ['rotate'], 'rot [frag|mol] [index] <x> <y> <z> - Rotate fragment/molecule (degrees)', { isDestructive: true }, (args) => {
+            if (args.length < 4) {
+                return { error: 'Usage: rot [frag|mol] [index] <x> <y> <z>\nExamples:\n  rot frag 1 90 0 0\n  rot mol 0 90 0' };
+            }
 
-            const x = parseFloat(args[0]);
-            const y = parseFloat(args[1]);
-            const z = parseFloat(args[2]);
+            const type = args[0].toLowerCase();
 
-            if (isNaN(x) || isNaN(y) || isNaN(z)) return { error: 'Invalid coordinates' };
+            // mol type: rot mol x y z (no index)
+            if (type === 'mol' || type === 'molecule') {
+                const [x, y, z] = args.slice(1).map(parseFloat);
 
-            const atoms = this.editor.molecule.atoms;
-            const positions = atoms.map(a => a.position);
-            const newPositions = GeometryEngine.getTranslatedPositions(positions, x, y, z);
+                if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                    return { error: 'Invalid angles' };
+                }
 
-            atoms.forEach((atom, i) => {
-                atom.position.copy(newPositions[i]);
-            });
+                const atoms = this.editor.molecule.atoms;
+                const positions = atoms.map(a => a.position);
+                const newPositions = GeometryEngine.getRotatedPositions(positions, x, y, z);
 
-            this.editor.rebuildScene();
-            this.editor.saveState(); // Save after translate
-            return { success: `Translated by (${x}, ${y}, ${z})` };
+                atoms.forEach((atom, i) => {
+                    atom.position.copy(newPositions[i]);
+                });
+
+                this.editor.rebuildScene();
+                this.editor.saveState();
+                return { success: `Rotated molecule by (${x}, ${y}, ${z})` };
+            }
+
+            // frag type: rot frag index x y z
+            if (type === 'frag' || type === 'fragment') {
+                if (args.length < 5) {
+                    return { error: 'Usage: rot frag <index> <x> <y> <z>' };
+                }
+
+                const index = parseInt(args[1]);
+                const [x, y, z] = args.slice(2).map(parseFloat);
+
+                if (isNaN(index) || isNaN(x) || isNaN(y) || isNaN(z)) {
+                    return { error: 'Invalid index or angles' };
+                }
+
+                const fragments = this.editor.fileIOManager.getFragments();
+                if (index >= fragments.length || index < 0) {
+                    return { error: `Invalid fragment index: ${index} (${fragments.length} fragments)` };
+                }
+
+                const fragAtoms = fragments[index];
+
+                // Calculate fragment centroid
+                const centroid = GeometryEngine.getCenterOfMass(fragAtoms);
+
+                // Translate to origin, rotate, translate back
+                const positions = fragAtoms.map(a => a.position.clone().sub(centroid));
+                const rotated = GeometryEngine.getRotatedPositions(positions, x, y, z);
+
+                fragAtoms.forEach((atom, i) => {
+                    atom.position.copy(rotated[i].add(centroid));
+                });
+
+                this.editor.rebuildScene();
+                this.editor.saveState();
+                return { success: `Rotated fragment ${index} by (${x}, ${y}, ${z})` };
+            }
+
+            return { error: 'Invalid type. Use: frag or mol (atom rotation not supported)' };
+        });
+
+        // Keep old aliases for backward compatibility
+        this.register('trans', ['tr', 'translation'], 'trans <x> <y> <z> - Translate molecule (alias for mv mol)', { isDestructive: true }, (args) => {
+            if (args.length !== 3) return { error: 'Usage: trans <x> <y> <z> (or use: mv mol <x> <y> <z>)' };
+            // Delegate to mv mol
+            return this.get('mv')(['mol', ...args]);
         });
 
         // Select command (Preserved)

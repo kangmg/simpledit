@@ -159,6 +159,7 @@ body {
 
 .btn-sublabel {
     font-weight: normal;
+    color: #1E90FF;  /* Blue to match submode buttons */
     transition: color 0.2s;
 }
 
