@@ -682,13 +682,15 @@ export class CommandRegistry {
         this.register('trans', ['tr', 'translation'], 'trans <x> <y> <z> - Translate molecule (alias for mv mol)', { isDestructive: true }, (args) => {
             if (args.length !== 3) return { error: 'Usage: trans <x> <y> <z> (or use: mv mol <x> <y> <z>)' };
             // Delegate to mv mol
-            return this.get('mv')(['mol', ...args]);
+            const mvCommand = this.get('mv');
+            return mvCommand.execute(['mol', ...args]);
         });
 
         // Select command (Preserved)
-        this.register('select', ['sel'], 'select <indices> - Select atoms', (args) => {
-            if (args.length === 0) return { error: 'Usage: select <indices>' };
+        this.register('select', ['sel'], 'select <indices|frag index> - Select atoms or fragment', (args) => {
+            if (args.length === 0) return { error: 'Usage: select <indices> or select frag <index>' };
 
+            // Select all atoms
             if (args[0] === ':') {
                 this.editor.clearSelection();
                 this.editor.molecule.atoms.forEach(a => {
@@ -700,27 +702,70 @@ export class CommandRegistry {
                 return { success: 'Selected all' };
             }
 
+            // Select fragment
+            if (args[0].toLowerCase() === 'frag' || args[0].toLowerCase() === 'fragment') {
+                if (args.length < 2) return { error: 'Usage: select frag <index>' };
+                const fragIndex = parseInt(args[1]);
+                if (isNaN(fragIndex)) return { error: 'Invalid fragment index' };
+
+                const fragments = this.editor.fileIOManager.getFragments();
+                if (fragIndex < 0 || fragIndex >= fragments.length) {
+                    return { error: `Invalid fragment index: ${fragIndex} (${fragments.length} fragments)` };
+                }
+
+                this.editor.clearSelection();
+                fragments[fragIndex].forEach(atom => {
+                    atom.selected = true;
+                    this.editor.selectionOrder.push(atom);
+                    this.editor.updateAtomVisuals(atom);
+                });
+                this.editor.updateSelectionInfo();
+                return { success: `Selected fragment ${fragIndex} (${fragments[fragIndex].length} atoms)` };
+            }
+
+            // Parse atom indices
             const indices = [];
+            const invalidArgs = [];
             for (const arg of args) {
                 if (arg.includes(':')) {
                     const [s, e] = arg.split(':').map(Number);
+                    if (isNaN(s) || isNaN(e)) {
+                        invalidArgs.push(arg);
+                        continue;
+                    }
                     for (let i = s; i <= e; i++) indices.push(i);
                 } else {
-                    indices.push(parseInt(arg));
+                    const idx = parseInt(arg);
+                    if (isNaN(idx)) {
+                        invalidArgs.push(arg);
+                        continue;
+                    }
+                    indices.push(idx);
                 }
             }
 
+            if (indices.length === 0) {
+                return { error: `No valid indices provided. Invalid: ${invalidArgs.join(', ')}` };
+            }
+
             this.editor.clearSelection();
+            let selectedCount = 0;
             indices.forEach(i => {
                 const atom = this.editor.molecule.atoms[i];
                 if (atom) {
                     atom.selected = true;
                     this.editor.selectionOrder.push(atom);
                     this.editor.updateAtomVisuals(atom);
+                    selectedCount++;
                 }
             });
             this.editor.updateSelectionInfo();
-            return { success: `Selected ${indices.length} atoms` };
+
+            let msg = `Selected ${selectedCount} atom(s)`;
+            if (invalidArgs.length > 0) {
+                msg += ` (ignored invalid: ${invalidArgs.join(', ')})`;
+            }
+            return { success: msg };
         });
 
         // Utility Commands
@@ -730,20 +775,25 @@ export class CommandRegistry {
         });
 
         this.register('time', ['sleep'], 'time <sec> - Wait', (args) => {
+            if (args.length === 0) return { error: 'Usage: time <sec>' };
             const sec = parseFloat(args[0]);
+            if (isNaN(sec) || sec < 0) return { error: 'Invalid time value' };
             return new Promise(r => setTimeout(() => r({ info: `Waited ${sec}s` }), sec * 1000));
         });
 
         this.register('camera', ['cam'], 'camera [orbit|trackball]', (args) => {
-            const mode = args[0];
-            if (mode) {
-                this.editor.renderer.setCameraMode(mode);
-                document.getElementById('camera-mode').value = mode;
+            if (args.length === 0) return { error: 'Usage: camera [orbit|trackball]' };
+            const mode = args[0].toLowerCase();
+            if (!['orbit', 'trackball'].includes(mode)) {
+                return { error: 'Invalid mode. Use: orbit or trackball' };
             }
+            this.editor.renderer.setCameraMode(mode);
+            document.getElementById('camera-mode').value = mode;
             return { success: `Camera: ${mode}` };
         });
 
         this.register('projection', ['proj'], 'projection [persp|ortho]', (args) => {
+            if (args.length === 0) return { error: 'Usage: projection [persp|ortho]' };
             const arg = args[0].toLowerCase();
             let mode = 'perspective';
             if (['orthographic', 'ortho', 'ot'].includes(arg)) mode = 'orthographic';
@@ -808,12 +858,14 @@ export class CommandRegistry {
 
         // Label command
         this.register('label', ['lbl'], 'label [-s|-n|-a|-o]', (args) => {
+            if (args.length === 0) return { error: 'Usage: label [-s|-n|-a|-o] (symbol/number/all/off)' };
             const arg = args[0];
             let mode = 'none';
             if (arg === '-s' || arg === '--symbol') mode = 'symbol';
             else if (arg === '-n' || arg === '--number') mode = 'number';
             else if (arg === '-a' || arg === '--all') mode = 'both';
             else if (arg === '-o' || arg === '--off') mode = 'none';
+            else return { error: `Unknown option: ${arg}. Use: -s, -n, -a, or -o` };
 
             this.editor.labelMode = mode;
             this.editor.updateAllLabels();
