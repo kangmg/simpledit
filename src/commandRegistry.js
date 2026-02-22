@@ -964,6 +964,23 @@ export class CommandRegistry {
                     });
                 } else if (format === 'sdf' || format === 'mol') {
                     const data = this.editor.fileIOManager.exportSDF({ splitFragments });
+
+                    // If a path argument is provided, save to file via /api/write
+                    const outputPath = args.find(a => a.startsWith('/') || a.includes('\\'));
+                    if (outputPath) {
+                        return fetch('/api/write', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path: outputPath, content: data }),
+                        }).then(r => r.json()).then(result => {
+                            if (result.success) {
+                                return { success: `SDF saved to ${outputPath}` };
+                            } else {
+                                return { error: `Failed to save: ${result.error}` };
+                            }
+                        });
+                    }
+
                     return { info: data };
                 } else {
                     return { error: `Unknown format: ${format}. Supported: xyz, smi, sdf` };

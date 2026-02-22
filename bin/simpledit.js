@@ -255,6 +255,24 @@ async function main() {
             return;
         }
 
+        if (req.url === '/api/write' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
+                try {
+                    const { path: filePath, content } = JSON.parse(body);
+                    const absolutePath = path.resolve(process.cwd(), filePath);
+                    fs.writeFileSync(absolutePath, content, 'utf8');
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true }));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: err.message }));
+                }
+            });
+            return;
+        }
+
         // Static File Serving
         // Handle base path /simpledit/
         let requestPath = req.url;
