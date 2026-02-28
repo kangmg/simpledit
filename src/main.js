@@ -13,8 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
   startAgentPolling(editor);
 });
 
+// Must match EXPORT_SDF_CMD in vite.config.js agentApiPlugin.
+const EXPORT_SDF_CMD = '__export_sdf__';
+
 // Poll the dev-server command queue, execute each command in the editor, and
 // return results so the waiting agent HTTP request can be resolved.
+//
+// Uses recursive setTimeout (not setInterval) so a slow command never causes
+// back-to-back overlapping polls.
 async function startAgentPolling(editor) {
   const POLL_INTERVAL = 500; // ms
 
@@ -33,7 +39,7 @@ async function startAgentPolling(editor) {
 
       try {
         let result;
-        if (command === '__export_sdf__') {
+        if (command === EXPORT_SDF_CMD) {
           // Direct SDF serialization bypasses the console
           result = editor.fileIOManager.exportSDF({});
         } else {
@@ -55,8 +61,10 @@ async function startAgentPolling(editor) {
       }
     } catch (_) {
       // /api/agent/poll not available (production / non-dev mode) - ignore silently
+    } finally {
+      setTimeout(poll, POLL_INTERVAL);
     }
   }
 
-  setInterval(poll, POLL_INTERVAL);
+  setTimeout(poll, POLL_INTERVAL);
 }

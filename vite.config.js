@@ -1,6 +1,12 @@
 import { defineConfig } from 'vite';
 import { copyFileSync, mkdirSync, cpSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
+import { writeFile } from 'fs/promises';
+
+// Special browser-side command: bypasses the console and calls exportSDF() directly.
+const EXPORT_SDF_CMD = '__export_sdf__';
+
+const COMMAND_TIMEOUT_MS = 30000;
 
 // Helper: read HTTP request body
 function readBody(req) {
@@ -12,6 +18,17 @@ function readBody(req) {
   });
 }
 
+// Helper: send 405 and return false when the HTTP method doesn't match.
+function requireMethod(req, res, method) {
+  if (req.method !== method) {
+    res.statusCode = 405;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ error: 'Method not allowed' }));
+    return false;
+  }
+  return true;
+}
+
 // Agent HTTP API plugin
 // Implements a command broker so an external agent can control simpledit over HTTP.
 //
@@ -20,11 +37,26 @@ function readBody(req) {
 //   Agent  --POST /api/command-->  Node queue  <--GET /api/agent/poll--  Browser
 //   Agent  <--response (wait)--   Node queue  --POST /api/agent/result-->  Browser
 //
-// Special command '__export_sdf__' is handled by the browser to return SDF data.
+// Special command EXPORT_SDF_CMD is handled by the browser to return SDF data.
 function agentApiPlugin() {
   const commandQueue = [];
   const pendingResults = new Map(); // id -> { resolve, reject }
   let commandIdCounter = 0;
+
+  // Queue a command for the browser to execute and wait for its result.
+  function queueCommand(command) {
+    const id = ++commandIdCounter;
+    return new Promise((resolve, reject) => {
+      pendingResults.set(id, { resolve, reject });
+      commandQueue.push({ id, command });
+      setTimeout(() => {
+        if (pendingResults.has(id)) {
+          pendingResults.delete(id);
+          reject(new Error(`Command timeout (${COMMAND_TIMEOUT_MS / 1000}s)`));
+        }
+      }, COMMAND_TIMEOUT_MS);
+    });
+  }
 
   return {
     name: 'agent-api',
@@ -34,29 +66,12 @@ function agentApiPlugin() {
 
         // POST /api/command - agent submits a command string to execute
         if (url === '/api/command') {
-          if (req.method !== 'POST') {
-            res.statusCode = 405;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Method not allowed' }));
-            return;
-          }
+          if (!requireMethod(req, res, 'POST')) return;
           res.setHeader('Content-Type', 'application/json');
           try {
             const body = await readBody(req);
             const { command } = JSON.parse(body);
-            const id = ++commandIdCounter;
-
-            const result = await new Promise((resolve, reject) => {
-              pendingResults.set(id, { resolve, reject });
-              commandQueue.push({ id, command });
-              setTimeout(() => {
-                if (pendingResults.has(id)) {
-                  pendingResults.delete(id);
-                  reject(new Error('Command timeout (30s)'));
-                }
-              }, 30000);
-            });
-
+            const result = await queueCommand(command);
             res.end(JSON.stringify({ success: true, result, error: null }));
           } catch (e) {
             res.end(JSON.stringify({ success: false, result: null, error: e.message }));
@@ -66,26 +81,15 @@ function agentApiPlugin() {
 
         // GET /api/agent/poll - browser polls for the next queued command
         if (url === '/api/agent/poll') {
-          if (req.method !== 'GET') {
-            res.statusCode = 405;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Method not allowed' }));
-            return;
-          }
+          if (!requireMethod(req, res, 'GET')) return;
           res.setHeader('Content-Type', 'application/json');
-          const cmd = commandQueue.shift() ?? null;
-          res.end(JSON.stringify(cmd));
+          res.end(JSON.stringify(commandQueue.shift() ?? null));
           return;
         }
 
         // POST /api/agent/result - browser sends back the command result
         if (url === '/api/agent/result') {
-          if (req.method !== 'POST') {
-            res.statusCode = 405;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Method not allowed' }));
-            return;
-          }
+          if (!requireMethod(req, res, 'POST')) return;
           res.setHeader('Content-Type', 'application/json');
           try {
             const body = await readBody(req);
@@ -113,17 +117,7 @@ function agentApiPlugin() {
 
           if (req.method === 'GET') {
             try {
-              const id = ++commandIdCounter;
-              const sdf = await new Promise((resolve, reject) => {
-                pendingResults.set(id, { resolve, reject });
-                commandQueue.push({ id, command: '__export_sdf__' });
-                setTimeout(() => {
-                  if (pendingResults.has(id)) {
-                    pendingResults.delete(id);
-                    reject(new Error('Export timeout (30s)'));
-                  }
-                }, 30000);
-              });
+              const sdf = await queueCommand(EXPORT_SDF_CMD);
               res.end(JSON.stringify({ sdf, error: null }));
             } catch (e) {
               res.end(JSON.stringify({ sdf: null, error: e.message }));
@@ -133,19 +127,8 @@ function agentApiPlugin() {
             try {
               const body = await readBody(req);
               const { path: outputPath } = JSON.parse(body);
-              const id = ++commandIdCounter;
-              const sdf = await new Promise((resolve, reject) => {
-                pendingResults.set(id, { resolve, reject });
-                commandQueue.push({ id, command: '__export_sdf__' });
-                setTimeout(() => {
-                  if (pendingResults.has(id)) {
-                    pendingResults.delete(id);
-                    reject(new Error('Export timeout (30s)'));
-                  }
-                }, 30000);
-              });
-              const { writeFile } = await import('fs/promises');
-              await writeFile(outputPath, sdf, 'utf8');
+              const sdf = await queueCommand(EXPORT_SDF_CMD);
+              await writeFile(resolve(outputPath), sdf, 'utf8');
               res.end(JSON.stringify({ success: true, path: outputPath, error: null }));
             } catch (e) {
               res.end(JSON.stringify({ success: false, path: null, error: e.message }));
@@ -158,20 +141,14 @@ function agentApiPlugin() {
           return;
         }
 
-        // POST /api/write - write arbitrary content to a file on disk
+        // POST /api/write - write arbitrary content to a file on disk (dev only)
         if (url === '/api/write') {
-          if (req.method !== 'POST') {
-            res.statusCode = 405;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Method not allowed' }));
-            return;
-          }
+          if (!requireMethod(req, res, 'POST')) return;
           res.setHeader('Content-Type', 'application/json');
           try {
             const body = await readBody(req);
             const { path: filePath, content } = JSON.parse(body);
-            const { writeFile } = await import('fs/promises');
-            await writeFile(filePath, content, 'utf8');
+            await writeFile(resolve(filePath), content, 'utf8');
             res.end(JSON.stringify({ success: true }));
           } catch (e) {
             res.end(JSON.stringify({ success: false, error: e.message }));
