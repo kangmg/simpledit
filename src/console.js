@@ -323,6 +323,8 @@ export class Console {
                 if (result.warning) this.print(result.warning, 'warning');
                 if (result.info) this.print(result.info, displayType === 'image' ? 'image' : 'info');
             }
+
+            return result;
         } catch (error) {
             this.print(`Error executing '${commandString}': ${error.message}`, 'error');
             console.error(error);
