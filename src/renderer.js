@@ -8,7 +8,7 @@ export class Renderer {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xffffff);
 
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
     this.camera.position.z = 10;
 
     // Orthographic Camera
@@ -19,8 +19,8 @@ export class Renderer {
       frustumSize * aspect / 2,
       frustumSize / 2,
       frustumSize / -2,
-      0.1,
-      1000
+      -2000,
+      5000
     );
     this.orthoCamera.position.z = 10;
 
