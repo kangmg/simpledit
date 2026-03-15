@@ -17,7 +17,8 @@ export class CommandParser {
             // match[1] is double quoted content
             // match[2] is single quoted content
             // match[3] is unquoted word
-            tokens.push(match[1] || match[2] || match[3]);
+            // Use nullish coalescing to preserve empty strings from quotes
+            tokens.push(match[1] ?? match[2] ?? match[3]);
         }
 
         if (tokens.length === 0) return null;

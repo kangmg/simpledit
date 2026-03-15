@@ -141,7 +141,7 @@ export class CommandRegistry {
         });
 
         // Add command (Consolidated)
-        this.register('add', ['a'], 'add [atom|bond|mol] ...', { isDestructive: true }, (args) => {
+        this.register('add', ['a'], 'add [atom|bond|mol] ...', { isDestructive: true }, async (args) => {
             if (args.length === 0) return { error: 'Usage: add [atom|bond|mol] ...' };
 
             // Check for heredoc data
@@ -203,7 +203,6 @@ export class CommandRegistry {
             // add mol <format>
             if (subCmd === 'mol' || subCmd === 'molecule') {
                 // Parse flags
-                // Parse flags
                 const generate2D = args.includes('-2d');
                 const generate3D = !generate2D; // Default to 3D unless -2d is specified
                 const addHydrogens = args.includes('-h');
@@ -217,23 +216,22 @@ export class CommandRegistry {
                     const data = cleanArgs.slice(2).join(' ').replace(/^"|"$/g, ''); // Remove quotes
                     try {
                         if (format === 'smi' || format === 'smiles') {
-                            this.editor.fileIOManager.importSMILES(data, {
-                                shouldClear: false,
-                                autoBond: false,
-                                generate3D,
-                                addHydrogens
-                            }).then(result => {
+                            try {
+                                const result = await this.editor.fileIOManager.importSMILES(data, {
+                                    shouldClear: false,
+                                    autoBond: false,
+                                    generate3D,
+                                    addHydrogens
+                                });
                                 if (result && result.error) {
-                                    this.editor.console.print(`Error: ${result.error}`, 'error');
-                                } else {
-                                    this.editor.rebuildScene();
-                                    this.editor.moleculeManager.updateUI();
-                                    this.editor.console.print('SMILES imported successfully', 'success');
+                                    return { error: result.error };
                                 }
-                            }).catch(err => {
-                                this.editor.console.print(`Error: ${err.message}`, 'error');
-                            });
-                            return { success: 'Importing SMILES...' };
+                                this.editor.rebuildScene();
+                                this.editor.moleculeManager.updateUI();
+                                return { success: 'SMILES imported successfully' };
+                            } catch (err) {
+                                return { error: err.message };
+                            }
                         } else if (format === 'xyz') {
                             this.editor.fileIOManager.importXYZ(data, { shouldClear: false, autoBond: true });
                             this.editor.moleculeManager.updateUI();
@@ -534,7 +532,6 @@ export class CommandRegistry {
             });
 
             this.editor.rebuildScene();
-            this.editor.saveState(); // Save after center
             return { success: 'Molecule centered' };
         });
 
@@ -563,7 +560,6 @@ export class CommandRegistry {
                 });
 
                 this.editor.rebuildScene();
-                this.editor.saveState();
                 return { success: `Moved molecule by (${x}, ${y}, ${z})` };
             }
 
@@ -586,7 +582,6 @@ export class CommandRegistry {
 
                     atom.position.add(new THREE.Vector3(x, y, z));
                     this.editor.rebuildScene();
-                    this.editor.saveState();
                     return { success: `Moved atom ${index} by (${x}, ${y}, ${z})` };
                 }
 
@@ -602,7 +597,6 @@ export class CommandRegistry {
                     });
 
                     this.editor.rebuildScene();
-                    this.editor.saveState();
                     return { success: `Moved fragment ${index} by (${x}, ${y}, ${z})` };
                 }
             }
@@ -635,7 +629,6 @@ export class CommandRegistry {
                 });
 
                 this.editor.rebuildScene();
-                this.editor.saveState();
                 return { success: `Rotated molecule by (${x}, ${y}, ${z})` };
             }
 
@@ -671,7 +664,6 @@ export class CommandRegistry {
                 });
 
                 this.editor.rebuildScene();
-                this.editor.saveState();
                 return { success: `Rotated fragment ${index} by (${x}, ${y}, ${z})` };
             }
 
@@ -795,9 +787,10 @@ export class CommandRegistry {
         this.register('projection', ['proj'], 'projection [persp|ortho]', (args) => {
             if (args.length === 0) return { error: 'Usage: projection [persp|ortho]' };
             const arg = args[0].toLowerCase();
-            let mode = 'perspective';
+            let mode;
             if (['orthographic', 'ortho', 'ot'].includes(arg)) mode = 'orthographic';
             else if (['perspective', 'persp', 'ps'].includes(arg)) mode = 'perspective';
+            else return { error: `Invalid mode: ${arg}. Use: perspective (persp/ps) or orthographic (ortho/ot)` };
             this.editor.renderer.setProjection(mode);
             document.getElementById('projection-mode').value = mode;
             return { success: `Projection: ${mode}` };
@@ -914,16 +907,19 @@ export class CommandRegistry {
                     return { error: `Invalid atom index: ${args[1]}` };
                 }
 
-                // Validate element (simple check)
-                if (!element || element.length > 2) {
+                // Validate element against known elements
+                const normalized = element.charAt(0).toUpperCase() + element.slice(1).toLowerCase();
+                if (!(normalized in ELEMENTS)) {
                     return { error: `Invalid element: ${element}` };
                 }
 
+                // Actually change the atom's element
+                this.editor.molecule.atoms[idx].element = normalized;
+
                 // Update visuals
                 this.editor.rebuildScene();
-                this.editor.saveState(); // Save after substitution
 
-                return { success: `Changed atom ${args[1]} to ${element}` };
+                return { success: `Changed atom ${args[1]} to ${normalized}` };
             } else if (subCmd === 'grp' || subCmd === 'group') {
                 // Delegate to MoleculeManager for complex group substitution
                 return this.editor.moleculeManager.substituteGroup(args.slice(1));
@@ -1038,20 +1034,23 @@ export class CommandRegistry {
                                 }
                                 const url = URL.createObjectURL(blob);
                                 this.editor.console.print(url, 'image');
+                                // Revoke after a delay to allow the image to load
+                                setTimeout(() => URL.revokeObjectURL(url), 60000);
                                 count++;
                             }
                         }
                         return { success: `Shown ${count} fragments` };
                     } else {
                         if (!svgs) return { warning: 'No molecule to show' };
-                        let url;
+                        let blob;
                         if (usePng) {
-                            const blob = await (await fetch(svgs)).blob();
-                            url = URL.createObjectURL(blob);
+                            blob = await (await fetch(svgs)).blob();
                         } else {
-                            const blob = new Blob([svgs], { type: 'image/svg+xml' });
-                            url = URL.createObjectURL(blob);
+                            blob = new Blob([svgs], { type: 'image/svg+xml' });
                         }
+                        const url = URL.createObjectURL(blob);
+                        // Revoke after a delay to allow the image to load
+                        setTimeout(() => URL.revokeObjectURL(url), 60000);
                         return { info: url, type: 'image' };
                     }
                 } catch (e) {
