@@ -229,9 +229,8 @@ export class MoleculeManager {
         const activeMol = this.getActive();
         if (!activeMol) return { error: 'No active molecule' };
 
-        // Deselect current selection
-        activeMol.molecule.atoms.forEach(a => a.selected = false);
-        this.editor.selectionOrder = [];
+        // Deselect current selection via SelectionManager
+        this.editor.selectionManager.clearSelection();
 
         // Calculate offset (e.g., shift by 2.0 units to avoid overlap)
         const offset = new THREE.Vector3(2, 2, 0);
@@ -243,10 +242,8 @@ export class MoleculeManager {
         this.clipboard.atoms.forEach((data, i) => {
             const newPos = data.position.clone().add(offset);
             const atom = activeMol.molecule.addAtom(data.element, newPos);
-            atom.selected = true;
             newAtoms.push(atom);
             indexMap[i] = atom;
-            this.editor.selectionOrder.push(atom);
         });
 
         // Create bonds
@@ -259,6 +256,10 @@ export class MoleculeManager {
         });
 
         this.editor.rebuildScene();
+
+        // Select pasted atoms via SelectionManager
+        const pastedIndices = newAtoms.map(a => activeMol.molecule.atoms.indexOf(a));
+        this.editor.selectionManager.selectByIndices(pastedIndices);
         this.editor.updateSelectionInfo();
         this.editor.saveState(); // Save after paste
 
@@ -279,13 +280,32 @@ export class MoleculeManager {
 
         if (!targetMol) return { error: 'No active molecule' };
 
-        // Remove source molecule
+        // Copy atoms from source to target
+        const atomMap = new Map(); // source atom -> target atom
+        for (const atom of sourceMol.molecule.atoms) {
+            const newAtom = targetMol.molecule.addAtom(atom.element, atom.position.clone());
+            atomMap.set(atom, newAtom);
+        }
+
+        // Copy bonds from source to target
+        for (const bond of sourceMol.molecule.bonds) {
+            const newAtom1 = atomMap.get(bond.atom1);
+            const newAtom2 = atomMap.get(bond.atom2);
+            if (newAtom1 && newAtom2) {
+                targetMol.molecule.addBond(newAtom1, newAtom2, bond.order);
+            }
+        }
+
         const sourceAtomCount = sourceMol.molecule.atoms.length;
+        const sourceName = sourceMol.name;
+
+        // Remove source molecule
         this.removeMolecule(sourceIndex);
 
-        this.editor.saveState(); // Save after merge
+        this.editor.rebuildScene();
+        this.editor.saveState();
 
-        return { success: `Merged ${sourceAtomCount} atoms from "${sourceMol.name}" into "${targetMol.name}"` };
+        return { success: `Merged ${sourceAtomCount} atoms from "${sourceName}" into "${targetMol.name}"` };
     }
 
     substituteGroup(args) {

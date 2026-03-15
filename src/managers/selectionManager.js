@@ -62,7 +62,6 @@ export class SelectionManager {
         }
 
         this.updateSelectionStatus();
-        this.updateSelectionStatus();
         const index = this.editor.molecule.atoms.indexOf(atom);
         return ErrorHandler.success(`Atom ${index} selected`);
     }

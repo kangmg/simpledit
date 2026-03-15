@@ -348,11 +348,12 @@ export class CommandRegistry {
 
                 if (indices.length === 0) return { error: 'No valid indices provided' };
 
-                const toDelete = indices.map(i => this.editor.molecule.atoms[i]).filter(a => a);
-                this.editor.clearSelection(); // Clear existing selection to avoid deleting them
-                toDelete.forEach(a => a.selected = true);
+                const validIndices = indices.filter(i => i >= 0 && i < this.editor.molecule.atoms.length);
+                if (validIndices.length === 0) return { error: 'No valid atom indices' };
+
+                this.editor.selectionManager.selectByIndices(validIndices);
                 this.editor.deleteSelected();
-                return { success: `Deleted ${toDelete.length} atom(s)` };
+                return { success: `Deleted ${validIndices.length} atom(s)` };
             }
 
             return { error: `Unknown subcommand: ${subCmd}. Use 'atom', 'bond', or 'mol'.` };
@@ -377,12 +378,10 @@ export class CommandRegistry {
                 const atom2 = this.editor.molecule.atoms[idx2];
                 if (!atom1 || !atom2) return { error: 'Invalid atoms' };
 
-                this.editor.molecule.atoms.forEach(a => a.selected = false);
-                atom1.selected = true; atom2.selected = true;
-                this.editor.selectionOrder = [atom1, atom2];
-
+                this.editor.selectionManager.selectByIndices([idx1, idx2]);
                 document.getElementById('input-length').value = val;
                 this.editor.setBondLength();
+                this.editor.updateSelectionInfo();
                 return { success: `Distance set to ${val}` };
             }
 
@@ -394,15 +393,14 @@ export class CommandRegistry {
                 const val = parseFloat(vals[3]);
                 if (isNaN(val)) return { error: 'Invalid angle' };
 
-                const atoms = [idx1, idx2, idx3].map(i => this.editor.molecule.atoms[i]);
+                const indices = [idx1, idx2, idx3];
+                const atoms = indices.map(i => this.editor.molecule.atoms[i]);
                 if (atoms.some(a => !a)) return { error: 'Invalid atoms' };
 
-                this.editor.molecule.atoms.forEach(a => a.selected = false);
-                atoms.forEach(a => a.selected = true);
-                this.editor.selectionOrder = atoms;
-
+                this.editor.selectionManager.selectByIndices(indices);
                 document.getElementById('input-angle').value = val;
                 this.editor.setBondAngle();
+                this.editor.updateSelectionInfo();
                 return { success: `Angle set to ${val}` };
             }
 
@@ -415,15 +413,14 @@ export class CommandRegistry {
                 const val = parseFloat(vals[4]);
                 if (isNaN(val)) return { error: 'Invalid angle' };
 
-                const atoms = [idx1, idx2, idx3, idx4].map(i => this.editor.molecule.atoms[i]);
+                const indices = [idx1, idx2, idx3, idx4];
+                const atoms = indices.map(i => this.editor.molecule.atoms[i]);
                 if (atoms.some(a => !a)) return { error: 'Invalid atoms' };
 
-                this.editor.molecule.atoms.forEach(a => a.selected = false);
-                atoms.forEach(a => a.selected = true);
-                this.editor.selectionOrder = atoms;
-
+                this.editor.selectionManager.selectByIndices(indices);
                 document.getElementById('input-dihedral').value = val;
                 this.editor.setDihedralAngle();
+                this.editor.updateSelectionInfo();
                 return { success: `Dihedral set to ${val}` };
             }
 
@@ -484,17 +481,12 @@ export class CommandRegistry {
                 const angle = v1.angleTo(v2) * (180 / Math.PI);
                 return { info: `Angle: ${angle.toFixed(2)}°` };
             } else if (atoms.length === 4) {
-                // Dihedral calc
-                const [a1, a2, a3, a4] = atoms.map(a => a.position);
-                const b1 = a2.clone().sub(a1);
-                const b2 = a3.clone().sub(a2);
-                const b3 = a4.clone().sub(a3);
-                const n1 = b1.clone().cross(b2).normalize();
-                const n2 = b2.clone().cross(b3).normalize();
-                let angle = Math.acos(Math.max(-1, Math.min(1, n1.dot(n2))));
-                const sign = b1.dot(n2);
-                if (sign < 0) angle = -angle;
-                return { info: `Dihedral: ${(angle * 180 / Math.PI).toFixed(2)}°` };
+                // Use GeometryEngine for consistent dihedral calculation
+                const angle = GeometryEngine.calculateDihedral(
+                    atoms[0].position, atoms[1].position,
+                    atoms[2].position, atoms[3].position
+                );
+                return { info: `Dihedral: ${angle.toFixed(2)}°` };
             }
 
             return { error: 'Select 2, 3, or 4 atoms to measure' };
@@ -684,12 +676,7 @@ export class CommandRegistry {
 
             // Select all atoms
             if (args[0] === ':') {
-                this.editor.clearSelection();
-                this.editor.molecule.atoms.forEach(a => {
-                    a.selected = true;
-                    this.editor.selectionOrder.push(a);
-                    this.editor.updateAtomVisuals(a);
-                });
+                this.editor.selectionManager.selectAll();
                 this.editor.updateSelectionInfo();
                 return { success: 'Selected all' };
             }
@@ -705,12 +692,8 @@ export class CommandRegistry {
                     return { error: `Invalid fragment index: ${fragIndex} (${fragments.length} fragments)` };
                 }
 
-                this.editor.clearSelection();
-                fragments[fragIndex].forEach(atom => {
-                    atom.selected = true;
-                    this.editor.selectionOrder.push(atom);
-                    this.editor.updateAtomVisuals(atom);
-                });
+                const fragAtomIndices = fragments[fragIndex].map(a => this.editor.molecule.atoms.indexOf(a));
+                this.editor.selectionManager.selectByIndices(fragAtomIndices);
                 this.editor.updateSelectionInfo();
                 return { success: `Selected fragment ${fragIndex} (${fragments[fragIndex].length} atoms)` };
             }
@@ -740,19 +723,10 @@ export class CommandRegistry {
                 return { error: `No valid indices provided. Invalid: ${invalidArgs.join(', ')}` };
             }
 
-            this.editor.clearSelection();
-            let selectedCount = 0;
-            indices.forEach(i => {
-                const atom = this.editor.molecule.atoms[i];
-                if (atom) {
-                    atom.selected = true;
-                    this.editor.selectionOrder.push(atom);
-                    this.editor.updateAtomVisuals(atom);
-                    selectedCount++;
-                }
-            });
+            this.editor.selectionManager.selectByIndices(indices);
             this.editor.updateSelectionInfo();
 
+            const selectedCount = this.editor.selectionManager.getSelectionCount();
             let msg = `Selected ${selectedCount} atom(s)`;
             if (invalidArgs.length > 0) {
                 msg += ` (ignored invalid: ${invalidArgs.join(', ')})`;
@@ -780,6 +754,7 @@ export class CommandRegistry {
                 return { error: 'Invalid mode. Use: orbit or trackball' };
             }
             this.editor.renderer.setCameraMode(mode);
+            this.editor.state.setCameraMode(mode);
             document.getElementById('camera-mode').value = mode;
             return { success: `Camera: ${mode}` };
         });
@@ -792,6 +767,7 @@ export class CommandRegistry {
             else if (['perspective', 'persp', 'ps'].includes(arg)) mode = 'perspective';
             else return { error: `Invalid mode: ${arg}. Use: perspective (persp/ps) or orthographic (ortho/ot)` };
             this.editor.renderer.setProjection(mode);
+            this.editor.state.setProjectionMode(mode);
             document.getElementById('projection-mode').value = mode;
             return { success: `Projection: ${mode}` };
         });
@@ -862,6 +838,10 @@ export class CommandRegistry {
 
             this.editor.labelMode = mode;
             this.editor.updateAllLabels();
+            // Sync toolbar button text
+            const modeLabels = { 'none': 'Labels: Off', 'symbol': 'Labels: Symbol', 'number': 'Labels: Number', 'both': 'Labels: Both' };
+            const btn = document.getElementById('btn-toggle-labels');
+            if (btn) btn.innerText = modeLabels[mode] || 'Labels';
             return { success: `Label mode: ${mode}` };
         });
 

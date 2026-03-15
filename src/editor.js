@@ -535,24 +535,13 @@ export class Editor {
             measurementInfo.innerHTML = `${a1.element} (${idx1}) - ${a2.element} (${idx2}) - ${a3.element} (${idx3}): ${angle.toFixed(1)}°`;
             measurementInfo.style.display = 'block';
         } else if (count === 4) {
-            // Calculate current dihedral
+            // Calculate current dihedral using GeometryEngine for consistency
             const a1 = this.selectionOrder[0];
             const a2 = this.selectionOrder[1];
             const a3 = this.selectionOrder[2];
             const a4 = this.selectionOrder[3];
 
-            const axis = a3.position.clone().sub(a2.position).normalize();
-            const v1 = a1.position.clone().sub(a2.position);
-            const v2 = a4.position.clone().sub(a3.position);
-            const p1 = v1.clone().sub(axis.clone().multiplyScalar(v1.dot(axis)));
-            const p2 = v2.clone().sub(axis.clone().multiplyScalar(v2.dot(axis)));
-
-            // Signed angle calculation
-            const angleRad = Math.atan2(
-                p1.clone().cross(p2).dot(axis),
-                p1.dot(p2)
-            );
-            const angleDeg = angleRad * (180 / Math.PI);
+            const angleDeg = GeometryEngine.calculateDihedral(a1.position, a2.position, a3.position, a4.position);
 
             const val = angleDeg.toFixed(1);
             document.getElementById('input-dihedral').value = val;
@@ -960,11 +949,6 @@ export class Editor {
 
         // Create mesh via RenderManager
         const mesh = this.renderManager.createAtomMesh(atom);
-        if (mesh) {
-            this.renderer.scene.add(mesh);
-            atom.mesh = mesh;
-        }
-
         if (mesh) {
             this.renderer.scene.add(mesh);
             atom.mesh = mesh;
